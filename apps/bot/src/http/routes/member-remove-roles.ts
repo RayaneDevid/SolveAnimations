@@ -20,15 +20,7 @@ export async function registerMemberRemoveRoles(app: FastifyInstance): Promise<v
       const { discordUserId } = parsed.data;
       const result = await removeStaffRoles(discordUserId);
 
-      if (result.failedRoles.length > 0) {
-        return reply.status(500).send({
-          success: false,
-          error: `Failed to remove roles: ${result.failedRoles.join(', ')}. Check bot role hierarchy in Discord server settings.`,
-          data: result,
-        });
-      }
-
-      return reply.send({ success: true, data: result });
+      return reply.send({ success: true, data: { removedRoles: result.removedRoles } });
     },
   );
 }

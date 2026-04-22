@@ -19,7 +19,6 @@ import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
-import { ROLE_LABELS } from '@/lib/config/discord'
 import type { MemberEntry } from '@/types/database'
 import type { StaffRoleKey } from '@/lib/config/discord'
 

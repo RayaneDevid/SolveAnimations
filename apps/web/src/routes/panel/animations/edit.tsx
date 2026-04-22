@@ -18,9 +18,9 @@ import { format } from 'date-fns'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
-  petite: '1–2 zones, courte durée',
-  moyenne: '2–3 zones, durée standard',
-  grande: 'Multi-zones, longue durée',
+  petite: 'Pour les animations spontanées',
+  moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
+  grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
 
 function toDatetimeLocal(isoString: string): string {

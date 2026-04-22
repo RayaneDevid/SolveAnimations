@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { requireResponsable } from '../_shared/guards.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -11,8 +12,8 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  if (profile.role !== 'responsable')
-    return errorResponse('FORBIDDEN', 'Accès réservé aux responsables')
+  const guard = requireResponsable(profile)
+  if (guard) return guard
 
   const db = getServiceClient()
 
@@ -89,6 +90,7 @@ Deno.serve(async (req) => {
 
   const QUOTA_MAX: Record<string, number | null> = {
     responsable: null,
+    responsable_mj: null,
     senior: 5,
     animateur: 5,
     mj: 3,

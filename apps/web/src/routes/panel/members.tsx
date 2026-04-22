@@ -73,7 +73,7 @@ export default function Members() {
 
   const stats = {
     total: members.length,
-    responsable: members.filter((m) => m.role === 'responsable').length,
+    responsable: members.filter((m) => m.role === 'responsable' || m.role === 'responsable_mj').length,
     senior: members.filter((m) => m.role === 'senior').length,
     animateur: members.filter((m) => m.role === 'animateur').length,
     mj: members.filter((m) => m.role === 'mj').length,

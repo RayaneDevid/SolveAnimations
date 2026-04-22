@@ -20,15 +20,17 @@ export async function removeStaffRoles(discordUserId: string): Promise<RemoveSta
 
   try {
     const guild = await client.guilds.fetch(env.DISCORD_GUILD_ID);
-    const member = await guild.members.fetch(discordUserId);
+    const member = await guild.members.fetch({ user: discordUserId, force: true });
 
     for (const roleId of STAFF_ROLE_IDS) {
-      if (member.roles.cache.has(roleId)) {
-        try {
-          await member.roles.remove(roleId);
-          removedRoles.push(roleId);
-        } catch (err) {
-          console.warn(`[removeStaffRoles] Failed to remove role ${roleId} from ${discordUserId}:`, err);
+      try {
+        await member.roles.remove(roleId);
+        removedRoles.push(roleId);
+      } catch (err: any) {
+        // 10011 = Unknown Role, 50013 = Missing Permissions — log anything unexpected
+        const code = err?.code;
+        if (code !== 10011 && code !== 50013) {
+          console.warn(`[removeStaffRoles] Unexpected error removing role ${roleId} from ${discordUserId}:`, err);
         }
       }
     }

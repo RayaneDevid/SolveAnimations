@@ -57,9 +57,13 @@ export async function registerAnimationCreated(app: FastifyInstance): Promise<vo
             .setEmoji('❌'),
         );
 
+        const pingContent = env.ROLE_RESPONSABLE ? `<@&${env.ROLE_RESPONSABLE}>` : undefined;
+
         const message = await (channel as import('discord.js').TextChannel).send({
+          content: pingContent,
           embeds: [embed],
           components: [row],
+          allowedMentions: { roles: env.ROLE_RESPONSABLE ? [env.ROLE_RESPONSABLE] : [] },
         });
 
         return reply.send({ success: true, data: { adminMessageId: message.id } });

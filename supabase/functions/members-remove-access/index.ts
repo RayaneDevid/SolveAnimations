@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  if (profile.role !== 'responsable')
+  if (profile.role !== 'responsable' && profile.role !== 'responsable_mj')
     return errorResponse('FORBIDDEN', 'Accès réservé aux responsables')
 
   const { user_id } = await req.json()

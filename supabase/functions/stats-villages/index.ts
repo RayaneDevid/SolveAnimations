@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { requireResponsable } from '../_shared/guards.ts'
 
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const
 
@@ -13,8 +14,8 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  if (profile.role !== 'responsable')
-    return errorResponse('FORBIDDEN', 'Accès réservé aux responsables')
+  const guard = requireResponsable(profile)
+  if (guard) return guard
 
   const db = getServiceClient()
 

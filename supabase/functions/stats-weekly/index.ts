@@ -6,6 +6,7 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const QUOTA_MAX: Record<string, number | null> = {
   responsable: null,
+  responsable_mj: null,
   senior: 5,
   animateur: 5,
   mj: 3,
@@ -21,7 +22,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
   const { user_id } = body
 
-  if (user_id && user_id !== profile.id && profile.role !== 'responsable')
+  if (user_id && user_id !== profile.id && profile.role !== 'responsable' && profile.role !== 'responsable_mj')
     return errorResponse('FORBIDDEN', 'Accès refusé')
 
   const targetId = user_id ?? profile.id

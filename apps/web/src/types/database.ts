@@ -149,6 +149,28 @@ export interface MemberEntry {
   }
 }
 
+export interface PaiesEntry {
+  id: string
+  username: string
+  avatarUrl: string | null
+  role: string
+  animationsCount: number
+  animationMin: number
+  prepMin: number
+  totalMin: number
+  petite: number
+  moyenne: number
+  grande: number
+  remuneration: number
+  remunerationCapped: boolean
+}
+
+export interface PaiesResult {
+  entries: PaiesEntry[]
+  weekStart: string
+  weekEnd: string
+}
+
 export type Database = {
   public: {
     Tables: {

@@ -10,6 +10,7 @@ import {
   Users,
   PieChart,
   FolderOpen,
+  Banknote,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/panel/leaderboard', label: 'Classement', icon: Trophy, requiresRole: 'responsable' },
   { to: '/panel/members', label: 'Membres', icon: Users, requiresRole: 'responsable' },
   { to: '/panel/casiers', label: 'Casiers', icon: FolderOpen, requiresRole: 'responsable' },
+  { to: '/panel/paies', label: 'Paies', icon: Banknote, requiresRole: 'responsable' },
   { to: '/panel/villages', label: 'Graphique villages', icon: PieChart, requiresRole: 'responsable' },
 ]
 

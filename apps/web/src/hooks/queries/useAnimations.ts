@@ -89,3 +89,10 @@ export function useUserReports(userId: string) {
     enabled: !!userId,
   })
 }
+
+export function usePaies(weekStart?: Date) {
+  return useQuery({
+    queryKey: ['paies', weekStart?.toISOString()] as const,
+    queryFn: () => invokeEdge<import('@/types/database').PaiesResult>('paies', weekStart ? { week_start: weekStart.toISOString() } : {}),
+  })
+}

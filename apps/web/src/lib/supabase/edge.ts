@@ -29,6 +29,7 @@ export type EdgeFunctionName =
   | 'leaderboard'
   | 'members-list'
   | 'members-remove-access'
+  | 'paies'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

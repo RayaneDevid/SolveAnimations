@@ -18,6 +18,7 @@ import Validation from '@/routes/panel/validation'
 import Leaderboard from '@/routes/panel/leaderboard'
 import Members from '@/routes/panel/members'
 import Casiers from '@/routes/panel/casiers'
+import Paies from '@/routes/panel/paies'
 import Villages from '@/routes/panel/villages'
 
 export default function App() {
@@ -72,6 +73,14 @@ export default function App() {
             element={
               <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
                 <Casiers />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="paies"
+            element={
+              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+                <Paies />
               </RoleGate>
             }
           />

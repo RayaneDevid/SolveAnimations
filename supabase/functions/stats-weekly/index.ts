@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     .lt('ended_at', weekEnd)
 
   const animationsCreated = finishedAnims?.length ?? 0
-  const hoursAnimated = (finishedAnims ?? []).reduce(
+  const hoursFromCreated = (finishedAnims ?? []).reduce(
     (sum, a) => sum + (a.actual_duration_min ?? 0),
     0,
   )
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   // Participations validated on finished animations this week
   const { data: participationRows } = await db
     .from('animation_participants')
-    .select('animation_id, animations!inner(ended_at, status)')
+    .select('animation_id, animations!inner(ended_at, status, actual_duration_min)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
@@ -70,6 +70,10 @@ Deno.serve(async (req) => {
     .lt('animations.ended_at' as never, weekEnd)
 
   const participationsValidated = participationRows?.length ?? 0
+  const hoursFromParticipations = (participationRows ?? []).reduce(
+    (sum, p) => sum + ((p as unknown as { animations: { actual_duration_min: number | null } }).animations?.actual_duration_min ?? 0),
+    0,
+  )
 
   const { data: targetProfile } = await db
     .from('profiles')
@@ -79,6 +83,8 @@ Deno.serve(async (req) => {
 
   const role = targetProfile?.role ?? profile.role
   const quotaMax = QUOTA_MAX[role] ?? null
+
+  const hoursAnimated = hoursFromCreated + hoursFromParticipations
 
   return jsonResponse({
     animationsCreated,

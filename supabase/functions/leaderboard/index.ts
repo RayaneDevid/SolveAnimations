@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
   // Fetch all validated participations on finished animations in the period
   let partQuery = db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at, status)')
+    .select('user_id, animations!inner(ended_at, status, actual_duration_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
 
@@ -110,6 +110,8 @@ Deno.serve(async (req) => {
     const existing = userMap.get(p.user_id)
     if (existing) {
       existing.participationsValidated++
+      const anim = (p as unknown as { animations: { actual_duration_min: number | null } }).animations
+      existing.hoursAnimated += anim?.actual_duration_min ?? 0
     }
   }
 

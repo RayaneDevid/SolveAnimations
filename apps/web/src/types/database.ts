@@ -4,6 +4,7 @@ import type { AnimationServer, AnimationType, Village } from '@/lib/schemas/anim
 export type AnimationStatus =
   | 'pending_validation'
   | 'open'
+  | 'preparing'
   | 'running'
   | 'finished'
   | 'rejected'
@@ -48,6 +49,9 @@ export interface Animation {
   discord_message_id: string | null
   postponed_from: string | null
   postpone_count: number
+  prep_started_at: string | null
+  prep_ended_at: string | null
+  actual_prep_time_min: number | null
   created_at: string
   updated_at: string
   creator?: Profile

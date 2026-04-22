@@ -3,7 +3,6 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-import { notifyBot } from '../_shared/bot.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -25,33 +24,20 @@ Deno.serve(async (req) => {
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
   if (anim.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut démarrer')
-  if (!['open', 'preparing'].includes(anim.status))
-    return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
-
-  // Need at least 1 validated participant
-  const { count } = await db
-    .from('animation_participants')
-    .select('*', { count: 'exact', head: true })
-    .eq('animation_id', id)
-    .eq('status', 'validated')
-
-  if (!count || count === 0)
-    return errorResponse('CONFLICT', 'Au moins 1 participant validé requis pour démarrer')
+    return errorResponse('FORBIDDEN', 'Seul le créateur peut démarrer la préparation')
+  if (anim.status !== 'open')
+    return errorResponse('CONFLICT', "L'animation doit être ouverte pour démarrer la préparation")
+  if (anim.prep_started_at)
+    return errorResponse('CONFLICT', 'La préparation a déjà été démarrée')
 
   const { data: updated, error } = await db
     .from('animations')
-    .update({ status: 'running', started_at: new Date().toISOString() })
+    .update({ status: 'preparing', prep_started_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
-
-  await notifyBot('animation-started', {
-    animationId: id,
-    publicMessageId: anim.discord_message_id,
-  })
 
   return jsonResponse({ animation: updated })
 })

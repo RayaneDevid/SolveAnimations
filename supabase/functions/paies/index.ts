@@ -39,11 +39,24 @@ Deno.serve(async (req) => {
   // Finished animations this week with type + durations
   const { data: anims } = await db
     .from('animations')
-    .select('creator_id, type, actual_duration_min, prep_time_min')
+    .select('id, creator_id, type, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
     .gte('ended_at', weekStart.toISOString())
     .lt('ended_at', weekEnd.toISOString())
-    .in('creator_id', profileIds)
+
+  // Validated participations on those animations
+  const animIds = (anims ?? []).map((a) => a.id)
+  const { data: participations } = animIds.length > 0
+    ? await db
+        .from('animation_participants')
+        .select('user_id, animation_id')
+        .eq('status', 'validated')
+        .in('animation_id', animIds)
+        .in('user_id', profileIds)
+    : { data: [] }
+
+  // Build a lookup: animId → animation
+  const animById = new Map((anims ?? []).map((a) => [a.id, a]))
 
   // Aggregate per user
   const map = new Map<string, {
@@ -55,18 +68,33 @@ Deno.serve(async (req) => {
     grande: number
   }>()
 
+  const getEntry = (userId: string) =>
+    map.get(userId) ?? { animationsCount: 0, animationMin: 0, prepMin: 0, petite: 0, moyenne: 0, grande: 0 }
+
+  // Created animations
   for (const a of anims ?? []) {
-    const entry = map.get(a.creator_id) ?? {
-      animationsCount: 0, animationMin: 0, prepMin: 0,
-      petite: 0, moyenne: 0, grande: 0,
-    }
+    if (!profileIds.includes(a.creator_id)) continue
+    const entry = getEntry(a.creator_id)
     entry.animationsCount++
     entry.animationMin += a.actual_duration_min ?? 0
-    entry.prepMin += a.prep_time_min ?? 0
+    entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
     if (a.type === 'petite') entry.petite++
     else if (a.type === 'moyenne') entry.moyenne++
     else if (a.type === 'grande') entry.grande++
     map.set(a.creator_id, entry)
+  }
+
+  // Participated animations (validated, not the creator)
+  for (const p of participations ?? []) {
+    const anim = animById.get(p.animation_id)
+    if (!anim || anim.creator_id === p.user_id) continue
+    const entry = getEntry(p.user_id)
+    entry.animationsCount++
+    entry.animationMin += anim.actual_duration_min ?? 0
+    if (anim.type === 'petite') entry.petite++
+    else if (anim.type === 'moyenne') entry.moyenne++
+    else if (anim.type === 'grande') entry.grande++
+    map.set(p.user_id, entry)
   }
 
   const result = (profiles ?? []).map((p) => {

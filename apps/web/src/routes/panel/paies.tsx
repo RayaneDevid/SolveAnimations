@@ -21,7 +21,7 @@ function formatMin(min: number): string {
 }
 
 function formatMoney(n: number): string {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+  return `${new Intl.NumberFormat('fr-FR').format(n)} crédits`
 }
 
 // ─── Table row ──────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
       <td className="py-3 pr-4 text-right tabular-nums">
         <div className="flex items-center justify-end gap-1.5">
           {entry.remunerationCapped && (
-            <span title="Plafonné à 10 000 €" className="text-amber-400">
+            <span title="Plafonné à 10 000 crédits" className="text-amber-400">
               <AlertTriangle className="h-3 w-3" />
             </span>
           )}
@@ -236,19 +236,19 @@ export default function Paies() {
       <div className="flex items-center gap-4 text-xs text-white/30">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-white/20" />
-          Petite × 250 €
+          Petite × 250 crédits
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400" />
-          Moyenne × 350 €
+          Moyenne × 350 crédits
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
-          Grande × 500 €
+          Grande × 500 crédits
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />
-          Plafonné à 10 000 €
+          Plafonné à 10 000 crédits
         </div>
       </div>
 

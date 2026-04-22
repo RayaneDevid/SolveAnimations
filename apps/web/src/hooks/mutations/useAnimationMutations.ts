@@ -54,6 +54,36 @@ export function useStartAnimation() {
   })
 }
 
+export function useStartPrepAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start-prep', { id }),
+    onSuccess: (data, id) => {
+      qc.setQueryData(
+        queryKeys.animations.detail(id),
+        (old: { animation: Animation; participants: unknown[] } | undefined) =>
+          old ? { ...old, animation: data.animation } : old,
+      )
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+    },
+  })
+}
+
+export function useStopPrepAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop-prep', { id }),
+    onSuccess: (data, id) => {
+      qc.setQueryData(
+        queryKeys.animations.detail(id),
+        (old: { animation: Animation; participants: unknown[] } | undefined) =>
+          old ? { ...old, animation: data.animation } : old,
+      )
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+    },
+  })
+}
+
 export function useStopAnimation() {
   const qc = useQueryClient()
   return useMutation({

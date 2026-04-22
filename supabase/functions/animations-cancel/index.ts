@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   if (!isCreator && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut annuler')
 
-  if (!['pending_validation', 'open'].includes(anim.status))
+  if (!['pending_validation', 'open', 'preparing'].includes(anim.status))
     return errorResponse('CONFLICT', 'Impossible d\'annuler une animation en cours ou terminée')
 
   const { data: updated, error } = await db

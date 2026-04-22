@@ -9,6 +9,7 @@ interface StatusBadgeProps {
 export const STATUS_LABELS: Record<AnimationStatus, string> = {
   pending_validation: 'En attente',
   open: 'Ouverte',
+  preparing: 'Préparation',
   running: 'En cours',
   finished: 'Terminée',
   rejected: 'Refusée',
@@ -19,6 +20,7 @@ export const STATUS_LABELS: Record<AnimationStatus, string> = {
 const STATUS_STYLES: Record<AnimationStatus, string> = {
   pending_validation: 'bg-white/[0.06] text-white/50 border-white/[0.1]',
   open: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
+  preparing: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
   running: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   finished: 'bg-violet-500/15 text-violet-400 border-violet-500/25',
   rejected: 'bg-red-500/15 text-red-400 border-red-500/25',
@@ -29,6 +31,7 @@ const STATUS_STYLES: Record<AnimationStatus, string> = {
 const STATUS_DOT: Record<AnimationStatus, string> = {
   pending_validation: 'bg-white/30',
   open: 'bg-cyan-400',
+  preparing: 'bg-amber-400 animate-pulse',
   running: 'bg-emerald-400 animate-pulse',
   finished: 'bg-violet-400',
   rejected: 'bg-red-400',

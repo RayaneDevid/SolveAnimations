@@ -3,7 +3,6 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-import { notifyBot } from '../_shared/bot.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -25,33 +24,26 @@ Deno.serve(async (req) => {
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
   if (anim.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut démarrer')
-  if (!['open', 'preparing'].includes(anim.status))
-    return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
+    return errorResponse('FORBIDDEN', 'Seul le créateur peut arrêter la préparation')
+  if (anim.status !== 'preparing')
+    return errorResponse('CONFLICT', "L'animation n'est pas en cours de préparation")
 
-  // Need at least 1 validated participant
-  const { count } = await db
-    .from('animation_participants')
-    .select('*', { count: 'exact', head: true })
-    .eq('animation_id', id)
-    .eq('status', 'validated')
-
-  if (!count || count === 0)
-    return errorResponse('CONFLICT', 'Au moins 1 participant validé requis pour démarrer')
+  const now = new Date()
+  const prepStart = new Date(anim.prep_started_at)
+  const actualPrepMin = Math.max(1, Math.floor((now.getTime() - prepStart.getTime()) / 60_000))
 
   const { data: updated, error } = await db
     .from('animations')
-    .update({ status: 'running', started_at: new Date().toISOString() })
+    .update({
+      status: 'open',
+      prep_ended_at: now.toISOString(),
+      actual_prep_time_min: actualPrepMin,
+    })
     .eq('id', id)
     .select()
     .single()
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
-
-  await notifyBot('animation-started', {
-    animationId: id,
-    publicMessageId: anim.discord_message_id,
-  })
 
   return jsonResponse({ animation: updated })
 })

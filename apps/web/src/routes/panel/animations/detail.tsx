@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, ExternalLink, Play, Square, Clock, Users, Calendar,
-  FileText, Check, X, UserPlus, Pencil, Ban,
+  FileText, Check, X, UserPlus, Pencil, Ban, Timer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 import {
-  useStartAnimation, useStopAnimation, useCancelAnimation,
+  useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
+  useStopAnimation, useCancelAnimation,
   useApplyParticipant, useDecideParticipant,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
@@ -25,6 +26,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDateTime, formatDuration } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
 import type { AnimationParticipant } from '@/types/database'
+
+function ElapsedTimer({ since, label }: { since: string; label: string }) {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const update = () => setElapsed(Math.floor((Date.now() - new Date(since).getTime()) / 1000))
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [since])
+
+  const h = Math.floor(elapsed / 3600)
+  const m = Math.floor((elapsed % 3600) / 60)
+  const s = elapsed % 60
+  const formatted = h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-sm font-mono font-semibold text-cyan-400">{formatted}</span>
+    </div>
+  )
+}
 
 function ParticipantRow({
   p,
@@ -127,6 +153,8 @@ export default function AnimationDetail() {
 
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync: start, isPending: starting } = useStartAnimation()
+  const { mutateAsync: startPrep, isPending: startingPrep } = useStartPrepAnimation()
+  const { mutateAsync: stopPrep, isPending: stoppingPrep } = useStopPrepAnimation()
   const { mutateAsync: stop, isPending: stopping } = useStopAnimation()
   const { mutateAsync: cancel, isPending: cancelling } = useCancelAnimation()
 
@@ -149,6 +177,24 @@ export default function AnimationDetail() {
   const validated = participants.filter((p) => p.status === 'validated')
   const pending = participants.filter((p) => p.status === 'pending')
   const participantProgress = Math.min(100, (validated.length / animation.required_participants) * 100)
+
+  const handleStartPrep = async () => {
+    try {
+      await startPrep(animation.id)
+      toast.success('Préparation démarrée !')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const handleStopPrep = async () => {
+    try {
+      await stopPrep(animation.id)
+      toast.success('Préparation terminée ! Lance maintenant l\'animation.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
 
   const handleStart = async () => {
     try {
@@ -257,7 +303,7 @@ export default function AnimationDetail() {
                   <ParticipantRow
                     key={p.id}
                     p={p}
-                    canDecide={isCreator && animation.status === 'open'}
+                    canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
                     animationId={animation.id}
                   />
                 ))}
@@ -277,7 +323,7 @@ export default function AnimationDetail() {
                   <ParticipantRow
                     key={p.id}
                     p={p}
-                    canDecide={isCreator && animation.status === 'open'}
+                    canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
                     animationId={animation.id}
                   />
                 ))}
@@ -286,7 +332,7 @@ export default function AnimationDetail() {
           )}
 
           {/* Apply CTA */}
-          {animation.status === 'open' && !isCreator && !isParticipant && (
+          {['open', 'preparing'].includes(animation.status) && !isCreator && !isParticipant && (
             <GlassCard className="p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -312,28 +358,65 @@ export default function AnimationDetail() {
                 Contrôle
               </h2>
               <div className="space-y-2">
-                {animation.status === 'open' && isCreator && (
+                {/* ── Prep timer: start ── */}
+                {animation.status === 'open' && isCreator && animation.prep_time_min > 0 && !animation.prep_started_at && (
+                  <Button
+                    onClick={handleStartPrep}
+                    disabled={startingPrep}
+                    variant="secondary"
+                    className="w-full gap-2"
+                  >
+                    <Timer className="h-4 w-4" />
+                    Démarrer la préparation
+                  </Button>
+                )}
+
+                {/* ── Prep timer: running ── */}
+                {animation.status === 'preparing' && isCreator && (
+                  <>
+                    <ElapsedTimer since={animation.prep_started_at!} label="Préparation en cours" />
+                    <Button
+                      onClick={handleStopPrep}
+                      disabled={stoppingPrep}
+                      variant="secondary"
+                      className="w-full gap-2"
+                    >
+                      <Square className="h-4 w-4" />
+                      Arrêter la préparation
+                    </Button>
+                  </>
+                )}
+
+                {/* ── Animation: start ── */}
+                {(animation.status === 'open' || animation.status === 'preparing') && isCreator &&
+                  (animation.prep_time_min === 0 || animation.prep_ended_at) && (
                   <Button
                     onClick={handleStart}
                     disabled={starting || validated.length === 0}
                     className="w-full gap-2"
                   >
                     <Play className="h-4 w-4" />
-                    Démarrer
+                    Démarrer l'animation
                   </Button>
                 )}
+
+                {/* ── Animation: running ── */}
                 {animation.status === 'running' && isCreator && (
-                  <Button
-                    onClick={handleStop}
-                    disabled={stopping}
-                    variant="secondary"
-                    className="w-full gap-2"
-                  >
-                    <Square className="h-4 w-4" />
-                    Terminer
-                  </Button>
+                  <>
+                    <ElapsedTimer since={animation.started_at!} label="Animation en cours" />
+                    <Button
+                      onClick={handleStop}
+                      disabled={stopping}
+                      variant="secondary"
+                      className="w-full gap-2"
+                    >
+                      <Square className="h-4 w-4" />
+                      Terminer l'animation
+                    </Button>
+                  </>
                 )}
-                {['open', 'pending_validation'].includes(animation.status) && (
+
+                {['open', 'pending_validation', 'preparing'].includes(animation.status) && (isCreator || isResponsable) && (
                   <Button
                     onClick={handleCancel}
                     disabled={cancelling}
@@ -367,13 +450,24 @@ export default function AnimationDetail() {
           )}
 
           {animation.status === 'finished' && animation.actual_duration_min && (
-            <GlassCard className="p-5">
-              <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">
+            <GlassCard className="p-5 space-y-3">
+              <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
                 Durée réelle
               </h2>
-              <p className="text-2xl font-bold text-white">
-                {formatDuration(animation.actual_duration_min)}
-              </p>
+              <div>
+                <p className="text-xs text-white/40 mb-0.5">Animation</p>
+                <p className="text-2xl font-bold text-white">
+                  {formatDuration(animation.actual_duration_min)}
+                </p>
+              </div>
+              {animation.actual_prep_time_min != null && (
+                <div>
+                  <p className="text-xs text-white/40 mb-0.5">Préparation</p>
+                  <p className="text-lg font-semibold text-white/70">
+                    {formatDuration(animation.actual_prep_time_min)}
+                  </p>
+                </div>
+              )}
             </GlassCard>
           )}
         </div>

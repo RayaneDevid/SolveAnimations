@@ -9,6 +9,7 @@ import {
   Trophy,
   Users,
   PieChart,
+  FolderOpen,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/panel/validation', label: 'Validation', icon: CheckSquare, requiresRole: 'responsable' },
   { to: '/panel/leaderboard', label: 'Classement', icon: Trophy, requiresRole: 'responsable' },
   { to: '/panel/members', label: 'Membres', icon: Users, requiresRole: 'responsable' },
+  { to: '/panel/casiers', label: 'Casiers', icon: FolderOpen, requiresRole: 'responsable' },
   { to: '/panel/villages', label: 'Graphique villages', icon: PieChart, requiresRole: 'responsable' },
 ]
 

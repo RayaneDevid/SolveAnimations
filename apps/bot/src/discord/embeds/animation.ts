@@ -22,7 +22,7 @@ export const VILLAGE_LABELS: Record<string, string> = {
 export const STATUS_LABELS: Record<string, string> = {
   pending_validation: 'En attente',
   open: 'Ouverte',
-  preparing: 'Préparation',
+  preparing: 'En Préparation',
   running: 'En cours',
   finished: 'Terminée',
   rejected: 'Rejetée',

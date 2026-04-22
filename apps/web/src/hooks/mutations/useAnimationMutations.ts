@@ -39,16 +39,26 @@ export function useRejectAnimation() {
   })
 }
 
+const updateDetailCache = (
+  qc: ReturnType<typeof useQueryClient>,
+  id: string,
+  animation: Animation,
+) => {
+  qc.setQueryData(
+    queryKeys.animations.detail(id),
+    (old: { animation: Animation; participants: unknown[] } | undefined) =>
+      old ? { ...old, animation } : old,
+  )
+  // Force refetch in case setQueryData doesn't trigger re-render
+  qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+}
+
 export function useStartAnimation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start', { id }),
     onSuccess: (data, id) => {
-      qc.setQueryData(
-        queryKeys.animations.detail(id),
-        (old: { animation: Animation; participants: unknown[] } | undefined) =>
-          old ? { ...old, animation: data.animation } : old,
-      )
+      updateDetailCache(qc, id, data.animation)
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
@@ -59,11 +69,7 @@ export function useStartPrepAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start-prep', { id }),
     onSuccess: (data, id) => {
-      qc.setQueryData(
-        queryKeys.animations.detail(id),
-        (old: { animation: Animation; participants: unknown[] } | undefined) =>
-          old ? { ...old, animation: data.animation } : old,
-      )
+      updateDetailCache(qc, id, data.animation)
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
@@ -74,11 +80,7 @@ export function useStopPrepAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop-prep', { id }),
     onSuccess: (data, id) => {
-      qc.setQueryData(
-        queryKeys.animations.detail(id),
-        (old: { animation: Animation; participants: unknown[] } | undefined) =>
-          old ? { ...old, animation: data.animation } : old,
-      )
+      updateDetailCache(qc, id, data.animation)
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
@@ -89,11 +91,7 @@ export function useStopAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop', { id }),
     onSuccess: (data, id) => {
-      qc.setQueryData(
-        queryKeys.animations.detail(id),
-        (old: { animation: Animation; participants: unknown[] } | undefined) =>
-          old ? { ...old, animation: data.animation } : old,
-      )
+      updateDetailCache(qc, id, data.animation)
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
       qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
       qc.invalidateQueries({ queryKey: queryKeys.reports.mine })

@@ -1,0 +1,79 @@
+import { z } from 'zod'
+
+export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
+export const TYPES = ['petite', 'moyenne', 'grande'] as const
+export const VILLAGES = [
+  'konoha',
+  'suna',
+  'oto',
+  'kiri',
+  'temple_camelias',
+  'autre',
+  'tout_le_monde',
+] as const
+
+export type AnimationServer = (typeof SERVERS)[number]
+export type AnimationType = (typeof TYPES)[number]
+export type Village = (typeof VILLAGES)[number]
+
+export const createAnimationSchema = z.object({
+  title: z.string().trim().min(3, 'Minimum 3 caractères').max(120, 'Maximum 120 caractères'),
+  scheduledAt: z.coerce
+    .date()
+    .refine((d) => d.getTime() > Date.now(), "La date doit être dans le futur"),
+  plannedDurationMin: z
+    .number({ required_error: 'Durée requise' })
+    .int()
+    .min(15, 'Minimum 15 minutes')
+    .max(720, 'Maximum 720 minutes'),
+  requiredParticipants: z
+    .number({ required_error: 'Requis' })
+    .int()
+    .min(1, 'Minimum 1')
+    .max(100, 'Maximum 100'),
+  server: z.enum(SERVERS, { required_error: 'Serveur requis' }),
+  type: z.enum(TYPES, { required_error: 'Type requis' }),
+  prepTimeMin: z
+    .number()
+    .int()
+    .min(0)
+    .max(600)
+    .default(0),
+  village: z.enum(VILLAGES, { required_error: 'Village requis' }),
+  documentUrl: z.string().url('URL invalide').max(500),
+  creatorCharacterName: z.string().trim().min(1).max(64).optional(),
+})
+
+export type CreateAnimationInput = z.infer<typeof createAnimationSchema>
+
+export const applyParticipantSchema = z.object({
+  animationId: z.string().uuid(),
+  characterName: z.string().trim().min(1, 'Nom requis').max(64),
+})
+
+export type ApplyParticipantInput = z.infer<typeof applyParticipantSchema>
+
+export const rejectSchema = z.object({
+  id: z.string().uuid(),
+  reason: z.string().trim().min(5, 'Minimum 5 caractères').max(500),
+})
+
+export const postponeSchema = z.object({
+  id: z.string().uuid(),
+  newScheduledAt: z.coerce
+    .date()
+    .refine((d) => d.getTime() > Date.now(), "La date doit être dans le futur"),
+})
+
+export const absenceSchema = z
+  .object({
+    fromDate: z.coerce.date({ required_error: 'Date de début requise' }),
+    toDate: z.coerce.date({ required_error: 'Date de fin requise' }),
+    reason: z.string().trim().max(300).optional(),
+  })
+  .refine((v) => v.toDate >= v.fromDate, {
+    message: 'La date de fin doit être après la date de début',
+    path: ['toDate'],
+  })
+
+export type AbsenceInput = z.infer<typeof absenceSchema>

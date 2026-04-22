@@ -1,0 +1,116 @@
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/auth/callback"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.external.discord]
+enabled = true
+client_id = "env(DISCORD_CLIENT_ID)"
+secret = "env(DISCORD_CLIENT_SECRET)"
+redirect_uri = ""
+
+[functions.auth-validate-staff]
+verify_jwt = false
+
+[functions.animations-list]
+verify_jwt = false
+
+[functions.animations-get]
+verify_jwt = false
+
+[functions.animations-create]
+verify_jwt = false
+
+[functions.animations-update]
+verify_jwt = false
+
+[functions.animations-validate]
+verify_jwt = false
+
+[functions.animations-reject]
+verify_jwt = false
+
+[functions.animations-start]
+verify_jwt = false
+
+[functions.animations-stop]
+verify_jwt = false
+
+[functions.animations-cancel]
+verify_jwt = false
+
+[functions.animations-postpone]
+verify_jwt = false
+
+[functions.participants-apply]
+verify_jwt = false
+
+[functions.participants-decide]
+verify_jwt = false
+
+[functions.participants-update-character]
+verify_jwt = false
+
+[functions.participants-remove-validated]
+verify_jwt = false
+
+[functions.participants-promote-pending]
+verify_jwt = false
+
+[functions.reports-list-mine]
+verify_jwt = false
+
+[functions.reports-submit]
+verify_jwt = false
+
+[functions.absences-list]
+verify_jwt = false
+
+[functions.absences-create]
+verify_jwt = false
+
+[functions.absences-delete]
+verify_jwt = false
+
+[functions.stats-weekly]
+verify_jwt = false
+
+[functions.stats-villages]
+verify_jwt = false
+
+[functions.leaderboard]
+verify_jwt = false
+
+[functions.members-list]
+verify_jwt = false
+
+[functions.members-remove-access]
+verify_jwt = false

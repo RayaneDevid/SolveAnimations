@@ -81,3 +81,11 @@ export function useMembers() {
     queryFn: () => invokeEdge<import('@/types/database').MemberEntry[]>('members-list'),
   })
 }
+
+export function useUserReports(userId: string) {
+  return useQuery({
+    queryKey: ['reports', 'user', userId] as const,
+    queryFn: () => invokeEdge<import('@/types/database').AnimationReport[]>('reports-list-user', { user_id: userId }),
+    enabled: !!userId,
+  })
+}

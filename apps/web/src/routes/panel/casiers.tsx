@@ -3,12 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   FolderOpen, Search, X, CalendarOff, Clock, Sword,
   Users, Target, Calendar, ChevronRight, ExternalLink,
+  FileText, CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { format, formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useMembers } from '@/hooks/queries/useAnimations'
-import { useWeeklyStats, useAnimations, useAbsences } from '@/hooks/queries/useAnimations'
+import { useMembers, useWeeklyStats, useAnimations, useAbsences, useUserReports } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -136,6 +136,7 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
     pageSize: 5,
   })
   const { data: absences, isLoading: absencesLoading } = useAbsences(member.id)
+  const { data: reports, isLoading: reportsLoading } = useUserReports(member.id)
 
   const quotaMax = QUOTA_MAX[member.role] ?? null
   const quota = stats ? stats.animationsCreated + stats.participationsValidated : 0
@@ -301,6 +302,86 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
                     <StatusBadge status={anim.status} />
                   </Link>
                 ))}
+              </div>
+            )}
+          </section>
+
+          {/* Reports */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                Rapports
+              </h3>
+              {reports && reports.length > 0 && (
+                <span className="text-[10px] text-white/30">
+                  {reports.filter((r) => r.submitted_at).length}/{reports.length} soumis
+                </span>
+              )}
+            </div>
+            {reportsLoading ? (
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-14" />)}
+              </div>
+            ) : !reports || reports.length === 0 ? (
+              <p className="text-sm text-white/25 text-center py-4">Aucun rapport</p>
+            ) : (
+              <div className="space-y-2">
+                {reports.slice(0, 8).map((report) => {
+                  const submitted = !!report.submitted_at
+                  return (
+                    <Link
+                      key={report.id}
+                      to={`/panel/animations/${report.animation_id}`}
+                      onClick={onClose}
+                      className={cn(
+                        'flex items-start gap-3 p-3 rounded-xl border transition-all group',
+                        submitted
+                          ? 'bg-white/[0.03] border-white/[0.06] hover:border-white/[0.12]'
+                          : 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/30',
+                      )}
+                    >
+                      {submitted ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0 animate-pulse" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white/80 truncate group-hover:text-white transition-colors">
+                          {report.animation?.title ?? 'Animation'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {report.animation?.scheduled_at && (
+                            <span className="text-xs text-white/30">
+                              {format(new Date(report.animation.scheduled_at), 'd MMM yyyy', { locale: fr })}
+                            </span>
+                          )}
+                          <span className={cn(
+                            'text-[10px] rounded-full px-2 py-0.5',
+                            submitted
+                              ? 'text-emerald-400 bg-emerald-500/10'
+                              : 'text-amber-400 bg-amber-500/10',
+                          )}>
+                            {submitted ? 'Soumis' : 'En attente'}
+                          </span>
+                          {report.pole && (
+                            <span className="text-[10px] text-white/25">{report.pole}</span>
+                          )}
+                        </div>
+                        {submitted && report.comments && (
+                          <p className="text-xs text-white/30 mt-1 truncate italic">
+                            "{report.comments}"
+                          </p>
+                        )}
+                      </div>
+                      <FileText className="h-3.5 w-3.5 text-white/20 mt-0.5 shrink-0" />
+                    </Link>
+                  )
+                })}
+                {reports.length > 8 && (
+                  <p className="text-xs text-white/25 text-center pt-1">
+                    +{reports.length - 8} autres rapports
+                  </p>
+                )}
               </div>
             )}
           </section>

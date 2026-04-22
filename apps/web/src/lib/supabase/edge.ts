@@ -19,6 +19,7 @@ export type EdgeFunctionName =
   | 'participants-remove-validated'
   | 'participants-promote-pending'
   | 'reports-list-mine'
+  | 'reports-list-user'
   | 'reports-submit'
   | 'absences-list'
   | 'absences-create'

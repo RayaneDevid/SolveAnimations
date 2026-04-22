@@ -14,8 +14,8 @@ export const RP_DAY_ORDER = [6, 0, 1, 2, 3, 4, 5] as const // Sat, Sun, Mon, Tue
 export const RP_WEEK_DAY_LABELS = ['Sam', 'Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven'] as const
 
 export function sessionEndHour(dayOfWeek: number): 3 | 4 {
-  // Friday (5) and Saturday (6) sessions end at 04:00, others at 03:00
-  return dayOfWeek === 5 || dayOfWeek === 6 ? 4 : 3
+  // Friday (5), Saturday (6) and Sunday (0) sessions end at 04:00, others at 03:00
+  return dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6 ? 4 : 3
 }
 
 export function minutesFromSessionStart(scheduledAt: Date): number {

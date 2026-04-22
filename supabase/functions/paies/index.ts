@@ -4,12 +4,22 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
+const BASE_PAY = 1_000
+
 const REMUNERATION: Record<string, number> = {
-  petite: 250,
+  petite:  250,
   moyenne: 350,
-  grande: 500,
+  grande:  500,
 }
 const REMUNERATION_CAP = 10_000
+
+const QUOTA_MAX: Record<string, number | null> = {
+  responsable:    null,
+  responsable_mj: null,
+  senior:         5,
+  animateur:      5,
+  mj:             3,
+}
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -103,10 +113,14 @@ Deno.serve(async (req) => {
       animationsCount: 0, animationMin: 0, prepMin: 0,
       petite: 0, moyenne: 0, grande: 0,
     }
-    const rawRemuneration =
-      s.petite * REMUNERATION.petite +
+    const quotaMax = QUOTA_MAX[p.role] ?? null
+    const quotaFilled = quotaMax === null || s.animationsCount >= quotaMax
+
+    const animPay =
+      s.petite  * REMUNERATION.petite +
       s.moyenne * REMUNERATION.moyenne +
-      s.grande * REMUNERATION.grande
+      s.grande  * REMUNERATION.grande
+    const rawRemuneration = (quotaFilled ? BASE_PAY : 0) + animPay
     return {
       id: p.id,
       username: p.username,
@@ -119,6 +133,8 @@ Deno.serve(async (req) => {
       petite: s.petite,
       moyenne: s.moyenne,
       grande: s.grande,
+      quotaMax,
+      quotaFilled,
       remuneration: Math.min(rawRemuneration, REMUNERATION_CAP),
       remunerationCapped: rawRemuneration > REMUNERATION_CAP,
     }

@@ -31,8 +31,11 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
 
   return (
     <tr className={cn(
-      'border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]',
-      !hasActivity && 'opacity-50',
+      'border-b border-white/[0.04] transition-colors',
+      entry.quotaFilled
+        ? 'hover:bg-white/[0.02]'
+        : 'bg-red-500/[0.04] hover:bg-red-500/[0.07]',
+      !hasActivity && !entry.quotaFilled && 'opacity-70',
     )}>
       {/* Rank */}
       <td className="py-3 pl-4 pr-2 text-xs text-white/30 w-8 tabular-nums">{rank}</td>
@@ -92,19 +95,31 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
 
       {/* Rémunération */}
       <td className="py-3 pr-4 text-right tabular-nums">
-        <div className="flex items-center justify-end gap-1.5">
-          {entry.remunerationCapped && (
-            <span title="Plafonné à 10 000 crédits" className="text-amber-400">
-              <AlertTriangle className="h-3 w-3" />
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1.5">
+            {entry.remunerationCapped && (
+              <span title="Plafonné à 10 000 crédits" className="text-amber-400">
+                <AlertTriangle className="h-3 w-3" />
+              </span>
+            )}
+            <span className={cn(
+              'text-sm font-semibold',
+              !entry.quotaFilled ? 'text-red-400' :
+              entry.remunerationCapped ? 'text-amber-400' : 'text-emerald-400',
+            )}>
+              {entry.remuneration === 0 ? '—' : formatMoney(entry.remuneration)}
+            </span>
+          </div>
+          {!entry.quotaFilled && entry.quotaMax !== null && (
+            <span className="text-[10px] text-red-400/60">
+              quota {entry.animationsCount}/{entry.quotaMax}
             </span>
           )}
-          <span className={cn(
-            'text-sm font-semibold',
-            entry.remuneration === 0 ? 'text-white/30' :
-            entry.remunerationCapped ? 'text-amber-400' : 'text-emerald-400',
-          )}>
-            {entry.remuneration === 0 ? '—' : formatMoney(entry.remuneration)}
-          </span>
+          {entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
+            <span className="text-[10px] text-emerald-400/40">
+              +1 000 base
+            </span>
+          )}
         </div>
       </td>
     </tr>
@@ -131,7 +146,11 @@ export default function Paies() {
 
   const sorted = useMemo(() => {
     if (!data) return []
-    return [...data.entries].sort((a, b) => b.remuneration - a.remuneration || a.username.localeCompare(b.username))
+    return [...data.entries].sort((a, b) => {
+      // Quota filled first, then by remuneration desc, then alphabetical
+      if (a.quotaFilled !== b.quotaFilled) return a.quotaFilled ? -1 : 1
+      return b.remuneration - a.remuneration || a.username.localeCompare(b.username)
+    })
   }, [data])
 
   const totals = useMemo(() => {
@@ -233,7 +252,11 @@ export default function Paies() {
       ) : null}
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-white/30">
+      <div className="flex items-center gap-4 text-xs text-white/30 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          Base 1 000 crédits (quota atteint)
+        </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-white/20" />
           Petite × 250 crédits
@@ -245,6 +268,10 @@ export default function Paies() {
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
           Grande × 500 crédits
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-400" />
+          Quota non atteint
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />

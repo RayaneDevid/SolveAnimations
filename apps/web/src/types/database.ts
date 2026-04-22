@@ -165,6 +165,8 @@ export interface PaiesEntry {
   petite: number
   moyenne: number
   grande: number
+  quotaMax: number | null
+  quotaFilled: boolean
   remuneration: number
   remunerationCapped: boolean
 }

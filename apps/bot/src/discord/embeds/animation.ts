@@ -22,6 +22,7 @@ export const VILLAGE_LABELS: Record<string, string> = {
 export const STATUS_LABELS: Record<string, string> = {
   pending_validation: 'En attente',
   open: 'Ouverte',
+  preparing: 'Préparation',
   running: 'En cours',
   finished: 'Terminée',
   rejected: 'Rejetée',
@@ -32,6 +33,7 @@ export const STATUS_LABELS: Record<string, string> = {
 export const STATUS_EMOJI: Record<string, string> = {
   pending_validation: '⏳',
   open: '🟢',
+  preparing: '🟡',
   running: '🔵',
   finished: '🟣',
   rejected: '🔴',
@@ -44,6 +46,7 @@ export const STATUS_EMOJI: Record<string, string> = {
 export const STATUS_COLORS: Record<string, number> = {
   pending_validation: 0x6b7280,
   open: 0x22d3ee,
+  preparing: 0xf59e0b,
   running: 0x22c55e,
   finished: 0xa855f7,
   rejected: 0xef4444,

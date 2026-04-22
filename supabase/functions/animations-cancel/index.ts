@@ -3,8 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-
-const ROLE_HIERARCHY: Record<string, number> = { responsable: 4, senior: 3, mj: 2, animateur: 1 }
+import { syncEmbed } from '../_shared/syncEmbed.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -35,6 +34,8 @@ Deno.serve(async (req) => {
   if (!['pending_validation', 'open', 'preparing'].includes(anim.status))
     return errorResponse('CONFLICT', 'Impossible d\'annuler une animation en cours ou terminée')
 
+  const hadPublicEmbed = anim.status !== 'pending_validation'
+
   const { data: updated, error } = await db
     .from('animations')
     .update({ status: 'cancelled' })
@@ -51,6 +52,10 @@ Deno.serve(async (req) => {
     target_id: id,
     metadata: {},
   })
+
+  if (hadPublicEmbed) {
+    await syncEmbed(db, id)
+  }
 
   return jsonResponse({ animation: updated })
 })

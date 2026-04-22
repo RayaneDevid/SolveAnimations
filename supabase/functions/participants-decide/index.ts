@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { syncEmbed } from '../_shared/syncEmbed.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -44,6 +45,8 @@ Deno.serve(async (req) => {
     .single()
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
+
+  await syncEmbed(db, participant.animation_id)
 
   return jsonResponse({ participant: updated })
 })

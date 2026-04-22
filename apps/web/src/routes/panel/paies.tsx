@@ -139,8 +139,8 @@ export default function Paies() {
     const entries = data.entries
     return {
       totalRemuneration: entries.reduce((s, e) => s + e.remuneration, 0),
-      totalAnimations: entries.reduce((s, e) => s + e.animationsCount, 0),
-      totalMin: entries.reduce((s, e) => s + e.totalMin, 0),
+      totalAnimations: data.uniqueAnimationsCount,
+      totalMin: data.uniqueAnimationsTotalMin,
       activeCount: entries.filter((e) => e.animationsCount > 0).length,
     }
   }, [data])
@@ -297,14 +297,12 @@ export default function Paies() {
                   <tr className="border-t border-white/[0.08] bg-white/[0.01]">
                     <td />
                     <td className="py-3 pr-4 text-xs font-medium text-white/50">Total</td>
-                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">{totals.totalAnimations}</td>
+                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">{totals.totalAnimations} uniques</td>
                     <td />
                     <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">
-                      {formatMin(data?.entries.reduce((s, e) => s + e.animationMin, 0) ?? 0)}
+                      {formatMin(data?.uniqueAnimationsTotalMin ?? 0)}
                     </td>
-                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">
-                      {formatMin(data?.entries.reduce((s, e) => s + e.prepMin, 0) ?? 0)}
-                    </td>
+                    <td />
                     <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">
                       {formatMin(totals.totalMin)}
                     </td>

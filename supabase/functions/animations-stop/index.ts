@@ -3,7 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-import { notifyBot } from '../_shared/bot.ts'
+import { syncEmbed } from '../_shared/syncEmbed.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -86,11 +86,7 @@ Deno.serve(async (req) => {
     await db.from('animation_reports').insert(reports)
   }
 
-  await notifyBot('animation-finished', {
-    animationId: id,
-    publicMessageId: anim.discord_message_id,
-    actualDurationMin,
-  })
+  await syncEmbed(db, id)
 
   return jsonResponse({ animation: updated })
 })

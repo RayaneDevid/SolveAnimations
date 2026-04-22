@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
+import { syncEmbed } from '../_shared/syncEmbed.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -62,10 +63,11 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
+  await syncEmbed(db, id)
   await notifyBot('animation-postponed', {
     animationId: id,
-    publicMessageId: anim.discord_message_id,
-    newDate: new_scheduled_at,
+    newScheduledAt: new_scheduled_at,
+    title: anim.title,
     formerParticipantDiscordIds: formerDiscordIds,
   })
 

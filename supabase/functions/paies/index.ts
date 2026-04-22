@@ -123,7 +123,16 @@ Deno.serve(async (req) => {
     }
   })
 
-  return jsonResponse({ entries: result, weekStart: weekStart.toISOString(), weekEnd: weekEnd.toISOString() })
+  const uniqueAnimationsCount = (anims ?? []).length
+  const uniqueAnimationsTotalMin = (anims ?? []).reduce((s, a) => s + (a.actual_duration_min ?? 0), 0)
+
+  return jsonResponse({
+    entries: result,
+    weekStart: weekStart.toISOString(),
+    weekEnd: weekEnd.toISOString(),
+    uniqueAnimationsCount,
+    uniqueAnimationsTotalMin,
+  })
 })
 
 function computeWeekStart(now: Date): Date {

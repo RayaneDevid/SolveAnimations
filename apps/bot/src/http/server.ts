@@ -6,6 +6,7 @@ import { registerAnimationUpdated } from './routes/animation-updated.js';
 import { registerAnimationStarted } from './routes/animation-started.js';
 import { registerAnimationFinished } from './routes/animation-finished.js';
 import { registerAnimationPostponed } from './routes/animation-postponed.js';
+import { registerAnimationEmbedRefresh } from './routes/animation-embed-refresh.js';
 import { registerMemberRemoveRoles } from './routes/member-remove-roles.js';
 
 export async function createFastifyServer(): Promise<FastifyInstance> {
@@ -37,6 +38,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
   await registerAnimationStarted(app);
   await registerAnimationFinished(app);
   await registerAnimationPostponed(app);
+  await registerAnimationEmbedRefresh(app);
   await registerMemberRemoveRoles(app);
 
   // Global error handler

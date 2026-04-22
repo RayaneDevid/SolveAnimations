@@ -173,6 +173,8 @@ export interface PaiesResult {
   entries: PaiesEntry[]
   weekStart: string
   weekEnd: string
+  uniqueAnimationsCount: number
+  uniqueAnimationsTotalMin: number
 }
 
 export type Database = {

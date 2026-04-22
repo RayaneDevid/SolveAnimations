@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyBotSecret } from '../auth.js';
 import { buildAnimationEmbed } from '../../discord/embeds/animation.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
 
@@ -43,7 +44,23 @@ export async function registerAnimationCreated(app: FastifyInstance): Promise<vo
           status: 'pending_validation',
         });
 
-        const message = await (channel as import('discord.js').TextChannel).send({ embeds: [embed] });
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`validate:${payload.animationId}`)
+            .setLabel('Valider')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('✅'),
+          new ButtonBuilder()
+            .setCustomId(`reject:${payload.animationId}`)
+            .setLabel('Refuser')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('❌'),
+        );
+
+        const message = await (channel as import('discord.js').TextChannel).send({
+          embeds: [embed],
+          components: [row],
+        });
 
         return reply.send({ success: true, data: { adminMessageId: message.id } });
       } catch (err) {

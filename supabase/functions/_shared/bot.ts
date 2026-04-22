@@ -1,4 +1,4 @@
-const BOT_URL    = Deno.env.get('BOT_WEBHOOK_URL')!
+const BOT_URL    = Deno.env.get('BOT_WEBHOOK_URL')!.replace(/\/+$/, '')
 const BOT_SECRET = Deno.env.get('BOT_WEBHOOK_SECRET')!
 
 const BOT_TIMEOUT_MS = 8_000

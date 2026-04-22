@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
+import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { cn } from '@/lib/utils/cn'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
@@ -79,16 +80,18 @@ export default function NewAnimation() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="scheduledAt">Date et heure</Label>
-              <Input
-                id="scheduledAt"
-                type="datetime-local"
-                {...register('scheduledAt')}
-                className="[color-scheme:dark]"
+              <Label>Date et heure de session</Label>
+              <Controller
+                name="scheduledAt"
+                control={control}
+                render={({ field }) => (
+                  <RpDateTimePicker
+                    value={field.value instanceof Date ? field.value : undefined}
+                    onChange={field.onChange}
+                    error={errors.scheduledAt?.message}
+                  />
+                )}
               />
-              {errors.scheduledAt && (
-                <p className="text-xs text-red-400">{errors.scheduledAt.message}</p>
-              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="documentUrl">Lien du document</Label>

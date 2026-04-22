@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
     const entry = getEntry(p.user_id)
     entry.animationsCount++
     entry.animationMin += anim.actual_duration_min ?? 0
+    entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
     if (anim.type === 'petite') entry.petite++
     else if (anim.type === 'moyenne') entry.moyenne++
     else if (anim.type === 'grande') entry.grande++

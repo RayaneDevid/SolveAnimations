@@ -43,8 +43,12 @@ export function useStartAnimation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start', { id }),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+    onSuccess: (data, id) => {
+      qc.setQueryData(
+        queryKeys.animations.detail(id),
+        (old: { animation: Animation; participants: unknown[] } | undefined) =>
+          old ? { ...old, animation: data.animation } : old,
+      )
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
@@ -54,8 +58,12 @@ export function useStopAnimation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop', { id }),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+    onSuccess: (data, id) => {
+      qc.setQueryData(
+        queryKeys.animations.detail(id),
+        (old: { animation: Animation; participants: unknown[] } | undefined) =>
+          old ? { ...old, animation: data.animation } : old,
+      )
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
       qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
       qc.invalidateQueries({ queryKey: queryKeys.reports.mine })

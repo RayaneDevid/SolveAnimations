@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     metadata: {},
   })
 
-  await notifyBot('animation-validated', {
+  const botRes = await notifyBot<{ data: { publicMessageId: string } }>('animation-validated', {
     animationId: id,
     creatorDiscordId: anim.creator?.discord_id,
     title: anim.title,
@@ -68,6 +68,12 @@ Deno.serve(async (req) => {
     creatorUsername: anim.creator?.username,
     adminMessageId: anim.discord_message_id ?? undefined,
   })
+
+  // Save the public announce message ID so start/stop/finished can edit the embed
+  const publicMessageId = botRes?.data?.publicMessageId
+  if (publicMessageId) {
+    await db.from('animations').update({ discord_message_id: publicMessageId }).eq('id', id)
+  }
 
   return jsonResponse({ animation: updated })
 })

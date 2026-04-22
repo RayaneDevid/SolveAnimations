@@ -68,7 +68,12 @@ Deno.serve(async (req) => {
 
   const { data: participations } = await partQuery
 
-  // Aggregate by user
+  // Aggregate by user — seed with all profiles first so participations
+  // are never lost for users who haven't created any animation
+  const { data: allProfiles } = await db
+    .from('profiles')
+    .select('id, username, avatar_url, role')
+
   const userMap = new Map<string, {
     userId: string
     username: string
@@ -79,6 +84,18 @@ Deno.serve(async (req) => {
     participationsValidated: number
   }>()
 
+  for (const p of allProfiles ?? []) {
+    userMap.set(p.id, {
+      userId: p.id,
+      username: p.username,
+      avatarUrl: p.avatar_url,
+      role: p.role,
+      hoursAnimated: 0,
+      animationsCreated: 0,
+      participationsValidated: 0,
+    })
+  }
+
   for (const anim of animations ?? []) {
     const creator = (anim as unknown as { profiles: { id: string; username: string; avatar_url: string | null; role: string } }).profiles
     if (!creator) continue
@@ -86,16 +103,6 @@ Deno.serve(async (req) => {
     if (existing) {
       existing.hoursAnimated += anim.actual_duration_min ?? 0
       existing.animationsCreated++
-    } else {
-      userMap.set(creator.id, {
-        userId: creator.id,
-        username: creator.username,
-        avatarUrl: creator.avatar_url,
-        role: creator.role,
-        hoursAnimated: anim.actual_duration_min ?? 0,
-        animationsCreated: 1,
-        participationsValidated: 0,
-      })
     }
   }
 
@@ -103,25 +110,6 @@ Deno.serve(async (req) => {
     const existing = userMap.get(p.user_id)
     if (existing) {
       existing.participationsValidated++
-    }
-  }
-
-  // Fetch all profiles to include users who may have 0 on everything
-  const { data: allProfiles } = await db
-    .from('profiles')
-    .select('id, username, avatar_url, role')
-
-  for (const p of allProfiles ?? []) {
-    if (!userMap.has(p.id)) {
-      userMap.set(p.id, {
-        userId: p.id,
-        username: p.username,
-        avatarUrl: p.avatar_url,
-        role: p.role,
-        hoursAnimated: 0,
-        animationsCreated: 0,
-        participationsValidated: 0,
-      })
     }
   }
 

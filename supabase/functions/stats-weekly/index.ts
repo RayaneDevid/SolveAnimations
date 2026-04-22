@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     animationsCreated,
     hoursAnimated,
     participationsValidated,
-    quota: animationsCreated,
+    quota: animationsCreated + participationsValidated,
     quotaMax,
     weekStart,
     weekEnd,

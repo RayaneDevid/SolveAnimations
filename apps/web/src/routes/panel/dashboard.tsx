@@ -73,7 +73,7 @@ export default function Dashboard() {
   const { data: reports, isLoading: reportsLoading } = useMyReports()
 
   const quotaMax = QUOTA_MAX[role] ?? null
-  const quotaPercent = quotaMax ? Math.min(100, ((stats?.animationsCreated ?? 0) / quotaMax) * 100) : 100
+  const quotaPercent = quotaMax ? Math.min(100, ((stats?.quota ?? 0) / quotaMax) * 100) : 100
 
   const pendingReports = reports?.filter((r) => !r.submitted_at) ?? []
   const upcomingAnims = animsResult?.animations?.slice(0, 4) ?? []
@@ -126,8 +126,8 @@ export default function Dashboard() {
         <StatCard
           icon={Target}
           label="Quota"
-          value={quotaMax === null ? '∞' : `${stats?.animationsCreated ?? 0}/${quotaMax}`}
-          sub={quotaMax === null ? 'Illimité' : 'animations'}
+          value={quotaMax === null ? '∞' : `${stats?.quota ?? 0}/${quotaMax}`}
+          sub={quotaMax === null ? 'Illimité' : 'créations + participations'}
           color="amber"
           loading={statsLoading}
         />
@@ -139,7 +139,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-white/70">Progression du quota</p>
             <p className="text-sm font-bold text-white">
-              {stats?.animationsCreated ?? 0} / {quotaMax}
+              {stats?.quota ?? 0} / {quotaMax}
             </p>
           </div>
           <Progress

@@ -1,7 +1,10 @@
 const BOT_URL    = Deno.env.get('BOT_WEBHOOK_URL')!
 const BOT_SECRET = Deno.env.get('BOT_WEBHOOK_SECRET')!
 
-export async function notifyBot(route: string, payload: unknown): Promise<void> {
+export async function notifyBot<T = Record<string, unknown>>(
+  route: string,
+  payload: unknown,
+): Promise<T | null> {
   try {
     const res = await fetch(`${BOT_URL}/webhook/${route}`, {
       method: 'POST',
@@ -13,9 +16,11 @@ export async function notifyBot(route: string, payload: unknown): Promise<void> 
     })
     if (!res.ok) {
       console.error(`Bot webhook ${route} failed: ${res.status}`)
+      return null
     }
+    return await res.json() as T
   } catch (err) {
-    // Non-fatal — log and continue
     console.error(`Bot webhook ${route} error:`, err)
+    return null
   }
 }

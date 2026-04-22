@@ -66,8 +66,8 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', 'Erreur lors de la création')
   }
 
-  // Notify bot (non-fatal)
-  await notifyBot('animation-created', {
+  // Notify bot and save the admin message ID for future embed updates
+  const botRes = await notifyBot<{ data: { adminMessageId: string } }>('animation-created', {
     animationId: animation.id,
     title: animation.title,
     scheduledAt: animation.scheduled_at,
@@ -81,6 +81,12 @@ Deno.serve(async (req) => {
     creatorDiscordId: profile.discord_id,
     documentUrl: animation.document_url,
   })
+
+  const adminMessageId = botRes?.data?.adminMessageId
+  if (adminMessageId) {
+    await db.from('animations').update({ discord_message_id: adminMessageId }).eq('id', animation.id)
+    animation.discord_message_id = adminMessageId
+  }
 
   return jsonResponse({ animation }, 201)
 })

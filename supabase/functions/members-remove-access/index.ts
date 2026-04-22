@@ -30,8 +30,17 @@ Deno.serve(async (req) => {
 
   if (!target) return errorResponse('NOT_FOUND', 'Membre introuvable')
 
-  // Notify bot to remove Discord roles (non-fatal)
-  await notifyBot('member-remove-roles', { discordUserId: target.discord_id })
+  // Remove Discord roles — fatal: if this fails the operator must fix the bot config
+  const botResult = await notifyBot<{ removedRoles: string[]; failedRoles: string[]; memberNotFound: boolean }>(
+    'member-remove-roles',
+    { discordUserId: target.discord_id },
+  )
+  if (!botResult) {
+    return errorResponse('INTERNAL_ERROR', 'Le bot Discord est injoignable. Vérifiez que le bot est en ligne.')
+  }
+  if (botResult.failedRoles && botResult.failedRoles.length > 0) {
+    return errorResponse('INTERNAL_ERROR', 'Le bot n\'a pas pu retirer tous les rôles Discord. Vérifiez la hiérarchie des rôles dans les paramètres du serveur Discord (le rôle du bot doit être au-dessus des rôles staff).')
+  }
 
   // Audit before deletion so we have context
   await db.from('audit_log').insert({
@@ -56,10 +65,13 @@ Deno.serve(async (req) => {
 
   if (deleteError) return errorResponse('INTERNAL_ERROR', deleteError.message)
 
-  // Delete auth user
+  // Delete auth user (profile was already deleted above)
   const { error: deleteAuthError } = await db.auth.admin.deleteUser(user_id)
   if (deleteAuthError) {
-    console.error('deleteUser error:', deleteAuthError.message)
+    // Non-fatal: profile is gone so they can't use the panel, but log clearly
+    // so the operator knows the auth.users row may still exist.
+    console.error('[members-remove-access] deleteUser failed — auth row may persist:', deleteAuthError.message)
+    return jsonResponse({ success: true, warning: 'auth_user_not_deleted' })
   }
 
   return jsonResponse({ success: true })

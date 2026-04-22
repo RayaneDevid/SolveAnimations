@@ -30,6 +30,15 @@ export default function AuthCallback() {
           return
         }
 
+        // provider_token can be null if the session was restored from storage
+        // instead of being freshly exchanged via PKCE. Force a re-login in that case
+        // so auth-validate-staff always receives a live Discord token.
+        if (!session.provider_token) {
+          await supabase.auth.signOut()
+          navigate('/login', { replace: true })
+          return
+        }
+
         const result = await invokeEdge<AuthValidateResult>('auth-validate-staff', {
           provider_token: session.provider_token,
         })

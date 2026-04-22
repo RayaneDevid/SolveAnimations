@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Zap } from 'lucide-react'
+
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -57,8 +57,8 @@ export default function Login() {
         <div className="glass rounded-2xl p-8 text-center space-y-6">
           {/* Logo */}
           <div className="flex flex-col items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(34,211,238,0.4)]">
-              <Zap className="h-8 w-8 text-white" />
+            <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(34,211,238,0.4)]">
+              <img src="/logo.png" alt="Solve Animations" className="h-16 w-16 object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Solve Animations</h1>

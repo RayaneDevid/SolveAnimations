@@ -14,7 +14,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
@@ -66,8 +65,8 @@ export function Sidebar() {
         'flex items-center gap-3 px-4 py-5 border-b border-white/[0.06]',
         sidebarCollapsed && 'justify-center px-0',
       )}>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-          <Zap className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+          <img src="/logo.png" alt="Solve Animations" className="h-8 w-8 object-contain" />
         </div>
         {!sidebarCollapsed && (
           <div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
-import { Zap } from 'lucide-react'
+
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { invokeEdge } from '@/lib/supabase/edge'
@@ -50,8 +50,8 @@ export default function AuthCallback() {
   return (
     <div className="min-h-screen bg-[#0A0B0F] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center animate-pulse">
-          <Zap className="h-6 w-6 text-white" />
+        <div className="h-12 w-12 rounded-xl overflow-hidden animate-pulse">
+          <img src="/logo.png" alt="Solve Animations" className="h-12 w-12 object-contain" />
         </div>
         <p className="text-sm text-white/40">Connexion en cours...</p>
       </div>

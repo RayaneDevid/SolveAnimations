@@ -11,8 +11,12 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  const { report_id, comments } = await req.json()
+  const { report_id, character_name, comments } = await req.json()
   if (!report_id) return errorResponse('VALIDATION_ERROR', 'report_id requis')
+  if (!character_name || character_name.trim().length === 0)
+    return errorResponse('VALIDATION_ERROR', 'Nom du personnage requis')
+  if (character_name.trim().length > 64)
+    return errorResponse('VALIDATION_ERROR', 'Nom du personnage trop long (max 64)')
 
   const db = getServiceClient()
 
@@ -29,6 +33,7 @@ Deno.serve(async (req) => {
   const { data: updated, error } = await db
     .from('animation_reports')
     .update({
+      character_name: character_name.trim(),
       comments: comments?.trim() ?? null,
       submitted_at: new Date().toISOString(),
     })

@@ -29,16 +29,6 @@ Deno.serve(async (req) => {
   if (!['open', 'preparing'].includes(anim.status))
     return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
 
-  // Need at least 1 validated participant
-  const { count } = await db
-    .from('animation_participants')
-    .select('*', { count: 'exact', head: true })
-    .eq('animation_id', id)
-    .eq('status', 'validated')
-
-  if (!count || count === 0)
-    return errorResponse('CONFLICT', 'Au moins 1 participant validé requis pour démarrer')
-
   const { data: updated, error } = await db
     .from('animations')
     .update({ status: 'running', started_at: new Date().toISOString() })

@@ -7,7 +7,7 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 const BASE_PAY = 1_000
 
 const REMUNERATION: Record<string, number> = {
-  petite:  250,
+  petite:  200,
   moyenne: 350,
   grande:  500,
 }

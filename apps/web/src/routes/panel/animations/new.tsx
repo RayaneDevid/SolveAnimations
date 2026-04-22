@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Plus, Minus, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, Minus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
@@ -78,36 +79,32 @@ export default function NewAnimation() {
             {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Date et heure de session</Label>
-              <Controller
-                name="scheduledAt"
-                control={control}
-                render={({ field }) => (
-                  <RpDateTimePicker
-                    value={field.value instanceof Date ? field.value : undefined}
-                    onChange={field.onChange}
-                    error={errors.scheduledAt?.message}
-                  />
-                )}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="documentUrl">Lien du document</Label>
-              <div className="relative">
-                <Input
-                  id="documentUrl"
-                  placeholder="https://..."
-                  {...register('documentUrl')}
-                  className="pr-8"
+          <div className="space-y-1.5">
+            <Label>Date et heure de session</Label>
+            <Controller
+              name="scheduledAt"
+              control={control}
+              render={({ field }) => (
+                <RpDateTimePicker
+                  value={field.value instanceof Date ? field.value : undefined}
+                  onChange={field.onChange}
+                  error={errors.scheduledAt?.message}
                 />
-                <ExternalLink className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-              </div>
-              {errors.documentUrl && (
-                <p className="text-xs text-red-400">{errors.documentUrl.message}</p>
               )}
-            </div>
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description de l'animation</Label>
+            <Textarea
+              id="description"
+              placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
+              rows={4}
+              {...register('description')}
+            />
+            {errors.description && (
+              <p className="text-xs text-red-400">{errors.description.message}</p>
+            )}
           </div>
         </GlassCard>
 
@@ -169,15 +166,6 @@ export default function NewAnimation() {
             </div>
           </div>
 
-          {/* Creator character name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="creatorCharacterName">Ton personnage joué (optionnel)</Label>
-            <Input
-              id="creatorCharacterName"
-              placeholder="Nom du personnage"
-              {...register('creatorCharacterName')}
-            />
-          </div>
         </GlassCard>
 
         {/* Server */}

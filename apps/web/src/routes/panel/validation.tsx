@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Check, X, ExternalLink, Calendar, Clock } from 'lucide-react'
+import { Check, X, Calendar, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimations } from '@/hooks/queries/useAnimations'
 import { useValidateAnimation, useRejectAnimation } from '@/hooks/mutations/useAnimationMutations'
@@ -132,16 +132,8 @@ function ValidationCard({ animation }: { animation: Animation }) {
           <VillageBadge village={animation.village} />
         </div>
 
-        {animation.document_url && (
-          <a
-            href={animation.document_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 mb-3"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Voir le document
-          </a>
+        {animation.description && (
+          <p className="text-xs text-white/50 mb-3 line-clamp-2">{animation.description}</p>
         )}
 
         {animation.status === 'pending_validation' && (

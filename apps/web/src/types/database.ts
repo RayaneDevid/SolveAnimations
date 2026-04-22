@@ -34,9 +34,8 @@ export interface Animation {
   type: AnimationType
   prep_time_min: number
   village: Village
-  document_url: string
+  description: string | null
   creator_id: string
-  creator_character_name: string | null
   status: AnimationStatus
   validated_by: string | null
   validated_at: string | null
@@ -61,7 +60,7 @@ export interface AnimationParticipant {
   id: string
   animation_id: string
   user_id: string
-  character_name: string
+  character_name: string | null
   status: ParticipantStatus
   applied_at: string
   decided_at: string | null
@@ -74,7 +73,7 @@ export interface AnimationReport {
   animation_id: string
   user_id: string
   pole: string
-  character_name: string
+  character_name: string | null
   comments: string | null
   submitted_at: string | null
   created_at: string

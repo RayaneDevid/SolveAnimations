@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
-  ArrowLeft, ExternalLink, Play, Square, Clock, Users, Calendar,
-  FileText, Check, X, UserPlus, Pencil, Ban, Timer,
+  ArrowLeft, Play, Square, Clock, Users, Calendar,
+  Check, X, UserPlus, Pencil, Ban, Timer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
@@ -270,17 +270,8 @@ export default function AnimationDetail() {
             <Users className="h-4 w-4 text-emerald-400" />
             {validated.length}/{animation.required_participants}
           </div>
-          {animation.document_url && (
-            <a
-              href={animation.document_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              Document
-              <ExternalLink className="h-3 w-3" />
-            </a>
+          {animation.description && (
+            <p className="text-sm text-white/60 line-clamp-2">{animation.description}</p>
           )}
         </div>
         <Progress value={participantProgress} className="mt-3" />
@@ -392,7 +383,7 @@ export default function AnimationDetail() {
                   (animation.prep_time_min === 0 || animation.prep_ended_at) && (
                   <Button
                     onClick={handleStart}
-                    disabled={starting || validated.length === 0}
+                    disabled={starting}
                     className="w-full gap-2"
                   >
                     <Play className="h-4 w-4" />

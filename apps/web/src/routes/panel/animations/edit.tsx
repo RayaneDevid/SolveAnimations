@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, ExternalLink, Minus, Plus } from 'lucide-react'
+import { ArrowLeft, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
 import { useAnimation } from '@/hooks/queries/useAnimations'
@@ -10,6 +10,7 @@ import { useUpdateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -63,8 +64,7 @@ export default function EditAnimation() {
       type: a.type,
       prepTimeMin: a.prep_time_min,
       village: a.village,
-      documentUrl: a.document_url,
-      creatorCharacterName: a.creator_character_name ?? undefined,
+      description: a.description ?? undefined,
     })
   }, [data, reset])
 
@@ -112,34 +112,30 @@ export default function EditAnimation() {
             {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="scheduledAt">Date et heure</Label>
-              <Input
-                id="scheduledAt"
-                type="datetime-local"
-                {...register('scheduledAt')}
-                className="[color-scheme:dark]"
-              />
-              {errors.scheduledAt && (
-                <p className="text-xs text-red-400">{errors.scheduledAt.message}</p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="documentUrl">Lien du document</Label>
-              <div className="relative">
-                <Input
-                  id="documentUrl"
-                  placeholder="https://..."
-                  {...register('documentUrl')}
-                  className="pr-8"
-                />
-                <ExternalLink className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-              </div>
-              {errors.documentUrl && (
-                <p className="text-xs text-red-400">{errors.documentUrl.message}</p>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="scheduledAt">Date et heure</Label>
+            <Input
+              id="scheduledAt"
+              type="datetime-local"
+              {...register('scheduledAt')}
+              className="[color-scheme:dark]"
+            />
+            {errors.scheduledAt && (
+              <p className="text-xs text-red-400">{errors.scheduledAt.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description de l'animation</Label>
+            <Textarea
+              id="description"
+              placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
+              rows={4}
+              {...register('description')}
+            />
+            {errors.description && (
+              <p className="text-xs text-red-400">{errors.description.message}</p>
+            )}
           </div>
         </GlassCard>
 
@@ -192,15 +188,6 @@ export default function EditAnimation() {
                 <Plus className="h-3 w-3" />
               </button>
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="creatorCharacterName">Ton personnage joué (optionnel)</Label>
-            <Input
-              id="creatorCharacterName"
-              placeholder="Nom du personnage"
-              {...register('creatorCharacterName')}
-            />
           </div>
         </GlassCard>
 

@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const body = await req.json()
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
-    server, type, prepTimeMin = 0, village, documentUrl, creatorCharacterName,
+    server, type, prepTimeMin = 0, village, description,
   } = body
 
   // Basic validation
@@ -37,8 +37,6 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Type invalide')
   if (!VILLAGES.includes(village))
     return errorResponse('VALIDATION_ERROR', 'Village invalide')
-  if (!documentUrl || typeof documentUrl !== 'string')
-    return errorResponse('VALIDATION_ERROR', 'URL du document requise')
 
   const db = getServiceClient()
 
@@ -53,9 +51,8 @@ Deno.serve(async (req) => {
       type,
       prep_time_min: prepTimeMin,
       village,
-      document_url: documentUrl,
+      description: description?.trim() || null,
       creator_id: profile.id,
-      creator_character_name: creatorCharacterName?.trim() || null,
       status: 'pending_validation',
     })
     .select(`*, creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)`)
@@ -79,7 +76,6 @@ Deno.serve(async (req) => {
     type: animation.type,
     creatorUsername: profile.username,
     creatorDiscordId: profile.discord_id,
-    documentUrl: animation.document_url,
   })
 
   const adminMessageId = botRes?.data?.adminMessageId

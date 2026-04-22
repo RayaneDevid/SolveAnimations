@@ -14,6 +14,22 @@ const PX_PER_MIN = 1.2
 const SESSION_START_MIN = 18 * 60
 
 
+const TYPE_LABELS: Record<string, string> = {
+  petite: 'Petite',
+  moyenne: 'Moyenne',
+  grande: 'Grande',
+}
+
+const VILLAGE_LABELS: Record<string, string> = {
+  konoha: 'Konoha',
+  suna: 'Suna',
+  oto: 'Oto',
+  kiri: 'Kiri',
+  temple_camelias: 'Temple',
+  autre: 'Autre',
+  tout_le_monde: 'Tous',
+}
+
 const VILLAGE_COLORS: Record<string, string> = {
   konoha: 'bg-green-500/25 border-green-500/40 text-green-300',
   suna: 'bg-yellow-600/25 border-yellow-600/40 text-yellow-300',
@@ -77,6 +93,21 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
       <p className="text-[9px] opacity-70 leading-tight truncate">
         {formatTime(animation.scheduled_at)}
       </p>
+      {height >= 52 && (
+        <p className="text-[9px] opacity-60 leading-tight truncate mt-0.5">
+          {animation.server} · {TYPE_LABELS[animation.type]}
+        </p>
+      )}
+      {height >= 68 && (
+        <p className="text-[9px] opacity-60 leading-tight truncate">
+          {VILLAGE_LABELS[animation.village]} · {animation.required_participants} joueurs
+        </p>
+      )}
+      {height >= 84 && animation.creator && (
+        <p className="text-[9px] opacity-50 leading-tight truncate">
+          {animation.creator.username}
+        </p>
+      )}
     </Link>
   )
 }

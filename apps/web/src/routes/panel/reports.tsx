@@ -6,12 +6,14 @@ import { useSubmitReport } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 import type { AnimationReport } from '@/types/database'
 
 function ReportCard({ report }: { report: AnimationReport }) {
+  const [characterName, setCharacterName] = useState(report.character_name ?? '')
   const [comments, setComments] = useState(report.comments ?? '')
   const [editing, setEditing] = useState(false)
   const { mutateAsync, isPending } = useSubmitReport()
@@ -20,8 +22,12 @@ function ReportCard({ report }: { report: AnimationReport }) {
   const anim = report.animation
 
   const handleSubmit = async () => {
+    if (!characterName.trim()) {
+      toast.error('Le nom du personnage est requis')
+      return
+    }
     try {
-      await mutateAsync({ reportId: report.id, comments })
+      await mutateAsync({ reportId: report.id, characterName, comments })
       toast.success('Rapport soumis !')
       setEditing(false)
     } catch (err) {
@@ -55,10 +61,7 @@ function ReportCard({ report }: { report: AnimationReport }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
         {[
           { label: 'Pôle', value: report.pole },
-          { label: 'Perso joué', value: report.character_name },
-          { label: 'Village', value: anim?.village ? (
-            <VillageBadge village={anim.village} />
-          ) : '—' },
+          { label: 'Village', value: anim?.village ? <VillageBadge village={anim.village} /> : '—' },
           { label: 'Date', value: anim ? formatDate(anim.scheduled_at) : '—' },
           { label: 'Durée prévue', value: anim ? formatDuration(anim.planned_duration_min) : '—' },
           { label: 'Durée réelle', value: anim?.actual_duration_min ? formatDuration(anim.actual_duration_min) : '—' },
@@ -70,41 +73,50 @@ function ReportCard({ report }: { report: AnimationReport }) {
         ))}
       </div>
 
-      {/* Comments */}
-      <div className="space-y-2">
-        <p className="text-xs text-white/40 uppercase tracking-wider">Commentaires</p>
-        {isSubmitted && !editing ? (
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm text-white/70 flex-1">
-              {report.comments || <span className="text-white/30 italic">Aucun commentaire</span>}
-            </p>
-            {!editing && (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="text-xs">
-                Modifier
-              </Button>
-            )}
+      {/* Editable fields */}
+      {isSubmitted && !editing ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Personnage joué</p>
+            <p className="text-sm text-white/80">{report.character_name || <span className="text-white/30 italic">—</span>}</p>
           </div>
-        ) : (
-          <div className="space-y-2">
+          <div>
+            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Commentaires</p>
+            <p className="text-sm text-white/70">{report.comments || <span className="text-white/30 italic">Aucun commentaire</span>}</p>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="text-xs">Modifier</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <p className="text-xs text-white/40 uppercase tracking-wider">Personnage joué <span className="text-red-400">*</span></p>
+            <Input
+              placeholder="Nom de ton personnage"
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs text-white/40 uppercase tracking-wider">Commentaires</p>
             <Textarea
               placeholder="Décris le déroulé de l'animation, les points positifs et négatifs..."
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               rows={4}
             />
-            <div className="flex gap-2 justify-end">
-              {isSubmitted && (
-                <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                  Annuler
-                </Button>
-              )}
-              <Button size="sm" onClick={handleSubmit} disabled={isPending}>
-                {isPending ? 'Envoi...' : isSubmitted ? 'Mettre à jour' : 'Valider mon rapport'}
-              </Button>
-            </div>
           </div>
-        )}
-      </div>
+          <div className="flex gap-2 justify-end">
+            {isSubmitted && (
+              <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Annuler</Button>
+            )}
+            <Button size="sm" onClick={handleSubmit} disabled={isPending}>
+              {isPending ? 'Envoi...' : isSubmitted ? 'Mettre à jour' : 'Valider mon rapport'}
+            </Button>
+          </div>
+        </div>
+      )}
     </GlassCard>
   )
 }

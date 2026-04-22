@@ -63,12 +63,12 @@ Deno.serve(async (req) => {
     animation_id: id,
     user_id: profile.id,
     pole: profile.role === 'mj' ? 'mj' : 'animateur',
-    character_name: anim.creator_character_name || '—',
+    character_name: null,
   })
 
   // Participant reports
   for (const p of validatedParticipants ?? []) {
-    if (p.user_id === profile.id) continue // skip if creator is also participant
+    if (p.user_id === profile.id) continue
     const { data: pProfile } = await db
       .from('profiles')
       .select('role')
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       animation_id: id,
       user_id: p.user_id,
       pole: pProfile?.role === 'mj' ? 'mj' : 'animateur',
-      character_name: p.character_name,
+      character_name: null,
     })
   }
 

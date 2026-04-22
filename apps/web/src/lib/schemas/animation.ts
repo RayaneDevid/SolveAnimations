@@ -40,18 +40,24 @@ export const createAnimationSchema = z.object({
     .max(600)
     .default(0),
   village: z.enum(VILLAGES, { required_error: 'Village requis' }),
-  documentUrl: z.string().url('URL invalide').max(500),
-  creatorCharacterName: z.string().trim().min(1).max(64).optional(),
+  description: z.string().trim().max(2000).optional(),
 })
 
 export type CreateAnimationInput = z.infer<typeof createAnimationSchema>
 
 export const applyParticipantSchema = z.object({
   animationId: z.string().uuid(),
-  characterName: z.string().trim().min(1, 'Nom requis').max(64),
 })
 
 export type ApplyParticipantInput = z.infer<typeof applyParticipantSchema>
+
+export const submitReportSchema = z.object({
+  reportId: z.string().uuid(),
+  characterName: z.string().trim().min(1, 'Nom du personnage requis').max(64),
+  comments: z.string().trim().max(2000).optional(),
+})
+
+export type SubmitReportInput = z.infer<typeof submitReportSchema>
 
 export const rejectSchema = z.object({
   id: z.string().uuid(),

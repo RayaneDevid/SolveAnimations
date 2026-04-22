@@ -160,8 +160,8 @@ export function useDecideParticipant() {
 export function useSubmitReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ reportId, comments }: { reportId: string; comments: string }) =>
-      invokeEdge<object>('reports-submit', { report_id: reportId, comments }),
+    mutationFn: ({ reportId, characterName, comments }: { reportId: string; characterName: string; comments: string }) =>
+      invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.reports.mine })
     },

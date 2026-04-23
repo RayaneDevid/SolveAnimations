@@ -118,12 +118,12 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
+      <nav className={cn('flex-1 overflow-y-auto py-4', sidebarCollapsed ? 'px-0' : 'px-2')}>
         <Reorder.Group
           axis="y"
           values={visibleKeys}
           onReorder={handleReorder}
-          className={sidebarCollapsed ? 'space-y-2' : 'space-y-0.5'}
+          className={sidebarCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-0.5'}
           as="ul"
         >
           {visibleItems.map((item) => {
@@ -138,7 +138,7 @@ export function Sidebar() {
                         to={item.to}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center justify-center h-11 w-full rounded-xl transition-colors duration-150',
+                            'flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-150',
                             isActive
                               ? 'bg-cyan-400/10 text-cyan-400'
                               : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]',

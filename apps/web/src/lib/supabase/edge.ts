@@ -31,6 +31,7 @@ export type EdgeFunctionName =
   | 'stats-villages'
   | 'leaderboard'
   | 'members-list'
+  | 'members-former-list'
   | 'members-remove-access'
   | 'paies'
 

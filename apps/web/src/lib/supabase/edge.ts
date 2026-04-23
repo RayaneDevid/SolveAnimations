@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './client'
 
 export type EdgeFunctionName =
@@ -56,6 +57,14 @@ export async function invokeEdge<TResponse>(
     body,
   })
   if (error) {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = await error.context.json() as ApiError
+        if (body?.error) throw new EdgeError(body.error)
+      } catch (e) {
+        if (e instanceof EdgeError) throw e
+      }
+    }
     throw new EdgeError({ code: 'NETWORK_ERROR', message: error.message })
   }
   if (data && 'error' in data) {

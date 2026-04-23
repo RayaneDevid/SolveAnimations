@@ -1,6 +1,4 @@
-import { useMemo } from 'react'
 import { NavLink } from 'react-router'
-import { Reorder } from 'framer-motion'
 import {
   LayoutDashboard,
   Sword,
@@ -19,62 +17,77 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
-import { useUIStore, DEFAULT_NAV_ORDER } from '@/stores/ui-store'
+import { useUIStore } from '@/stores/ui-store'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { hasRole } from '@/lib/config/discord'
+import type { StaffRoleKey } from '@/lib/config/discord'
 
 interface NavItem {
   to: string
   label: string
   icon: React.ComponentType<{ className?: string }>
-  requiresRole?: 'responsable' | 'responsable_mj'
 }
 
-const NAV_ITEMS_MAP: Record<string, NavItem> = {
-  '/panel/calendar': { to: '/panel/calendar', label: 'Calendrier', icon: CalendarDays },
-  '/panel/dashboard': { to: '/panel/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  '/panel/animations': { to: '/panel/animations', label: 'Animations', icon: Sword },
-  '/panel/reports': { to: '/panel/reports', label: 'Mes rapports', icon: FileText },
-  '/panel/absences': { to: '/panel/absences', label: 'Mes absences', icon: CalendarOff },
-  '/panel/validation': { to: '/panel/validation', label: 'Validation', icon: CheckSquare, requiresRole: 'responsable' },
-  '/panel/leaderboard': { to: '/panel/leaderboard', label: 'Classement', icon: Trophy, requiresRole: 'responsable' },
-  '/panel/members': { to: '/panel/members', label: 'Membres', icon: Users, requiresRole: 'responsable' },
-  '/panel/casiers': { to: '/panel/casiers', label: 'Casiers', icon: FolderOpen, requiresRole: 'responsable' },
-  '/panel/paies': { to: '/panel/paies', label: 'Paies', icon: Banknote, requiresRole: 'responsable' },
-  '/panel/villages': { to: '/panel/villages', label: 'Graphique villages', icon: PieChart, requiresRole: 'responsable' },
+interface NavSection {
+  id: string
+  label: string
+  minRole?: StaffRoleKey
+  items: NavItem[]
 }
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    id: 'base',
+    label: 'Animateurs / MJ',
+    items: [
+      { to: '/panel/dashboard',  label: 'Dashboard',     icon: LayoutDashboard },
+      { to: '/panel/animations', label: 'Animations',    icon: Sword },
+      { to: '/panel/calendar',   label: 'Calendrier',    icon: CalendarDays },
+      { to: '/panel/reports',    label: 'Mes rapports',  icon: FileText },
+      { to: '/panel/absences',   label: 'Mes absences',  icon: CalendarOff },
+    ],
+  },
+  {
+    id: 'senior',
+    label: 'Anim. Senior / MJ Senior',
+    minRole: 'senior',
+    items: [
+      // Views restricted to senior+ go here
+    ],
+  },
+  {
+    id: 'responsable',
+    label: 'Responsables',
+    minRole: 'responsable',
+    items: [
+      { to: '/panel/validation', label: 'Validation',          icon: CheckSquare },
+      { to: '/panel/leaderboard',label: 'Classement',          icon: Trophy },
+      { to: '/panel/members',    label: 'Membres',             icon: Users },
+      { to: '/panel/casiers',    label: 'Casiers',             icon: FolderOpen },
+      { to: '/panel/paies',      label: 'Paies',               icon: Banknote },
+      { to: '/panel/villages',   label: 'Graphique villages',  icon: PieChart },
+    ],
+  },
+]
 
 export function Sidebar() {
   const { auth, signOut } = useAuth()
-  const { sidebarCollapsed, toggleSidebar, navOrder, setNavOrder } = useUIStore()
+  const { sidebarCollapsed, toggleSidebar } = useUIStore()
 
   if (auth.status !== 'authenticated') return null
 
   const { user, role } = auth
-  const isResponsable = hasRole(role, 'responsable')
 
-  // Merge stored order with defaults to handle new items added later
-  const orderedKeys = useMemo(() => {
-    const stored = navOrder.filter((k) => DEFAULT_NAV_ORDER.includes(k))
-    const missing = DEFAULT_NAV_ORDER.filter((k) => !stored.includes(k))
-    return [...stored, ...missing]
-  }, [navOrder])
-
-  const visibleItems = orderedKeys
-    .map((key) => NAV_ITEMS_MAP[key])
-    .filter((item): item is NavItem => !!item && (!item.requiresRole || isResponsable))
-
-  const visibleKeys = visibleItems.map((item) => item.to)
-
-  function handleReorder(newOrder: string[]) {
-    // Rebuild full order: put reordered visible keys in place, keep hidden keys in their slots
-    const hiddenKeys = orderedKeys.filter((k) => !visibleKeys.includes(k))
-    // Interleave: we just replace the visible slots with newOrder and append hidden at end
-    const combined = [...newOrder, ...hiddenKeys]
-    setNavOrder(combined)
-  }
+  const visibleSections = NAV_SECTIONS
+    .map((section) => ({
+      ...section,
+      items: section.minRole
+        ? (hasRole(role, section.minRole) ? section.items : [])
+        : section.items,
+    }))
+    .filter((s) => s.items.length > 0)
 
   return (
     <aside
@@ -118,69 +131,82 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className={cn('flex-1 overflow-y-auto py-4', sidebarCollapsed ? 'px-0' : 'px-2')}>
-        <Reorder.Group
-          axis="y"
-          values={visibleKeys}
-          onReorder={handleReorder}
-          className={sidebarCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-0.5'}
-          as="ul"
-        >
-          {visibleItems.map((item) => {
-            const Icon = item.icon
-
-            if (sidebarCollapsed) {
-              return (
-                <Reorder.Item key={item.to} value={item.to} as="li" dragListener={false}>
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <NavLink
-                        to={item.to}
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-150',
-                            isActive
-                              ? 'bg-cyan-400/10 text-cyan-400'
-                              : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]',
-                          )
-                        }
-                      >
-                        <Icon className="h-5 w-5" />
-                      </NavLink>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                </Reorder.Item>
+      <nav className={cn('flex-1 overflow-y-auto py-3', sidebarCollapsed ? 'px-0' : 'px-2')}>
+        {visibleSections.map((section, sectionIndex) => (
+          <div key={section.id}>
+            {/* Section separator */}
+            {sectionIndex > 0 && (
+              sidebarCollapsed ? (
+                <div className="my-3 mx-3 border-t border-white/[0.06]" />
+              ) : (
+                <div className="mt-4 mb-1 px-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 truncate">
+                    {section.label}
+                  </p>
+                </div>
               )
-            }
+            )}
 
-            return (
-              <Reorder.Item
-                key={item.to}
-                value={item.to}
-                as="li"
-                className="cursor-grab active:cursor-grabbing"
-                whileDrag={{ scale: 1.02, opacity: 0.9 }}
-              >
-                <NavLink
-                  to={item.to}
-                  draggable={false}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 h-9 px-3 rounded-lg text-sm font-medium transition-colors duration-150',
-                      isActive
-                        ? 'bg-cyan-400/10 text-cyan-400'
-                        : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]',
-                    )
-                  }
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </NavLink>
-              </Reorder.Item>
-            )
-          })}
-        </Reorder.Group>
+            {/* First section label */}
+            {sectionIndex === 0 && !sidebarCollapsed && (
+              <div className="mb-1 px-3">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 truncate">
+                  {section.label}
+                </p>
+              </div>
+            )}
+
+            <ul className={sidebarCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-0.5'}>
+              {section.items.map((item) => {
+                const Icon = item.icon
+
+                if (sidebarCollapsed) {
+                  return (
+                    <li key={item.to}>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <NavLink
+                            to={item.to}
+                            className={({ isActive }) =>
+                              cn(
+                                'flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-150',
+                                isActive
+                                  ? 'bg-cyan-400/10 text-cyan-400'
+                                  : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]',
+                              )
+                            }
+                          >
+                            <Icon className="h-5 w-5" />
+                          </NavLink>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{item.label}</TooltipContent>
+                      </Tooltip>
+                    </li>
+                  )
+                }
+
+                return (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 h-9 px-3 rounded-lg text-sm font-medium transition-colors duration-150',
+                          isActive
+                            ? 'bg-cyan-400/10 text-cyan-400'
+                            : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]',
+                        )
+                      }
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </NavLink>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       {/* Collapse toggle */}

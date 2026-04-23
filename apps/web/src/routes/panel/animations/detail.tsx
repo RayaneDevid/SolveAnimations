@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
-  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass,
+  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
@@ -10,6 +10,7 @@ import {
   useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
   useStopAnimation, useCancelAnimation,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
+  useCorrectFinishedAnimation,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -23,7 +24,128 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
-import type { AnimationParticipant } from '@/types/database'
+import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
+import type { AnimationParticipant, Animation } from '@/types/database'
+
+function FinishedEditForm({ animation }: { animation: Animation }) {
+  const { mutateAsync: correct, isPending } = useCorrectFinishedAnimation()
+  const [editing, setEditing] = useState(false)
+  const [animMin, setAnimMin] = useState(animation.actual_duration_min ?? 0)
+  const [prepMin, setPrepMin] = useState(animation.actual_prep_time_min ?? 0)
+  const [village, setVillage] = useState(animation.village)
+  const [server, setServer] = useState(animation.server)
+  const [type, setType] = useState(animation.type)
+
+  const handleSave = async () => {
+    try {
+      await correct({
+        id: animation.id,
+        actual_duration_min: animMin,
+        actual_prep_time_min: animation.prep_time_min > 0 ? prepMin : undefined,
+        village,
+        server,
+        type,
+      })
+      toast.success('Animation corrigée')
+      setEditing(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const inputCls = 'w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-500/50'
+  const labelCls = 'text-xs text-white/40 mb-1 block'
+
+  return (
+    <GlassCard className="p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+          Durée réelle
+        </h2>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
+            <Pencil className="h-3 w-3" />
+            Corriger
+          </button>
+        )}
+      </div>
+
+      {!editing ? (
+        <>
+          <div>
+            <p className="text-xs text-white/40 mb-0.5">Animation</p>
+            <p className="text-2xl font-bold text-white">
+              {formatDuration(animation.actual_duration_min ?? 0)}
+            </p>
+          </div>
+          {animation.actual_prep_time_min != null && (
+            <div>
+              <p className="text-xs text-white/40 mb-0.5">Débrief</p>
+              <p className="text-lg font-semibold text-white/70">
+                {formatDuration(animation.actual_prep_time_min)}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Durée animation (min)</label>
+            <input
+              type="number"
+              min={0}
+              value={animMin}
+              onChange={(e) => setAnimMin(Number(e.target.value))}
+              className={inputCls}
+            />
+          </div>
+          {animation.prep_time_min > 0 && (
+            <div>
+              <label className={labelCls}>Durée débrief (min)</label>
+              <input
+                type="number"
+                min={0}
+                value={prepMin}
+                onChange={(e) => setPrepMin(Number(e.target.value))}
+                className={inputCls}
+              />
+            </div>
+          )}
+          <div>
+            <label className={labelCls}>Village</label>
+            <select value={village} onChange={(e) => setVillage(e.target.value as typeof VILLAGES[number])} className={inputCls}>
+              {VILLAGES.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Serveur</label>
+            <select value={server} onChange={(e) => setServer(e.target.value as typeof SERVERS[number])} className={inputCls}>
+              {SERVERS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Type</label>
+            <select value={type} onChange={(e) => setType(e.target.value as typeof TYPES[number])} className={inputCls}>
+              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={handleSave} disabled={isPending} className="flex-1 gap-1.5">
+              <Save className="h-3.5 w-3.5" />
+              {isPending ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={isPending}>
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  )
+}
 
 function ElapsedTimer({ since, label }: { since: string; label: string }) {
   const [elapsed, setElapsed] = useState(0)
@@ -455,26 +577,30 @@ export default function AnimationDetail() {
             </GlassCard>
           )}
 
-          {animation.status === 'finished' && animation.actual_duration_min && (
-            <GlassCard className="p-5 space-y-3">
-              <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                Durée réelle
-              </h2>
-              <div>
-                <p className="text-xs text-white/40 mb-0.5">Animation</p>
-                <p className="text-2xl font-bold text-white">
-                  {formatDuration(animation.actual_duration_min)}
-                </p>
-              </div>
-              {animation.actual_prep_time_min != null && (
+          {animation.status === 'finished' && (
+            isResponsable ? (
+              <FinishedEditForm animation={animation} />
+            ) : animation.actual_duration_min ? (
+              <GlassCard className="p-5 space-y-3">
+                <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                  Durée réelle
+                </h2>
                 <div>
-                  <p className="text-xs text-white/40 mb-0.5">Débrief</p>
-                  <p className="text-lg font-semibold text-white/70">
-                    {formatDuration(animation.actual_prep_time_min)}
+                  <p className="text-xs text-white/40 mb-0.5">Animation</p>
+                  <p className="text-2xl font-bold text-white">
+                    {formatDuration(animation.actual_duration_min)}
                   </p>
                 </div>
-              )}
-            </GlassCard>
+                {animation.actual_prep_time_min != null && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-0.5">Débrief</p>
+                    <p className="text-lg font-semibold text-white/70">
+                      {formatDuration(animation.actual_prep_time_min)}
+                    </p>
+                  </div>
+                )}
+              </GlassCard>
+            ) : null
           )}
         </div>
       </div>

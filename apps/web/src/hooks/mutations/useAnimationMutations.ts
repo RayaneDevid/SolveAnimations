@@ -217,6 +217,25 @@ export function useUpdateAnimation() {
   })
 }
 
+export function useCorrectFinishedAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      id: string
+      actual_duration_min?: number
+      actual_prep_time_min?: number | null
+      village?: string
+      server?: string
+      type?: string
+    }) => invokeEdge<{ animation: Animation }>('animations-update', body),
+    onSuccess: (data, { id }) => {
+      updateDetailCache(qc, id, data.animation)
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
+    },
+  })
+}
+
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({

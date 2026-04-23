@@ -38,6 +38,10 @@ Deno.serve(async (req) => {
       return errorResponse('UNAUTHORIZED', 'Profile not found. Please re-login.')
     }
 
+    if (!profile.is_active) {
+      return errorResponse('FORBIDDEN', 'Ton accès a été révoqué.')
+    }
+
     return jsonResponse({ profile })
   }
 
@@ -45,6 +49,17 @@ Deno.serve(async (req) => {
   const memberResult = await getGuildMember(providerToken)
   if (!memberResult.ok) {
     return errorResponse('FORBIDDEN', "Tu n'as pas les rôles nécessaires pour accéder à ce panel.")
+  }
+
+  // Check if this Discord user was previously deactivated
+  const { data: existingProfile } = await db
+    .from('profiles')
+    .select('is_active')
+    .eq('id', user.id)
+    .single()
+
+  if (existingProfile && !existingProfile.is_active) {
+    return errorResponse('FORBIDDEN', 'Ton accès a été révoqué.')
   }
 
   const { data: profile, error: upsertError } = await db

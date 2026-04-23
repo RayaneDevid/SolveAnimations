@@ -56,12 +56,6 @@ Deno.serve(async (req) => {
 
   if (updateError) return errorResponse('INTERNAL_ERROR', updateError.message)
 
-  // Delete auth user so they can't log back in
-  const { error: deleteAuthError } = await db.auth.admin.deleteUser(user_id)
-  if (deleteAuthError) {
-    console.error('deleteUser error:', deleteAuthError.message)
-  }
-
   await db.from('audit_log').insert({
     actor_id: profile.id,
     action: 'member.deactivate',

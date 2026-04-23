@@ -9,9 +9,22 @@ import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { MemberEntry } from '@/types/database'
+
+const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
+const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
+
+function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
+  return [...members].sort((a, b) => {
+    const ia = order.indexOf(a.role)
+    const ib = order.indexOf(b.role)
+    if (ia !== ib) return ia - ib
+    return a.username.localeCompare(b.username)
+  })
+}
 
 function RemoveConfirmModal({
   member,
@@ -67,15 +80,106 @@ function RemoveConfirmModal({
   )
 }
 
+function MemberTable({
+  members,
+  onRemove,
+}: {
+  members: MemberEntry[]
+  onRemove: (m: MemberEntry) => void
+}) {
+  if (members.length === 0) {
+    return <p className="text-center text-white/30 text-sm py-12">Aucun membre</p>
+  }
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/[0.06]">
+          {['Membre', 'Rôle', 'Anim. (sem/tot)', 'Heures (sem/tot)', 'Quota', 'Absence', ''].map((h) => (
+            <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {members.map((m, i) => {
+          const quotaMax = m.weeklyStats.quotaMax
+          const quota = m.weeklyStats.animationsCreated
+          const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
+          return (
+            <motion.tr
+              key={m.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.02 }}
+              className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
+                  <span className="text-sm font-medium text-white/90">{m.username}</span>
+                  {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400" />}
+                </div>
+              </td>
+              <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
+              <td className="px-4 py-3 text-sm text-white/60">
+                <span className="text-white/90 font-medium">{m.weeklyStats.animationsCreated}</span>
+                <span className="text-white/30"> / {m.totalStats.animationsCreated}</span>
+              </td>
+              <td className="px-4 py-3 text-sm text-white/60">
+                <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
+                <span className="text-white/30"> / {(m.totalStats.hoursAnimated / 60).toFixed(1)}h</span>
+              </td>
+              <td className="px-4 py-3 w-32">
+                {quotaMax === null ? (
+                  <span className="text-xs text-white/30">Illimité</span>
+                ) : (
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-white/60">{quota}/{quotaMax}</span>
+                    </div>
+                    <Progress
+                      value={quotaPct}
+                      className="h-1"
+                      indicatorClassName={
+                        quotaPct >= 100
+                          ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                          : quotaPct < 40
+                          ? 'bg-gradient-to-r from-red-400 to-orange-400'
+                          : undefined
+                      }
+                    />
+                  </div>
+                )}
+              </td>
+              <td className="px-4 py-3">
+                {m.isAbsent ? (
+                  <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">Absent</span>
+                ) : (
+                  <span className="text-xs text-white/20">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3">
+                <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="text-xs gap-1.5 h-7">
+                  <UserX className="h-3 w-3" />
+                  Retirer
+                </Button>
+              </td>
+            </motion.tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
 export default function Members() {
   const { data: members = [], isLoading } = useMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
 
-  const POLE_ANIM = ['responsable', 'senior', 'animateur']
-  const POLE_MJ   = ['responsable_mj', 'mj_senior', 'mj']
-
-  const poleAnimMembers = members.filter((m) => POLE_ANIM.includes(m.role))
-  const poleMjMembers   = members.filter((m) => POLE_MJ.includes(m.role))
+  const poleAnimMembers = sortByRole(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), ANIM_ROLE_ORDER)
+  const poleMjMembers   = sortByRole(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)),   MJ_ROLE_ORDER)
 
   const stats = {
     total: members.length,
@@ -94,7 +198,7 @@ export default function Members() {
         <p className="text-sm text-white/40 mt-0.5">Gestion de l'équipe</p>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total', value: stats.total, color: 'text-white' },
@@ -109,114 +213,27 @@ export default function Members() {
         ))}
       </div>
 
-      {/* Table */}
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14" />)}
         </div>
       ) : (
-        <GlassCard className="overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                {['Membre', 'Rôle', 'Anim. (sem/tot)', 'Heures (sem/tot)', 'Quota', 'Absence', ''].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-              {[
-                { label: 'Pôle Animation', group: poleAnimMembers, color: 'text-violet-400' },
-                { label: 'Pôle MJ', group: poleMjMembers, color: 'text-red-400' },
-              ].map(({ label, group, color }) => (
-                <tbody key={label}>
-                  <tr>
-                    <td colSpan={7} className="px-4 pt-4 pb-1">
-                      <p className={`text-[11px] font-semibold uppercase tracking-widest ${color}`}>{label}</p>
-                    </td>
-                  </tr>
-                  {group.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-3 text-xs text-white/20">Aucun membre</td>
-                    </tr>
-                  )}
-                  {group.map((m, i) => {
-                    const quotaMax = m.weeklyStats.quotaMax
-                    const quota = m.weeklyStats.animationsCreated
-                    const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
-                    return (
-                      <motion.tr
-                        key={m.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.02 }}
-                        className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
-                            <span className="text-sm font-medium text-white/90">{m.username}</span>
-                            {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400" />}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
-                        <td className="px-4 py-3 text-sm text-white/60">
-                          <span className="text-white/90 font-medium">{m.weeklyStats.animationsCreated}</span>
-                          <span className="text-white/30"> / {m.totalStats.animationsCreated}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-white/60">
-                          <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
-                          <span className="text-white/30"> / {(m.totalStats.hoursAnimated / 60).toFixed(1)}h</span>
-                        </td>
-                        <td className="px-4 py-3 w-32">
-                          {quotaMax === null ? (
-                            <span className="text-xs text-white/30">Illimité</span>
-                          ) : (
-                            <div>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span className="text-white/60">{quota}/{quotaMax}</span>
-                              </div>
-                              <Progress
-                                value={quotaPct}
-                                className="h-1"
-                                indicatorClassName={
-                                  quotaPct >= 100
-                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                                    : quotaPct < 40
-                                    ? 'bg-gradient-to-r from-red-400 to-orange-400'
-                                    : undefined
-                                }
-                              />
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {m.isAbsent ? (
-                            <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">Absent</span>
-                          ) : (
-                            <span className="text-xs text-white/20">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button variant="destructive" size="sm" onClick={() => setRemovingMember(m)} className="text-xs gap-1.5 h-7">
-                            <UserX className="h-3 w-3" />
-                            Retirer
-                          </Button>
-                        </td>
-                      </motion.tr>
-                    )
-                  })}
-                </tbody>
-              ))}
-          </table>
-          {members.length === 0 && (
-            <p className="text-center text-white/30 text-sm py-12">Aucun membre</p>
-          )}
-        </GlassCard>
+        <Tabs defaultValue="animation">
+          <TabsList>
+            <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
+            <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="animation">
+            <GlassCard className="overflow-hidden">
+              <MemberTable members={poleAnimMembers} onRemove={setRemovingMember} />
+            </GlassCard>
+          </TabsContent>
+          <TabsContent value="mj">
+            <GlassCard className="overflow-hidden">
+              <MemberTable members={poleMjMembers} onRemove={setRemovingMember} />
+            </GlassCard>
+          </TabsContent>
+        </Tabs>
       )}
 
       {removingMember && (

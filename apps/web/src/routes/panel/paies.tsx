@@ -8,8 +8,22 @@ import { GlassCard } from '@/components/shared/GlassCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils/cn'
 import type { PaiesEntry } from '@/types/database'
+
+const ANIM_ROLE_ORDER = ['senior', 'animateur']
+const MJ_ROLE_ORDER   = ['mj_senior', 'mj']
+
+function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
+  return [...entries].sort((a, b) => {
+    const ia = roleOrder.indexOf(a.role)
+    const ib = roleOrder.indexOf(b.role)
+    if (ia !== ib) return ia - ib
+    if (a.quotaFilled !== b.quotaFilled) return a.quotaFilled ? -1 : 1
+    return b.remuneration - a.remuneration || a.username.localeCompare(b.username)
+  })
+}
 
 function formatMin(min: number): string {
   if (min === 0) return '0 min'
@@ -144,22 +158,12 @@ export default function Paies() {
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
 
-  const POLE_ANIM_ROLES = ['senior', 'animateur']
-  const POLE_MJ_ROLES   = ['mj_senior', 'mj']
-
-  function sortEntries(entries: PaiesEntry[]) {
-    return [...entries].sort((a, b) => {
-      if (a.quotaFilled !== b.quotaFilled) return a.quotaFilled ? -1 : 1
-      return b.remuneration - a.remuneration || a.username.localeCompare(b.username)
-    })
-  }
-
   const poleAnim = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => POLE_ANIM_ROLES.includes(e.role)))
+    sortEntries((data?.entries ?? []).filter((e) => ANIM_ROLE_ORDER.includes(e.role)), ANIM_ROLE_ORDER)
   , [data])
 
   const poleMj = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => POLE_MJ_ROLES.includes(e.role)))
+    sortEntries((data?.entries ?? []).filter((e) => MJ_ROLE_ORDER.includes(e.role)), MJ_ROLE_ORDER)
   , [data])
 
   const totals = useMemo(() => {
@@ -288,78 +292,79 @@ export default function Paies() {
         </div>
       </div>
 
-      {/* Table */}
-      <GlassCard className="overflow-hidden">
-        {error ? (
-          <div className="flex items-center gap-2 p-6 text-red-400 text-sm">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Impossible de charger les données.
-          </div>
-        ) : isLoading ? (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Animations</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">P / M / G</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
-                  <th className="py-3 pr-4 text-xs font-medium text-white/30 text-right">Rémunération</th>
-                </tr>
-              </thead>
-              {[
-                { label: 'Pôle Animation', entries: poleAnim, color: 'text-violet-400' },
-                { label: 'Pôle MJ',        entries: poleMj,   color: 'text-red-400' },
-              ].map(({ label, entries, color }) => (
-                <tbody key={label}>
-                  <tr>
-                    <td colSpan={8} className="px-4 pt-5 pb-1">
-                      <p className={`text-[11px] font-semibold uppercase tracking-widest ${color}`}>{label}</p>
-                    </td>
-                  </tr>
-                  {entries.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-3 text-xs text-white/20">Aucune activité cette semaine.</td>
-                    </tr>
-                  )}
-                  {entries.map((entry, i) => (
-                    <EntryRow key={entry.id} entry={entry} rank={i + 1} />
-                  ))}
-                </tbody>
-              ))}
-              {totals && (
-                <tfoot>
-                  <tr className="border-t border-white/[0.08] bg-white/[0.01]">
-                    <td />
-                    <td className="py-3 pr-4 text-xs font-medium text-white/50">Total</td>
-                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">{totals.totalAnimations} uniques</td>
-                    <td />
-                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">
-                      {formatMin(data?.uniqueAnimationsTotalMin ?? 0)}
-                    </td>
-                    <td />
-                    <td className="py-3 pr-4 text-center text-xs font-medium text-white/50">
-                      {formatMin(totals.totalMin)}
-                    </td>
-                    <td className="py-3 pr-4 text-right text-sm font-bold text-emerald-400">
-                      {formatMoney(totals.totalRemuneration)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        )}
-      </GlassCard>
+      {/* Tables */}
+      {error ? (
+        <GlassCard className="flex items-center gap-2 p-6 text-red-400 text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Impossible de charger les données.
+        </GlassCard>
+      ) : isLoading ? (
+        <GlassCard className="p-4 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-lg" />
+          ))}
+        </GlassCard>
+      ) : (
+        <Tabs defaultValue="animation">
+          <TabsList>
+            <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>
+            <TabsTrigger value="mj">Pôle MJ ({poleMj.length})</TabsTrigger>
+          </TabsList>
+          {[
+            { key: 'animation', entries: poleAnim },
+            { key: 'mj',        entries: poleMj },
+          ].map(({ key, entries }) => {
+            const poleTotal = entries.reduce((s, e) => s + e.remuneration, 0)
+            return (
+              <TabsContent key={key} value={key}>
+                <GlassCard className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Animations</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">P / M / G</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-right">Rémunération</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-12 text-center text-sm text-white/20">
+                              Aucune activité cette semaine
+                            </td>
+                          </tr>
+                        ) : (
+                          entries.map((entry, i) => (
+                            <EntryRow key={entry.id} entry={entry} rank={i + 1} />
+                          ))
+                        )}
+                      </tbody>
+                      {entries.length > 0 && (
+                        <tfoot>
+                          <tr className="border-t border-white/[0.08] bg-white/[0.01]">
+                            <td />
+                            <td className="py-3 pr-4 text-xs font-medium text-white/50">Total</td>
+                            <td colSpan={5} />
+                            <td className="py-3 pr-4 text-right text-sm font-bold text-emerald-400">
+                              {formatMoney(poleTotal)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </GlassCard>
+              </TabsContent>
+            )
+          })}
+        </Tabs>
+      )}
     </div>
   )
 }

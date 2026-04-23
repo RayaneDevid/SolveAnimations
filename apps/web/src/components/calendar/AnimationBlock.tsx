@@ -9,6 +9,7 @@ const TZ = 'Europe/Paris'
 
 const PX_PER_MIN = 1.2
 const SESSION_START_MIN = 18 * 60
+const MIN_DEBRIEF_HEIGHT = 18
 
 const TYPE_LABELS: Record<string, string> = {
   petite: 'Petite',
@@ -62,13 +63,15 @@ interface AnimationBlockProps {
 export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockProps) {
   const prep = animation.prep_time_min ?? 0
   const animStartMin = minutesFromSessionTop(new Date(animation.scheduled_at))
-  const totalMin = prep + animation.planned_duration_min
 
   // Block starts at debrief start (or animation start if no debrief)
   const topMin = animStartMin - prep
   const top = topMin * PX_PER_MIN
-  const totalHeight = Math.max(totalMin * PX_PER_MIN, 28)
-  const debriefHeight = prep * PX_PER_MIN
+
+  // Debrief zone always tall enough to show its label
+  const debriefHeight = prep > 0 ? Math.max(prep * PX_PER_MIN, MIN_DEBRIEF_HEIGHT) : 0
+  const animNaturalHeight = animation.planned_duration_min * PX_PER_MIN
+  const totalHeight = Math.max(debriefHeight + animNaturalHeight, 28)
   const animHeight = totalHeight - debriefHeight
 
   const colorClass = VILLAGE_COLORS[animation.village] ?? VILLAGE_COLORS.autre
@@ -102,7 +105,7 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
       {/* Debrief zone */}
       {prep > 0 && (
         <div
-          className="shrink-0 border-b border-current/20 px-1.5 flex items-center gap-1 bg-black/20 overflow-hidden"
+          className="shrink-0 border-b border-current/20 px-1.5 flex items-center gap-1 bg-black/20"
           style={{ height: debriefHeight }}
         >
           <p className="text-[9px] opacity-60 leading-none truncate">

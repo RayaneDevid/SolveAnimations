@@ -5,6 +5,7 @@ import { fr } from 'date-fns/locale'
 import { toZonedTime } from 'date-fns-tz'
 import { getCurrentWeekBounds } from '@/lib/utils/week'
 import { Button } from '@/components/ui/button'
+import { useAnimation } from '@/hooks/queries/useAnimations'
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -17,11 +18,20 @@ const ROUTE_LABELS: Record<string, string> = {
   members: 'Membres',
   villages: 'Graphique villages',
   new: 'Nouvelle animation',
+  edit: 'Modifier',
 }
 
-function getPageLabel(pathname: string): string {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function usePageLabel(): string {
+  const { pathname } = useLocation()
   const segments = pathname.split('/').filter(Boolean)
   const last = segments[segments.length - 1]
+
+  const animId = UUID_RE.test(last) && segments.includes('animations') ? last : ''
+  const { data } = useAnimation(animId)
+
+  if (animId) return data?.animation?.title ?? '…'
   return ROUTE_LABELS[last] ?? last
 }
 
@@ -40,8 +50,7 @@ function WeekIndicator() {
 }
 
 export function Topbar() {
-  const location = useLocation()
-  const pageLabel = getPageLabel(location.pathname)
+  const pageLabel = usePageLabel()
 
   return (
     <header className="flex items-center justify-between h-14 px-6 border-b border-white/[0.06] bg-[#0A0B0F]/80 backdrop-blur-sm">

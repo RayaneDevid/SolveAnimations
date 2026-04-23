@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { formatDateTime } from '@/lib/utils/format'
+import { formatDateTime, formatTime } from '@/lib/utils/format'
 import { ROLE_LABELS } from '@/lib/config/discord'
 
 const QUOTA_MAX: Record<string, number | null> = {
@@ -191,6 +191,11 @@ export default function Dashboard() {
                       {anim.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {(anim.prep_time_min ?? 0) > 0 && (
+                        <span className="text-xs text-white/30">
+                          Débrief {formatTime(new Date(new Date(anim.scheduled_at).getTime() - (anim.prep_time_min ?? 0) * 60_000).toISOString())}
+                        </span>
+                      )}
                       <span className="text-xs text-white/40">{formatDateTime(anim.scheduled_at)}</span>
                       <ServerBadge server={anim.server} />
                       <VillageBadge village={anim.village} />

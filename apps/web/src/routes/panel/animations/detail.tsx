@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
-  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus,
+  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
@@ -246,6 +246,19 @@ export default function AnimationDetail() {
         </div>
         <StatusBadge status={animation.status} />
       </div>
+
+      {/* Pending validation banner */}
+      {animation.status === 'pending_validation' && (
+        <div className="flex items-center gap-3 px-5 py-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+          <Hourglass className="h-5 w-5 text-amber-400 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-300">En cours de validation</p>
+            <p className="text-xs text-amber-400/70 mt-0.5">
+              Cette animation est en attente de validation par un Responsable avant d'être ouverte aux inscriptions.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Meta bar */}
       <GlassCard className="p-4">

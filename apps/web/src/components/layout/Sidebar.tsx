@@ -123,7 +123,7 @@ export function Sidebar() {
           axis="y"
           values={visibleKeys}
           onReorder={handleReorder}
-          className="space-y-0.5"
+          className={sidebarCollapsed ? 'space-y-2' : 'space-y-0.5'}
           as="ul"
         >
           {visibleItems.map((item) => {
@@ -138,14 +138,14 @@ export function Sidebar() {
                         to={item.to}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center justify-center h-9 w-full rounded-lg transition-colors duration-150',
+                            'flex items-center justify-center h-11 w-full rounded-xl transition-colors duration-150',
                             isActive
                               ? 'bg-cyan-400/10 text-cyan-400'
                               : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]',
                           )
                         }
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-5 w-5" />
                       </NavLink>
                     </TooltipTrigger>
                     <TooltipContent side="right">{item.label}</TooltipContent>

@@ -102,14 +102,12 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
       {/* Debrief zone */}
       {prep > 0 && (
         <div
-          className="shrink-0 border-b border-current/20 px-1.5 flex items-center gap-1 bg-black/20"
+          className="shrink-0 border-b border-current/20 px-1.5 flex items-center gap-1 bg-black/20 overflow-hidden"
           style={{ height: debriefHeight }}
         >
-          {debriefHeight >= 12 && (
-            <p className="text-[9px] opacity-60 leading-none truncate">
-              Débrief {debriefStartTime(new Date(animation.scheduled_at), prep)}
-            </p>
-          )}
+          <p className="text-[9px] opacity-60 leading-none truncate">
+            Débrief {debriefStartTime(new Date(animation.scheduled_at), prep)}
+          </p>
         </div>
       )}
 

@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
     `, { count: 'exact' })
     .order('scheduled_at', { ascending: false })
 
-  if (status)     query = query.eq('status', status)
+  if (Array.isArray(status) && status.length > 0) query = query.in('status', status)
+  else if (status) query = query.eq('status', status)
   if (server)     query = query.eq('server', server)
   if (village)    query = query.eq('village', village)
   if (type)       query = query.eq('type', type)

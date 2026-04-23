@@ -156,7 +156,9 @@ export default function AnimationDetail() {
   const { animation, participants } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasRole(role, 'responsable')
-  const isParticipant = participants.some((p) => p.user_id === user.id)
+  const isParticipant = participants.some(
+    (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
+  )
 
   const validated = participants.filter((p) => p.status === 'validated')
   const pending = participants.filter((p) => p.status === 'pending')

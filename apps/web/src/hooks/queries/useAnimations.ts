@@ -6,7 +6,7 @@ import type { AnimationStatus } from '@/types/database'
 import type { AnimationServer, Village, AnimationType } from '@/lib/schemas/animation'
 
 export interface AnimationFilters {
-  status?: AnimationStatus
+  status?: AnimationStatus | AnimationStatus[]
   server?: AnimationServer
   village?: Village
   type?: AnimationType

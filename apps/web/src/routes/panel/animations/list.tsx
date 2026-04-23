@@ -21,10 +21,13 @@ const TYPE_STYLES: Record<string, string> = {
   grande: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
 }
 
-const TABS: Array<{ value: AnimationStatus | 'all'; label: string }> = [
+type TabValue = 'active' | 'all' | 'finished' | 'rejected'
+
+const ACTIVE_STATUSES: AnimationStatus[] = ['open', 'preparing', 'running']
+
+const TABS: Array<{ value: TabValue; label: string }> = [
+  { value: 'active', label: 'À venir & en cours' },
   { value: 'all', label: 'Toutes' },
-  { value: 'open', label: 'À venir' },
-  { value: 'running', label: 'En cours' },
   { value: 'finished', label: 'Terminées' },
   { value: 'rejected', label: 'Refusées' },
 ]
@@ -87,11 +90,16 @@ function AnimationCard({ anim }: { anim: Animation }) {
 }
 
 export default function AnimationsList() {
-  const [activeTab, setActiveTab] = useState<AnimationStatus | 'all'>('all')
+  const [activeTab, setActiveTab] = useState<TabValue>('active')
 
-  const { data, isLoading } = useAnimations(
-    activeTab !== 'all' ? { status: activeTab } : {},
-  )
+  const filters =
+    activeTab === 'all'
+      ? {}
+      : activeTab === 'active'
+        ? { status: ACTIVE_STATUSES }
+        : { status: activeTab as AnimationStatus }
+
+  const { data, isLoading } = useAnimations(filters)
 
   const animations = data?.animations ?? []
 

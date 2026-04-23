@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
     .select('*')
+    .eq('is_active', true)
     .order('username', { ascending: true })
 
   if (profilesError) return errorResponse('INTERNAL_ERROR', profilesError.message)

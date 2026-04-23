@@ -239,10 +239,11 @@ export function useCorrectFinishedAnimation() {
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (userId: string) =>
-      invokeEdge<object>('members-remove-access', { user_id: userId }),
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      invokeEdge<object>('members-remove-access', { user_id: userId, reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.members.list })
+      qc.invalidateQueries({ queryKey: queryKeys.members.former })
     },
   })
 }

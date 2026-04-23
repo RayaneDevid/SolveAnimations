@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Users, UserX, CalendarOff, AlertTriangle } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { useMembers } from '@/hooks/queries/useAnimations'
+import { formatDistanceToNow } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
 import { useRemoveMemberAccess } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
@@ -13,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { MemberEntry } from '@/types/database'
+import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
 const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
 const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
@@ -26,6 +29,8 @@ function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
   })
 }
 
+// ─── Remove confirm modal ─────────────────────────────────────────────────────
+
 function RemoveConfirmModal({
   member,
   open,
@@ -36,14 +41,19 @@ function RemoveConfirmModal({
   onClose: () => void
 }) {
   const { mutateAsync, isPending } = useRemoveMemberAccess()
+  const [reason, setReason] = useState('')
 
   const handleConfirm = async () => {
+    if (reason.trim().length < 3) {
+      toast.error('La raison doit faire au moins 3 caractères')
+      return
+    }
     try {
-      await mutateAsync(member.id)
+      await mutateAsync({ userId: member.id, reason: reason.trim() })
       toast.success(`Accès de ${member.username} révoqué`)
       onClose()
-    } catch {
-      toast.error('Erreur lors de la révocation')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la révocation')
     }
   }
 
@@ -64,13 +74,30 @@ function RemoveConfirmModal({
               <RoleBadge role={member.role as never} />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-white/50 font-medium">Raison du retrait</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="ex. Viré du pôle, Inactivité prolongée…"
+              className="w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-red-500/50"
+            />
+          </div>
+
           <p className="text-sm text-white/60">
-            Cette action va retirer les rôles Discord de ce membre et supprimer son profil.
+            Le membre perdra ses rôles Discord et ne pourra plus se connecter.
+            Son historique est conservé en archive.
             L'action est <span className="text-red-400 font-medium">irréversible</span>.
           </p>
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>Annuler</Button>
-            <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
+            <Button variant="outline" onClick={onClose} disabled={isPending}>Annuler</Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={isPending || reason.trim().length < 3}
+            >
               {isPending ? 'Révocation...' : 'Confirmer le retrait'}
             </Button>
           </div>
@@ -79,6 +106,8 @@ function RemoveConfirmModal({
     </Dialog>
   )
 }
+
+// ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
   members,
@@ -174,8 +203,68 @@ function MemberTable({
   )
 }
 
+// ─── Former members table ─────────────────────────────────────────────────────
+
+function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
+  if (entries.length === 0) {
+    return <p className="text-center text-white/30 text-sm py-12">Aucun ancien membre</p>
+  }
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/[0.06]">
+          {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.'].map((h) => (
+            <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map((m, i) => (
+          <motion.tr
+            key={m.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: i * 0.02 }}
+            className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors opacity-70"
+          >
+            <td className="px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
+                <span className="text-sm font-medium text-white/70">{m.username}</span>
+              </div>
+            </td>
+            <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
+            <td className="px-4 py-3">
+              <span className="text-sm text-white/60 italic">
+                {m.deactivationReason ?? '—'}
+              </span>
+            </td>
+            <td className="px-4 py-3 text-sm text-white/40">
+              {m.deactivatedByUsername ?? '—'}
+            </td>
+            <td className="px-4 py-3 text-sm text-white/40 whitespace-nowrap">
+              {m.deactivatedAt
+                ? formatDistanceToNow(new Date(m.deactivatedAt), { addSuffix: true, locale: fr })
+                : '—'}
+            </td>
+            <td className="px-4 py-3 text-sm text-white/50">
+              {m.totalAnimationsCreated} anim · {(m.totalHoursAnimated / 60).toFixed(1)}h
+            </td>
+          </motion.tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function Members() {
   const { data: members = [], isLoading } = useMembers()
+  const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
 
   const poleAnimMembers = sortByRole(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), ANIM_ROLE_ORDER)
@@ -201,7 +290,7 @@ export default function Members() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, color: 'text-white' },
+          { label: 'Total actifs', value: stats.total, color: 'text-white' },
           { label: 'Pôle Animation', value: stats.poleAnim, color: 'text-violet-400' },
           { label: 'Pôle MJ', value: stats.poleMj, color: 'text-red-400' },
           { label: 'Absents', value: stats.absent, color: 'text-orange-400' },
@@ -222,15 +311,33 @@ export default function Members() {
           <TabsList>
             <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
             <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
+            <TabsTrigger value="former" className="flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5" />
+              Anciens membres {former.length > 0 && `(${former.length})`}
+            </TabsTrigger>
           </TabsList>
+
           <TabsContent value="animation">
             <GlassCard className="overflow-hidden">
               <MemberTable members={poleAnimMembers} onRemove={setRemovingMember} />
             </GlassCard>
           </TabsContent>
+
           <TabsContent value="mj">
             <GlassCard className="overflow-hidden">
               <MemberTable members={poleMjMembers} onRemove={setRemovingMember} />
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="former">
+            <GlassCard className="overflow-hidden">
+              {isLoadingFormer ? (
+                <div className="p-4 space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+                </div>
+              ) : (
+                <FormerMembersTable entries={former} />
+              )}
             </GlassCard>
           </TabsContent>
         </Tabs>

@@ -82,6 +82,26 @@ export function useMembers() {
   })
 }
 
+export interface FormerMemberEntry {
+  id: string
+  discordId: string
+  username: string
+  avatarUrl: string | null
+  role: string
+  deactivatedAt: string
+  deactivationReason: string | null
+  deactivatedByUsername: string | null
+  totalAnimationsCreated: number
+  totalHoursAnimated: number
+}
+
+export function useFormerMembers() {
+  return useQuery({
+    queryKey: queryKeys.members.former,
+    queryFn: () => invokeEdge<FormerMemberEntry[]>('members-former-list'),
+  })
+}
+
 export function useUserReports(userId: string) {
   return useQuery({
     queryKey: ['reports', 'user', userId] as const,

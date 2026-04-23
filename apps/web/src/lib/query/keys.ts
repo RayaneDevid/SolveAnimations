@@ -24,6 +24,7 @@ export const queryKeys = {
   leaderboard: (period: string) => ['leaderboard', period] as const,
   members: {
     list: ['members'] as const,
+    former: ['members', 'former'] as const,
   },
   calendar: {
     week: (weekStart: string) => ['calendar', weekStart] as const,

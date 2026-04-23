@@ -9,7 +9,7 @@ interface StatusBadgeProps {
 export const STATUS_LABELS: Record<AnimationStatus, string> = {
   pending_validation: 'En attente',
   open: 'Ouverte',
-  preparing: 'Préparation',
+  preparing: 'Débrief',
   running: 'En cours',
   finished: 'Terminée',
   rejected: 'Refusée',

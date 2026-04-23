@@ -157,7 +157,7 @@ export default function EditAnimation() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Temps de préparation (min)</Label>
+              <Label>Durée du débrief (min)</Label>
               <Input
                 type="number"
                 min={0}

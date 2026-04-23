@@ -7,12 +7,8 @@ import { cn } from '@/lib/utils/cn'
 
 const TZ = 'Europe/Paris'
 
-// Total session height in pixels per minute
 const PX_PER_MIN = 1.2
-
-// Session start = 18:00
 const SESSION_START_MIN = 18 * 60
-
 
 const TYPE_LABELS: Record<string, string> = {
   petite: 'Petite',
@@ -48,8 +44,13 @@ function timeToMinFromMidnight(date: Date): number {
 function minutesFromSessionTop(scheduledAt: Date): number {
   const mins = timeToMinFromMidnight(scheduledAt)
   if (mins >= SESSION_START_MIN) return mins - SESSION_START_MIN
-  // after midnight: 18:00 = 0, 00:00 = 6*60 = 360
   return 24 * 60 - SESSION_START_MIN + mins
+}
+
+// Returns a time string `prep_time_min` minutes before scheduledAt
+function debriefStartTime(scheduledAt: Date, prepMin: number): string {
+  const ms = new Date(scheduledAt).getTime() - prepMin * 60 * 1000
+  return formatTime(new Date(ms).toISOString())
 }
 
 interface AnimationBlockProps {
@@ -59,55 +60,78 @@ interface AnimationBlockProps {
 }
 
 export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockProps) {
-  const topMin = minutesFromSessionTop(new Date(animation.scheduled_at))
-  const heightMin = animation.planned_duration_min
+  const prep = animation.prep_time_min ?? 0
+  const animStartMin = minutesFromSessionTop(new Date(animation.scheduled_at))
+  const totalMin = prep + animation.planned_duration_min
 
+  // Block starts at debrief start (or animation start if no debrief)
+  const topMin = animStartMin - prep
   const top = topMin * PX_PER_MIN
-  const height = Math.max(heightMin * PX_PER_MIN, 28) // min height 28px
+  const totalHeight = Math.max(totalMin * PX_PER_MIN, 28)
+  const debriefHeight = prep * PX_PER_MIN
+  const animHeight = totalHeight - debriefHeight
 
   const colorClass = VILLAGE_COLORS[animation.village] ?? VILLAGE_COLORS.autre
 
-  const GAP = 2 // px gap between lanes
-  const EDGE = 2 // px margin from column edge
+  const GAP = 2
+  const EDGE = 2
   const widthPct = 100 / totalLanes
   const leftPct = (lane * 100) / totalLanes
   const leftInset = lane === 0 ? EDGE : GAP / 2
   const rightInset = lane === totalLanes - 1 ? EDGE : GAP / 2
 
+  const validated = animation.validated_participants_count ?? 0
+  const required = animation.required_participants
+  const isFull = validated >= required
+
   return (
     <Link
       to={`/panel/animations/${animation.id}`}
       className={cn(
-        'absolute rounded-lg border px-1.5 py-1 overflow-hidden group',
+        'absolute rounded-lg border overflow-hidden group flex flex-col',
         'hover:brightness-125 transition-all duration-150 cursor-pointer',
         colorClass,
       )}
       style={{
         top,
-        height,
+        height: totalHeight,
         left: `calc(${leftPct}% + ${leftInset}px)`,
         width: `calc(${widthPct}% - ${leftInset + rightInset}px)`,
       }}
     >
-      <p className="text-[10px] font-semibold leading-tight truncate">{animation.title}</p>
-      <p className="text-[9px] opacity-70 leading-tight truncate">
-        {formatTime(animation.scheduled_at)}
-      </p>
-      {height >= 52 && (
-        <p className="text-[9px] opacity-60 leading-tight truncate mt-0.5">
-          {animation.server} · {TYPE_LABELS[animation.type]}
-        </p>
+      {/* Debrief zone */}
+      {prep > 0 && (
+        <div
+          className="shrink-0 border-b border-current/20 px-1.5 flex items-center gap-1 bg-black/20"
+          style={{ height: debriefHeight }}
+        >
+          {debriefHeight >= 12 && (
+            <p className="text-[9px] opacity-60 leading-none truncate">
+              Débrief {debriefStartTime(new Date(animation.scheduled_at), prep)}
+            </p>
+          )}
+        </div>
       )}
-      {height >= 68 && (
-        <p className="text-[9px] opacity-60 leading-tight truncate">
-          {VILLAGE_LABELS[animation.village]} · {animation.required_participants} joueurs
+
+      {/* Animation zone */}
+      <div className="flex-1 px-1.5 py-1 overflow-hidden flex flex-col gap-0.5 min-h-0">
+        <p className="text-[10px] font-semibold leading-tight truncate">
+          {animation.title}{animation.creator ? ` · ${animation.creator.username}` : ''}
         </p>
-      )}
-      {height >= 84 && animation.creator && (
-        <p className="text-[9px] opacity-50 leading-tight truncate">
-          {animation.creator.username}
+        <p className="text-[9px] opacity-70 leading-tight truncate">
+          {formatTime(animation.scheduled_at)}
         </p>
-      )}
+        {animHeight >= 40 && (
+          <p className="text-[9px] opacity-60 leading-tight truncate">
+            {animation.server} · {TYPE_LABELS[animation.type]}
+          </p>
+        )}
+        {animHeight >= 56 && (
+          <p className={cn('text-[9px] leading-tight truncate', isFull ? 'opacity-90 font-semibold' : 'opacity-60')}>
+            {VILLAGE_LABELS[animation.village]} · {isFull ? 'Complet' : `${validated}/${required} joueurs`}
+          </p>
+        )}
+      </div>
     </Link>
   )
 }

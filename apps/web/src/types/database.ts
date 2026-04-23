@@ -54,6 +54,7 @@ export interface Animation {
   created_at: string
   updated_at: string
   creator?: Profile
+  validated_participants_count?: number
 }
 
 export interface AnimationParticipant {

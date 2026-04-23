@@ -33,9 +33,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS_MAP: Record<string, NavItem> = {
+  '/panel/calendar': { to: '/panel/calendar', label: 'Calendrier', icon: CalendarDays },
   '/panel/dashboard': { to: '/panel/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   '/panel/animations': { to: '/panel/animations', label: 'Animations', icon: Sword },
-  '/panel/calendar': { to: '/panel/calendar', label: 'Calendrier', icon: CalendarDays },
   '/panel/reports': { to: '/panel/reports', label: 'Mes rapports', icon: FileText },
   '/panel/absences': { to: '/panel/absences', label: 'Mes absences', icon: CalendarOff },
   '/panel/validation': { to: '/panel/validation', label: 'Validation', icon: CheckSquare, requiresRole: 'responsable' },

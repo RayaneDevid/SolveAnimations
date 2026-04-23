@@ -51,5 +51,24 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', error.message)
   }
 
-  return jsonResponse({ animations, total: count ?? 0, page, pageSize })
+  // Fetch validated participant counts for this page
+  const ids = (animations ?? []).map((a: { id: string }) => a.id)
+  let validatedCounts: Record<string, number> = {}
+  if (ids.length > 0) {
+    const { data: participantRows } = await db
+      .from('animation_participants')
+      .select('animation_id')
+      .in('animation_id', ids)
+      .eq('status', 'validated')
+    for (const row of participantRows ?? []) {
+      validatedCounts[row.animation_id] = (validatedCounts[row.animation_id] ?? 0) + 1
+    }
+  }
+
+  const animationsWithCounts = (animations ?? []).map((a: Record<string, unknown>) => ({
+    ...a,
+    validated_participants_count: validatedCounts[a.id as string] ?? 0,
+  }))
+
+  return jsonResponse({ animations: animationsWithCounts, total: count ?? 0, page, pageSize })
 })

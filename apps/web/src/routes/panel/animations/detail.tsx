@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { formatDateTime, formatDuration } from '@/lib/utils/format'
+import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
 import type { AnimationParticipant } from '@/types/database'
 
@@ -181,7 +181,7 @@ export default function AnimationDetail() {
   const handleStartPrep = async () => {
     try {
       await startPrep(animation.id)
-      toast.success('Préparation démarrée !')
+      toast.success('Débrief démarré !')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
     }
@@ -190,7 +190,7 @@ export default function AnimationDetail() {
   const handleStopPrep = async () => {
     try {
       await stopPrep(animation.id)
-      toast.success('Préparation terminée ! Lance maintenant l\'animation.')
+      toast.success('Débrief terminé ! Lance maintenant l\'animation.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
     }
@@ -257,12 +257,22 @@ export default function AnimationDetail() {
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2 text-sm text-white/60">
             <Calendar className="h-4 w-4 text-cyan-400" />
-            {formatDateTime(animation.scheduled_at)}
+            {animation.prep_time_min > 0 ? (
+              <span>
+                <span className="text-white/40">Débrief </span>
+                {formatTime(new Date(new Date(animation.scheduled_at).getTime() - animation.prep_time_min * 60_000).toISOString())}
+                <span className="text-white/30 mx-1">·</span>
+                <span className="text-white/40">Animation </span>
+                {formatTime(animation.scheduled_at)}
+              </span>
+            ) : (
+              formatDateTime(animation.scheduled_at)
+            )}
           </div>
           <div className="flex items-center gap-2 text-sm text-white/60">
             <Clock className="h-4 w-4 text-violet-400" />
             {formatDuration(animation.planned_duration_min)}
-            {animation.prep_time_min > 0 && ` · Prépa ${formatDuration(animation.prep_time_min)}`}
+            {animation.prep_time_min > 0 && ` · Débrief ${formatDuration(animation.prep_time_min)}`}
           </div>
           <ServerBadge server={animation.server} />
           <VillageBadge village={animation.village} />
@@ -358,14 +368,14 @@ export default function AnimationDetail() {
                     className="w-full gap-2"
                   >
                     <Timer className="h-4 w-4" />
-                    Démarrer la préparation
+                    Démarrer le débrief
                   </Button>
                 )}
 
                 {/* ── Prep timer: running ── */}
                 {animation.status === 'preparing' && isCreator && (
                   <>
-                    <ElapsedTimer since={animation.prep_started_at!} label="Préparation en cours" />
+                    <ElapsedTimer since={animation.prep_started_at!} label="Débrief en cours" />
                     <Button
                       onClick={handleStopPrep}
                       disabled={stoppingPrep}
@@ -373,7 +383,7 @@ export default function AnimationDetail() {
                       className="w-full gap-2"
                     >
                       <Square className="h-4 w-4" />
-                      Arrêter la préparation
+                      Arrêter le débrief
                     </Button>
                   </>
                 )}
@@ -453,7 +463,7 @@ export default function AnimationDetail() {
               </div>
               {animation.actual_prep_time_min != null && (
                 <div>
-                  <p className="text-xs text-white/40 mb-0.5">Préparation</p>
+                  <p className="text-xs text-white/40 mb-0.5">Débrief</p>
                   <p className="text-lg font-semibold text-white/70">
                     {formatDuration(animation.actual_prep_time_min)}
                   </p>

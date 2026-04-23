@@ -24,11 +24,15 @@ function computeLayout(anims: Animation[]): AnimationLayout[] {
   if (anims.length === 0) return []
 
   const events = anims
-    .map((a) => ({
-      animation: a,
-      start: new Date(a.scheduled_at).getTime(),
-      end: new Date(a.scheduled_at).getTime() + a.planned_duration_min * 60 * 1000,
-    }))
+    .map((a) => {
+      const prep = (a.prep_time_min ?? 0) * 60 * 1000
+      const scheduledMs = new Date(a.scheduled_at).getTime()
+      return {
+        animation: a,
+        start: scheduledMs - prep,
+        end: scheduledMs + a.planned_duration_min * 60 * 1000,
+      }
+    })
     .sort((a, b) => a.start - b.start)
 
   // Split into clusters of overlapping animations (connected components)

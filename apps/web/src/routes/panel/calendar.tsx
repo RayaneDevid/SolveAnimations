@@ -1,8 +1,11 @@
+import { Link } from 'react-router'
+import { Plus } from 'lucide-react'
 import { useAnimations } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { WeekGrid } from '@/components/calendar/WeekGrid'
 import { WeekNavigator } from '@/components/calendar/WeekNavigator'
 import { GlassCard } from '@/components/shared/GlassCard'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Calendar() {
@@ -25,14 +28,22 @@ export default function Calendar() {
             Journées 18h → 03h/04h, semaine samedi → samedi
           </p>
         </div>
-        <WeekNavigator
-          weekStart={bounds.start}
-          weekEnd={bounds.end}
-          onPrev={goPrev}
-          onNext={goNext}
-          onToday={goToday}
-          isCurrentWeek={isCurrentWeek()}
-        />
+        <div className="flex items-center gap-3">
+          <WeekNavigator
+            weekStart={bounds.start}
+            weekEnd={bounds.end}
+            onPrev={goPrev}
+            onNext={goNext}
+            onToday={goToday}
+            isCurrentWeek={isCurrentWeek()}
+          />
+          <Button asChild size="sm" className="gap-1.5">
+            <Link to="/panel/animations/new">
+              <Plus className="h-3.5 w-3.5" />
+              Créer
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <GlassCard className="overflow-hidden">

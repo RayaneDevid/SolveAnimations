@@ -144,14 +144,23 @@ export default function Paies() {
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
 
-  const sorted = useMemo(() => {
-    if (!data) return []
-    return [...data.entries].sort((a, b) => {
-      // Quota filled first, then by remuneration desc, then alphabetical
+  const POLE_ANIM_ROLES = ['senior', 'animateur']
+  const POLE_MJ_ROLES   = ['mj_senior', 'mj']
+
+  function sortEntries(entries: PaiesEntry[]) {
+    return [...entries].sort((a, b) => {
       if (a.quotaFilled !== b.quotaFilled) return a.quotaFilled ? -1 : 1
       return b.remuneration - a.remuneration || a.username.localeCompare(b.username)
     })
-  }, [data])
+  }
+
+  const poleAnim = useMemo(() =>
+    sortEntries((data?.entries ?? []).filter((e) => POLE_ANIM_ROLES.includes(e.role)))
+  , [data])
+
+  const poleMj = useMemo(() =>
+    sortEntries((data?.entries ?? []).filter((e) => POLE_MJ_ROLES.includes(e.role)))
+  , [data])
 
   const totals = useMemo(() => {
     if (!data) return null
@@ -307,19 +316,27 @@ export default function Paies() {
                   <th className="py-3 pr-4 text-xs font-medium text-white/30 text-right">Rémunération</th>
                 </tr>
               </thead>
-              <tbody>
-                {sorted.map((entry, i) => (
-                  <EntryRow key={entry.id} entry={entry} rank={i + 1} />
-                ))}
-                {sorted.length === 0 && (
+              {[
+                { label: 'Pôle Animation', entries: poleAnim, color: 'text-violet-400' },
+                { label: 'Pôle MJ',        entries: poleMj,   color: 'text-red-400' },
+              ].map(({ label, entries, color }) => (
+                <tbody key={label}>
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-sm text-white/30">
-                      Aucune animation terminée cette semaine.
+                    <td colSpan={8} className="px-4 pt-5 pb-1">
+                      <p className={`text-[11px] font-semibold uppercase tracking-widest ${color}`}>{label}</p>
                     </td>
                   </tr>
-                )}
-              </tbody>
-              {sorted.length > 0 && totals && (
+                  {entries.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-3 text-xs text-white/20">Aucune activité cette semaine.</td>
+                    </tr>
+                  )}
+                  {entries.map((entry, i) => (
+                    <EntryRow key={entry.id} entry={entry} rank={i + 1} />
+                  ))}
+                </tbody>
+              ))}
+              {totals && (
                 <tfoot>
                   <tr className="border-t border-white/[0.08] bg-white/[0.01]">
                     <td />

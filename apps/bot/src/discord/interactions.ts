@@ -19,7 +19,7 @@ async function getResponsableProfile(discordId: string) {
     .select('id, role, username')
     .eq('discord_id', discordId)
     .single();
-  if (!data || data.role !== 'responsable') return null;
+  if (!data || (data.role !== 'responsable' && data.role !== 'responsable_mj')) return null;
   return data;
 }
 

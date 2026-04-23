@@ -47,7 +47,7 @@ export default function App() {
           <Route
             path="validation"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Validation />
               </RoleGate>
             }
@@ -55,7 +55,7 @@ export default function App() {
           <Route
             path="leaderboard"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Leaderboard />
               </RoleGate>
             }
@@ -63,7 +63,7 @@ export default function App() {
           <Route
             path="members"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Members />
               </RoleGate>
             }
@@ -71,7 +71,7 @@ export default function App() {
           <Route
             path="casiers"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Casiers />
               </RoleGate>
             }
@@ -79,7 +79,7 @@ export default function App() {
           <Route
             path="paies"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Paies />
               </RoleGate>
             }
@@ -87,7 +87,7 @@ export default function App() {
           <Route
             path="villages"
             element={
-              <RoleGate allow={['responsable']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Villages />
               </RoleGate>
             }

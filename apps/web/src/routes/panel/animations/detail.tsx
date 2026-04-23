@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
-  Check, X, UserPlus, Pencil, Ban, Timer,
+  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 import {
   useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
   useStopAnimation, useCancelAnimation,
-  useApplyParticipant, useDecideParticipant,
+  useApplyParticipant, useDecideParticipant, useRemoveParticipant,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -19,10 +19,8 @@ import { ServerBadge } from '@/components/shared/ServerBadge'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
 import type { AnimationParticipant } from '@/types/database'
@@ -55,19 +53,37 @@ function ElapsedTimer({ since, label }: { since: string; label: string }) {
 function ParticipantRow({
   p,
   canDecide,
+  canRemove,
+  isSelf,
   animationId,
 }: {
   p: AnimationParticipant
   canDecide: boolean
+  canRemove: boolean
+  isSelf: boolean
   animationId: string
 }) {
-  const { mutateAsync: decide, isPending } = useDecideParticipant()
+  const { mutateAsync: decide, isPending: deciding } = useDecideParticipant()
+  const { mutateAsync: remove, isPending: removing } = useRemoveParticipant()
 
   const handleDecide = async (decision: 'validated' | 'rejected') => {
     try {
       await decide({ participantId: p.id, decision, animationId })
-    } catch (err) {
+    } catch {
       toast.error('Erreur')
+    }
+  }
+
+  const handleRemove = async () => {
+    const msg = isSelf
+      ? 'Te retirer de cette animation ?'
+      : `Retirer ${p.user?.username ?? 'ce participant'} de l'animation ?`
+    if (!confirm(msg)) return
+    try {
+      await remove({ participantId: p.id, animationId })
+      toast.success(isSelf ? 'Tu t\'es retiré de l\'animation' : 'Participant retiré')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
     }
   }
 
@@ -76,72 +92,40 @@ function ParticipantRow({
       <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
-        <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
+        {p.character_name && (
+          <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
+        )}
       </div>
       {p.user?.role && <RoleBadge role={p.user.role} size="sm" />}
       {canDecide && p.status === 'pending' && (
         <div className="flex gap-1.5">
           <button
             onClick={() => handleDecide('validated')}
-            disabled={isPending}
+            disabled={deciding}
             className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex items-center justify-center"
           >
             <Check className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={() => handleDecide('rejected')}
-            disabled={isPending}
+            disabled={deciding}
             className="h-7 w-7 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors flex items-center justify-center"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
+      {canRemove && p.status === 'validated' && (
+        <button
+          onClick={handleRemove}
+          disabled={removing}
+          title={isSelf ? 'Me retirer' : 'Retirer ce participant'}
+          className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
+        >
+          {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
+        </button>
+      )}
     </div>
-  )
-}
-
-function ApplyModal({ animationId, open, onClose }: { animationId: string; open: boolean; onClose: () => void }) {
-  const [characterName, setCharacterName] = useState('')
-  const { mutateAsync, isPending } = useApplyParticipant()
-
-  const handleSubmit = async () => {
-    if (!characterName.trim()) return
-    try {
-      await mutateAsync({ animationId, characterName: characterName.trim() })
-      toast.success('Candidature envoyée !')
-      onClose()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur')
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Se proposer</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs text-white/50 uppercase tracking-wider">Nom de ton personnage</label>
-            <Input
-              placeholder="Nom du perso joué"
-              value={characterName}
-              onChange={(e) => setCharacterName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              autoFocus
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>Annuler</Button>
-            <Button onClick={handleSubmit} disabled={isPending || !characterName.trim()}>
-              {isPending ? 'Envoi...' : 'Se proposer'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -149,7 +133,6 @@ export default function AnimationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, role } = useRequiredAuth()
-  const [applyOpen, setApplyOpen] = useState(false)
 
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync: start, isPending: starting } = useStartAnimation()
@@ -157,6 +140,7 @@ export default function AnimationDetail() {
   const { mutateAsync: stopPrep, isPending: stoppingPrep } = useStopPrepAnimation()
   const { mutateAsync: stop, isPending: stopping } = useStopAnimation()
   const { mutateAsync: cancel, isPending: cancelling } = useCancelAnimation()
+  const { mutateAsync: apply, isPending: applying } = useApplyParticipant()
 
   if (isLoading) {
     return (
@@ -220,6 +204,15 @@ export default function AnimationDetail() {
       await cancel(animation.id)
       toast.success('Animation annulée.')
       navigate('/panel/animations')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const handleApply = async () => {
+    try {
+      await apply({ animationId: animation.id })
+      toast.success('Tu es inscrit à cette animation !')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
     }
@@ -300,14 +293,21 @@ export default function AnimationDetail() {
               <p className="text-sm text-white/30 py-2">Aucun participant validé</p>
             ) : (
               <div className="divide-y divide-white/[0.05]">
-                {validated.map((p) => (
-                  <ParticipantRow
-                    key={p.id}
-                    p={p}
-                    canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
-                    animationId={animation.id}
-                  />
-                ))}
+                {validated.map((p) => {
+                  const isSelf = p.user_id === user.id
+                  const canRemove =
+                    ['open', 'preparing'].includes(animation.status) && (isCreator || isSelf)
+                  return (
+                    <ParticipantRow
+                      key={p.id}
+                      p={p}
+                      canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
+                      canRemove={canRemove}
+                      isSelf={isSelf}
+                      animationId={animation.id}
+                    />
+                  )
+                })}
               </div>
             )}
           </GlassCard>
@@ -325,6 +325,8 @@ export default function AnimationDetail() {
                     key={p.id}
                     p={p}
                     canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
+                    canRemove={false}
+                    isSelf={p.user_id === user.id}
                     animationId={animation.id}
                   />
                 ))}
@@ -342,9 +344,9 @@ export default function AnimationDetail() {
                     Rejoins cette animation en tant que participant
                   </p>
                 </div>
-                <Button onClick={() => setApplyOpen(true)} className="gap-2">
+                <Button onClick={handleApply} disabled={applying} className="gap-2">
                   <UserPlus className="h-4 w-4" />
-                  Se proposer
+                  {applying ? 'Envoi...' : 'Se proposer'}
                 </Button>
               </div>
             </GlassCard>
@@ -474,11 +476,6 @@ export default function AnimationDetail() {
         </div>
       </div>
 
-      <ApplyModal
-        animationId={animation.id}
-        open={applyOpen}
-        onClose={() => setApplyOpen(false)}
-      />
     </div>
   )
 }

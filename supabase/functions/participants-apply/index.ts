@@ -28,20 +28,6 @@ Deno.serve(async (req) => {
   if (anim.creator_id === profile.id)
     return errorResponse('FORBIDDEN', 'Le créateur ne peut pas se proposer sur sa propre animation')
 
-  // Check if already applied (including removed)
-  const { data: existing } = await db
-    .from('animation_participants')
-    .select('id, status')
-    .eq('animation_id', animation_id)
-    .eq('user_id', profile.id)
-    .single()
-
-  if (existing) {
-    if (existing.status === 'removed')
-      return errorResponse('CONFLICT', 'Tu as déjà été retiré de cette animation')
-    return errorResponse('CONFLICT', 'Tu es déjà inscrit à cette animation')
-  }
-
   // Check absence covering the animation date
   const animDate = anim.scheduled_at.split('T')[0]
   const { data: absence } = await db
@@ -56,7 +42,37 @@ Deno.serve(async (req) => {
   if (absence)
     return errorResponse('CONFLICT', 'Tu as une absence déclarée pour cette date')
 
+  // Reactivate an existing row if already present (e.g. after self-withdraw or creator-kick)
+  const { data: existing } = await db
+    .from('animation_participants')
+    .select('id, status')
+    .eq('animation_id', animation_id)
+    .eq('user_id', profile.id)
+    .maybeSingle()
+
+  if (existing && ['pending', 'validated'].includes(existing.status))
+    return errorResponse('CONFLICT', 'Tu es déjà inscrit à cette animation')
+
   const now = new Date().toISOString()
+
+  if (existing) {
+    const { data: participant, error } = await db
+      .from('animation_participants')
+      .update({
+        status: 'validated',
+        character_name: null,
+        applied_at: now,
+        decided_at: now,
+        decided_by: profile.id,
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) return errorResponse('INTERNAL_ERROR', error.message)
+    return jsonResponse({ participant }, 200)
+  }
+
   const { data: participant, error } = await db
     .from('animation_participants')
     .insert({

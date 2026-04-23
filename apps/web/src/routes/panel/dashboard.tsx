@@ -16,6 +16,7 @@ import { ROLE_LABELS } from '@/lib/config/discord'
 
 const QUOTA_MAX: Record<string, number | null> = {
   responsable: null,
+  responsable_mj: null,
   senior: 5,
   animateur: 5,
   mj: 3,

@@ -29,7 +29,7 @@ interface NavItem {
   to: string
   label: string
   icon: React.ComponentType<{ className?: string }>
-  requiresRole?: 'responsable'
+  requiresRole?: 'responsable' | 'responsable_mj'
 }
 
 const NAV_ITEMS_MAP: Record<string, NavItem> = {

@@ -24,17 +24,20 @@ import type { StaffRoleKey } from '@/lib/config/discord'
 
 const QUOTA_MAX: Record<string, number | null> = {
   responsable: null,
+  responsable_mj: null,
   senior: 5,
   animateur: 5,
   mj: 3,
 }
 
-const ROLE_FILTERS: { key: StaffRoleKey | 'all'; label: string }[] = [
-  { key: 'all', label: 'Tous' },
-  { key: 'responsable', label: 'Responsables' },
-  { key: 'senior', label: 'Seniors' },
-  { key: 'animateur', label: 'Animateurs' },
-  { key: 'mj', label: 'MJ' },
+type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj'
+
+const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
+  { key: 'all',         label: 'Tous',        matches: () => true },
+  { key: 'responsable', label: 'Responsables', matches: (r) => r === 'responsable' || r === 'responsable_mj' },
+  { key: 'senior',      label: 'Seniors',     matches: (r) => r === 'senior' },
+  { key: 'animateur',   label: 'Animateurs',  matches: (r) => r === 'animateur' },
+  { key: 'mj',          label: 'MJ',          matches: (r) => r === 'mj' },
 ]
 
 // ─── Member card ────────────────────────────────────────────────────────────
@@ -444,13 +447,14 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
 export default function Casiers() {
   const { data: members = [], isLoading } = useMembers()
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState<StaffRoleKey | 'all'>('all')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [selected, setSelected] = useState<MemberEntry | null>(null)
 
   const filtered = useMemo(() => {
+    const filterDef = ROLE_FILTERS.find((f) => f.key === roleFilter)
     return members.filter((m) => {
       const matchesSearch = m.username.toLowerCase().includes(search.toLowerCase())
-      const matchesRole = roleFilter === 'all' || m.role === roleFilter
+      const matchesRole = !filterDef || filterDef.matches(m.role)
       return matchesSearch && matchesRole
     })
   }, [members, search, roleFilter])
@@ -480,7 +484,7 @@ export default function Casiers() {
           />
         </div>
         <div className="flex gap-1.5 flex-wrap">
-          {ROLE_FILTERS.map(({ key, label }) => (
+          {ROLE_FILTERS.map(({ key, label, matches }) => (
             <button
               key={key}
               onClick={() => setRoleFilter(key)}
@@ -496,7 +500,7 @@ export default function Casiers() {
                 'ml-1.5 text-xs',
                 roleFilter === key ? 'text-cyan-400/70' : 'text-white/25',
               )}>
-                {key === 'all' ? members.length : members.filter((m) => m.role === key).length}
+                {key === 'all' ? members.length : members.filter((m) => matches(m.role)).length}
               </span>
             </button>
           ))}

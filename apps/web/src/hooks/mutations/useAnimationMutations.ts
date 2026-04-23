@@ -128,10 +128,22 @@ export function usePostponeAnimation() {
 export function useApplyParticipant() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ animationId, characterName }: { animationId: string; characterName: string }) =>
-      invokeEdge<object>('participants-apply', { animation_id: animationId, character_name: characterName }),
+    mutationFn: ({ animationId }: { animationId: string }) =>
+      invokeEdge<object>('participants-apply', { animation_id: animationId }),
     onSuccess: (_, { animationId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+    },
+  })
+}
+
+export function useRemoveParticipant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ participantId }: { participantId: string; animationId: string }) =>
+      invokeEdge<object>('participants-remove-validated', { participant_id: participantId }),
+    onSuccess: (_, { animationId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
 }

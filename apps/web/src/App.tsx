@@ -84,14 +84,7 @@ export default function App() {
               </RoleGate>
             }
           />
-          <Route
-            path="villages"
-            element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
-                <Villages />
-              </RoleGate>
-            }
-          />
+          <Route path="villages" element={<Villages />} />
         </Route>
       </Routes>
       <Toaster

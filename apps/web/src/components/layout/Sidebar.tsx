@@ -42,11 +42,12 @@ const NAV_SECTIONS: NavSection[] = [
     id: 'base',
     label: 'Animateurs / MJ',
     items: [
-      { to: '/panel/dashboard',  label: 'Dashboard',     icon: LayoutDashboard },
-      { to: '/panel/animations', label: 'Animations',    icon: Sword },
-      { to: '/panel/calendar',   label: 'Calendrier',    icon: CalendarDays },
-      { to: '/panel/reports',    label: 'Mes rapports',  icon: FileText },
-      { to: '/panel/absences',   label: 'Mes absences',  icon: CalendarOff },
+      { to: '/panel/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
+      { to: '/panel/animations', label: 'Animations',         icon: Sword },
+      { to: '/panel/calendar',   label: 'Calendrier',         icon: CalendarDays },
+      { to: '/panel/reports',    label: 'Mes rapports',       icon: FileText },
+      { to: '/panel/absences',   label: 'Mes absences',       icon: CalendarOff },
+      { to: '/panel/villages',   label: 'Graphique villages', icon: PieChart },
     ],
   },
   {
@@ -67,7 +68,6 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/panel/members',    label: 'Membres',             icon: Users },
       { to: '/panel/casiers',    label: 'Casiers',             icon: FolderOpen },
       { to: '/panel/paies',      label: 'Paies',               icon: Banknote },
-      { to: '/panel/villages',   label: 'Graphique villages',  icon: PieChart },
     ],
   },
 ]

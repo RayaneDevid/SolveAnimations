@@ -5,6 +5,7 @@ const ROLE_IDS = {
   responsable:    Deno.env.get('DISCORD_ROLE_RESPONSABLE')!,
   responsable_mj: Deno.env.get('DISCORD_ROLE_RESPONSABLE_MJ')!,
   senior:         Deno.env.get('DISCORD_ROLE_SENIOR')!,
+  mj_senior:      Deno.env.get('DISCORD_ROLE_MJ_SENIOR')!,
   animateur:      Deno.env.get('DISCORD_ROLE_ANIMATEUR')!,
   mj:             Deno.env.get('DISCORD_ROLE_MJ')!,
 }
@@ -13,11 +14,12 @@ const ROLE_HIERARCHY: Record<string, number> = {
   responsable: 4,
   responsable_mj: 4,
   senior: 3,
+  mj_senior: 3,
   mj: 2,
   animateur: 1,
 }
 
-type StaffRole = 'responsable' | 'responsable_mj' | 'senior' | 'animateur' | 'mj'
+type StaffRole = 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
 
 export type GuildMemberResult =
   | { ok: true; role: StaffRole; discordId: string; username: string; avatarUrl: string | null }

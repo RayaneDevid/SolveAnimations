@@ -26,6 +26,7 @@ const QUOTA_MAX: Record<string, number | null> = {
   responsable: null,
   responsable_mj: null,
   senior: 5,
+  mj_senior: 5,
   animateur: 5,
   mj: 3,
 }
@@ -33,11 +34,11 @@ const QUOTA_MAX: Record<string, number | null> = {
 type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj'
 
 const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
-  { key: 'all',         label: 'Tous',        matches: () => true },
-  { key: 'responsable', label: 'Responsables', matches: (r) => r === 'responsable' || r === 'responsable_mj' },
-  { key: 'senior',      label: 'Seniors',     matches: (r) => r === 'senior' },
-  { key: 'animateur',   label: 'Animateurs',  matches: (r) => r === 'animateur' },
-  { key: 'mj',          label: 'MJ',          matches: (r) => r === 'mj' },
+  { key: 'all',         label: 'Tous',           matches: () => true },
+  { key: 'responsable', label: 'Responsables',   matches: (r) => r === 'responsable' || r === 'responsable_mj' },
+  { key: 'senior',      label: 'Anim. Seniors',  matches: (r) => r === 'senior' },
+  { key: 'animateur',   label: 'Animateurs',     matches: (r) => r === 'animateur' },
+  { key: 'mj',          label: 'MJ',             matches: (r) => r === 'mj' || r === 'mj_senior' },
 ]
 
 // ─── Member card ────────────────────────────────────────────────────────────

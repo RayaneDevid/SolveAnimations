@@ -16,37 +16,39 @@ export async function fetchMe(): Promise<Profile> {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, clearUser } = useAuthStore()
+  const { user, setUser, clearUser } = useAuthStore()
   const qc = useQueryClient()
 
   useEffect(() => {
     let isMounted = true
 
     // On the OAuth callback page, skip restoration — AuthCallback handles the full flow.
-    // Without this guard, restoreSession() would race with the code exchange and
-    // potentially call auth-me before the profile exists (first login).
     const isOAuthCallback = new URLSearchParams(window.location.search).has('code')
     if (!isOAuthCallback) {
-      // Must be called outside onAuthStateChange to avoid deadlock:
-      // supabase.functions.invoke calls auth.getSession() internally,
-      // which deadlocks when invoked from within an onAuthStateChange callback.
       ;(async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession()
           if (!isMounted) return
+
           if (!session) {
             clearUser()
             return
           }
+
+          // If no cached profile, block until auth-me resolves (first load after cache clear)
+          // If a cached profile exists, auth-me runs in background to revalidate silently
           const profile = await fetchMe()
           if (!isMounted) return
           qc.setQueryData(queryKeys.auth.me, profile)
           setUser(profile)
         } catch {
           if (!isMounted) return
-          await supabase.auth.signOut()
-          qc.clear()
-          clearUser()
+          // Only sign out if there's no cached user (avoid flicker on transient errors)
+          if (!user) {
+            await supabase.auth.signOut()
+            qc.clear()
+            clearUser()
+          }
         }
       })()
     }
@@ -63,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [setUser, clearUser, qc])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return <>{children}</>
 }

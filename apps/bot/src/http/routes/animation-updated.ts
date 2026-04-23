@@ -15,7 +15,7 @@ const bodySchema = z.object({
   server: z.string(),
   type: z.string(),
   village: z.string(),
-  documentUrl: z.string(),
+  documentUrl: z.string().optional(),
   creatorUsername: z.string(),
   requiredParticipants: z.number().int(),
 });

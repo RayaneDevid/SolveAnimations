@@ -99,7 +99,7 @@ export interface AnimationEmbedData {
   server: string;
   type: string;
   village: string;
-  documentUrl: string;
+  documentUrl?: string;
   creatorUsername: string;
   requiredParticipants: number;
   currentParticipants?: number;
@@ -150,7 +150,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
         `🏯  Village : ${villageLabel}`,
         `🎯  Type : ${typeLabel}`,
         `👥  Participants : ${currentParticipants} / ${requiredParticipants}`,
-        `📄  [Voir le document](${documentUrl})`,
+        ...(documentUrl ? [`📄  [Voir le document](${documentUrl})`] : []),
         '',
         `Organisé par @${creatorUsername}`,
         `Statut : ${statusEmoji} ${statusLabel}`,

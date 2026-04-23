@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
     type: animation.type,
     creatorUsername: profile.username,
     creatorDiscordId: profile.discord_id,
+    ...(animation.document_url ? { documentUrl: animation.document_url } : {}),
   })
 
   const adminMessageId = botRes?.data?.adminMessageId

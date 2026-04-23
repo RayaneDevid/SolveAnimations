@@ -14,6 +14,7 @@ export default function Calendar() {
   const { data, isLoading } = useAnimations({
     from: bounds.start.toISOString(),
     to: bounds.end.toISOString(),
+    status: ['pending_validation', 'open', 'preparing', 'running', 'finished', 'postponed'],
     pageSize: 100,
   })
 

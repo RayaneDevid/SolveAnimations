@@ -431,7 +431,7 @@ export default function AnimationDetail() {
                       Annuler
                     </Button>
                     {animation.status === 'open' && isCreator && (
-                      <Link to={`/panel/animations/${animation.id}/edit`}>
+                      <Link to={`/panel/animations/${animation.id}/edit`} className="block mt-2">
                         <Button variant="outline" className="w-full gap-2">
                           <Pencil className="h-4 w-4" />
                           Modifier

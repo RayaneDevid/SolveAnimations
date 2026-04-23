@@ -29,9 +29,19 @@ Deno.serve(async (req) => {
   if (!['open', 'preparing'].includes(anim.status))
     return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
 
+  const now = new Date()
+  const updateData: Record<string, unknown> = { status: 'running', started_at: now.toISOString() }
+
+  // Auto-close debrief if still running when animation starts
+  if (anim.prep_started_at && !anim.prep_ended_at) {
+    const prepStart = new Date(anim.prep_started_at)
+    updateData.prep_ended_at = now.toISOString()
+    updateData.actual_prep_time_min = Math.max(1, Math.floor((now.getTime() - prepStart.getTime()) / 60_000))
+  }
+
   const { data: updated, error } = await db
     .from('animations')
-    .update({ status: 'running', started_at: new Date().toISOString() })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single()

@@ -372,87 +372,75 @@ export default function AnimationDetail() {
         <div className="space-y-4">
           {(isCreator || isResponsable) && (
             <GlassCard className="p-5">
-              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
                 Contrôle
               </h2>
-              <div className="space-y-2">
-                {/* ── Prep timer: start ── */}
-                {animation.status === 'open' && isCreator && animation.prep_time_min > 0 && !animation.prep_started_at && (
-                  <Button
-                    onClick={handleStartPrep}
-                    disabled={startingPrep}
-                    variant="secondary"
-                    className="w-full gap-2"
-                  >
-                    <Timer className="h-4 w-4" />
-                    Démarrer le débrief
-                  </Button>
+              <div className="space-y-4">
+
+                {/* ── Débrief (indépendant) ── */}
+                {isCreator && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Débrief</p>
+                    {!animation.prep_started_at && (
+                      <Button onClick={handleStartPrep} disabled={startingPrep} variant="secondary" className="w-full gap-2">
+                        <Timer className="h-4 w-4" />
+                        Démarrer le débrief
+                      </Button>
+                    )}
+                    {animation.prep_started_at && !animation.prep_ended_at && (
+                      <>
+                        <ElapsedTimer since={animation.prep_started_at} label="Débrief en cours" />
+                        <Button onClick={handleStopPrep} disabled={stoppingPrep} variant="secondary" className="w-full gap-2">
+                          <Square className="h-4 w-4" />
+                          Arrêter le débrief
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 )}
 
-                {/* ── Prep timer: running ── */}
-                {animation.status === 'preparing' && isCreator && (
-                  <>
-                    <ElapsedTimer since={animation.prep_started_at!} label="Débrief en cours" />
-                    <Button
-                      onClick={handleStopPrep}
-                      disabled={stoppingPrep}
-                      variant="secondary"
-                      className="w-full gap-2"
-                    >
-                      <Square className="h-4 w-4" />
-                      Arrêter le débrief
-                    </Button>
-                  </>
+                {/* ── Animation (indépendant) ── */}
+                {isCreator && (
+                  <div className="space-y-2">
+                    {animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
+                      <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Animation</p>
+                    )}
+                    {['open', 'preparing'].includes(animation.status) && (
+                      <Button onClick={handleStart} disabled={starting} className="w-full gap-2">
+                        <Play className="h-4 w-4" />
+                        Démarrer l'animation
+                      </Button>
+                    )}
+                    {animation.status === 'running' && (
+                      <>
+                        <ElapsedTimer since={animation.started_at!} label="Animation en cours" />
+                        <Button onClick={handleStop} disabled={stopping} variant="secondary" className="w-full gap-2">
+                          <Square className="h-4 w-4" />
+                          Terminer l'animation
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 )}
 
-                {/* ── Animation: start ── */}
-                {(animation.status === 'open' || animation.status === 'preparing') && isCreator &&
-                  (animation.prep_time_min === 0 || animation.prep_ended_at) && (
-                  <Button
-                    onClick={handleStart}
-                    disabled={starting}
-                    className="w-full gap-2"
-                  >
-                    <Play className="h-4 w-4" />
-                    Démarrer l'animation
-                  </Button>
-                )}
-
-                {/* ── Animation: running ── */}
-                {animation.status === 'running' && isCreator && (
-                  <>
-                    <ElapsedTimer since={animation.started_at!} label="Animation en cours" />
-                    <Button
-                      onClick={handleStop}
-                      disabled={stopping}
-                      variant="secondary"
-                      className="w-full gap-2"
-                    >
-                      <Square className="h-4 w-4" />
-                      Terminer l'animation
-                    </Button>
-                  </>
-                )}
-
+                {/* ── Actions secondaires ── */}
                 {['open', 'pending_validation', 'preparing'].includes(animation.status) && (isCreator || isResponsable) && (
-                  <Button
-                    onClick={handleCancel}
-                    disabled={cancelling}
-                    variant="destructive"
-                    className="w-full gap-2"
-                  >
-                    <Ban className="h-4 w-4" />
-                    Annuler
-                  </Button>
-                )}
-                {animation.status === 'open' && isCreator && (
-                  <Link to={`/panel/animations/${animation.id}/edit`}>
-                    <Button variant="outline" className="w-full gap-2">
-                      <Pencil className="h-4 w-4" />
-                      Modifier
+                  <div className="pt-3 border-t border-white/[0.06] space-y-2">
+                    <Button onClick={handleCancel} disabled={cancelling} variant="destructive" className="w-full gap-2">
+                      <Ban className="h-4 w-4" />
+                      Annuler
                     </Button>
-                  </Link>
+                    {animation.status === 'open' && isCreator && (
+                      <Link to={`/panel/animations/${animation.id}/edit`}>
+                        <Button variant="outline" className="w-full gap-2">
+                          <Pencil className="h-4 w-4" />
+                          Modifier
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 )}
+
               </div>
             </GlassCard>
           )}

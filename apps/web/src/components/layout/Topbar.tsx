@@ -1,10 +1,9 @@
 import { useLocation } from 'react-router'
-import { Bell, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { toZonedTime } from 'date-fns-tz'
 import { getCurrentWeekBounds } from '@/lib/utils/week'
-import { Button } from '@/components/ui/button'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 
 const ROUTE_LABELS: Record<string, string> = {

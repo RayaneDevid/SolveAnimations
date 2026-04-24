@@ -165,7 +165,7 @@ export default function Dashboard() {
         </GlassCard>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Create animation */}
         <Link to="/panel/animations/new" className="block">
           <GlassCard className="p-5 h-full flex flex-col items-center justify-center gap-5 glass-hover cursor-pointer group min-h-[200px]">

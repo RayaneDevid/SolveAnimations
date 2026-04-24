@@ -115,6 +115,8 @@ export interface FormerMemberEntry {
   deactivatedByUsername: string | null
   totalAnimationsCreated: number
   totalHoursAnimated: number
+  igPermsRemoved: boolean
+  discordPermsRemoved: boolean
 }
 
 export function useFormerMembers() {

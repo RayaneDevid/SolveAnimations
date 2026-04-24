@@ -294,6 +294,17 @@ export function useReactivateMember() {
   })
 }
 
+export function useUpdateMemberPerms() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, field, value }: { userId: string; field: 'ig_perms_removed' | 'discord_perms_removed'; value: boolean }) =>
+      invokeEdge<object>('members-update-perms', { user_id: userId, field, value }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.members.former })
+    },
+  })
+}
+
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({

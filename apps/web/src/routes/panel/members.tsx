@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
-import { useRemoveMemberAccess, useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
+import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPerms } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -205,8 +205,45 @@ function MemberTable({
 
 // ─── Former members table ─────────────────────────────────────────────────────
 
+function PermCheckbox({
+  checked,
+  label,
+  onChange,
+  pending,
+}: {
+  checked: boolean
+  label: string
+  onChange: (v: boolean) => void
+  pending: boolean
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      disabled={pending}
+      title={label}
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-50 ${
+        checked
+          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+          : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:text-white/50 hover:border-white/20'
+      }`}
+    >
+      <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${
+        checked ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'
+      }`}>
+        {checked && (
+          <svg viewBox="0 0 10 8" className="h-2 w-2 text-white fill-current">
+            <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      {label}
+    </button>
+  )
+}
+
 function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
-  const { mutateAsync: reactivate, isPending } = useReactivateMember()
+  const { mutateAsync: reactivate, isPending: reactivating } = useReactivateMember()
+  const { mutate: updatePerms, isPending: updatingPerms } = useUpdateMemberPerms()
 
   const handleReactivate = async (m: FormerMemberEntry) => {
     if (!confirm(`Réactiver ${m.username} ? Il pourra se reconnecter une fois ses rôles Discord restaurés.`)) return
@@ -226,7 +263,7 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
     <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.', ''].map((h) => (
+          {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.', 'Perms retirées', ''].map((h) => (
             <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
               {h}
             </th>
@@ -262,11 +299,27 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
               {m.totalAnimationsCreated} anim · {(m.totalHoursAnimated / 60).toFixed(1)}h
             </td>
             <td className="px-4 py-3">
+              <div className="flex flex-col gap-1.5">
+                <PermCheckbox
+                  checked={m.igPermsRemoved}
+                  label="IG"
+                  pending={updatingPerms}
+                  onChange={(v) => updatePerms({ userId: m.id, field: 'ig_perms_removed', value: v })}
+                />
+                <PermCheckbox
+                  checked={m.discordPermsRemoved}
+                  label="Discord"
+                  pending={updatingPerms}
+                  onChange={(v) => updatePerms({ userId: m.id, field: 'discord_perms_removed', value: v })}
+                />
+              </div>
+            </td>
+            <td className="px-4 py-3">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleReactivate(m)}
-                disabled={isPending}
+                disabled={reactivating}
                 className="text-xs gap-1.5 h-7 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
               >
                 <RotateCcw className="h-3 w-3" />

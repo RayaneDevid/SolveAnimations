@@ -40,6 +40,7 @@ export type EdgeFunctionName =
   | 'members-former-list'
   | 'members-remove-access'
   | 'members-reactivate'
+  | 'members-update-perms'
   | 'paies'
 
 type ApiOk<T> = { data: T }

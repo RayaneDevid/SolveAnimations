@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
 
   const { data: former, error } = await db
     .from('profiles')
-    .select('id, discord_id, username, avatar_url, role, deactivated_at, deactivation_reason, deactivated_by')
+    .select('id, discord_id, username, avatar_url, role, deactivated_at, deactivation_reason, deactivated_by, ig_perms_removed, discord_perms_removed')
     .eq('is_active', false)
     .order('deactivated_at', { ascending: false })
 
@@ -70,6 +70,8 @@ Deno.serve(async (req) => {
       deactivatedByUsername: f.deactivated_by ? (byMap.get(f.deactivated_by) ?? null) : null,
       totalAnimationsCreated: total.count,
       totalHoursAnimated: total.minutes,
+      igPermsRemoved: f.ig_perms_removed ?? false,
+      discordPermsRemoved: f.discord_perms_removed ?? false,
     }
   })
 

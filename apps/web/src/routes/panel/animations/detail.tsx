@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
-  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save,
+  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 import {
   useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
-  useStopAnimation, useCancelAnimation,
+  useStopAnimation, useCancelAnimation, useDeleteAnimation,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation,
 } from '@/hooks/mutations/useAnimationMutations'
@@ -262,6 +262,7 @@ export default function AnimationDetail() {
   const { mutateAsync: stopPrep, isPending: stoppingPrep } = useStopPrepAnimation()
   const { mutateAsync: stop, isPending: stopping } = useStopAnimation()
   const { mutateAsync: cancel, isPending: cancelling } = useCancelAnimation()
+  const { mutate: deleteAnim, isPending: deleting } = useDeleteAnimation()
   const { mutateAsync: apply, isPending: applying } = useApplyParticipant()
 
   if (isLoading) {
@@ -331,6 +332,17 @@ export default function AnimationDetail() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
     }
+  }
+
+  const handleDelete = () => {
+    if (!confirm(`Supprimer définitivement "${animation.title}" ? Cette action est irréversible.`)) return
+    deleteAnim(animation.id, {
+      onSuccess: () => {
+        toast.success('Animation supprimée.')
+        navigate('/panel/animations')
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
   }
 
   const handleApply = async () => {
@@ -560,6 +572,19 @@ export default function AnimationDetail() {
                         </Button>
                       </Link>
                     )}
+                  </div>
+                )}
+
+                {/* ── Suppression ── */}
+                {(
+                  (isResponsable && !['running', 'finished'].includes(animation.status)) ||
+                  (isCreator && ['cancelled', 'rejected'].includes(animation.status))
+                ) && (
+                  <div className="pt-3 border-t border-white/[0.06]">
+                    <Button onClick={handleDelete} disabled={deleting} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">
+                      <Trash2 className="h-4 w-4" />
+                      {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+                    </Button>
                   </div>
                 )}
 

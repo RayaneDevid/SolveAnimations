@@ -110,6 +110,17 @@ export function useCancelAnimation() {
   })
 }
 
+export function useDeleteAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ success: boolean }>('animations-delete', { id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
+    },
+  })
+}
+
 export function usePostponeAnimation() {
   const qc = useQueryClient()
   return useMutation({

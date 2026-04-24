@@ -16,6 +16,7 @@ export type EdgeFunctionName =
   | 'animations-stop'
   | 'animations-postpone'
   | 'animations-cancel'
+  | 'animations-delete'
   | 'participants-apply'
   | 'participants-decide'
   | 'participants-update-character'

@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { notifyBot } from '../_shared/bot.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -22,7 +23,7 @@ Deno.serve(async (req) => {
 
   const { data: target } = await db
     .from('profiles')
-    .select('id, username, is_active')
+    .select('id, discord_id, username, role, is_active')
     .eq('id', user_id)
     .single()
 
@@ -40,6 +41,12 @@ Deno.serve(async (req) => {
     .eq('id', user_id)
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
+
+  // Restore Discord roles (non-fatal)
+  await notifyBot('member-restore-roles', {
+    discordUserId: target.discord_id,
+    role: target.role,
+  })
 
   await db.from('audit_log').insert({
     actor_id: profile.id,

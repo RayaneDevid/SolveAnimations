@@ -33,6 +33,7 @@ export type EdgeFunctionName =
   | 'members-list'
   | 'members-former-list'
   | 'members-remove-access'
+  | 'members-reactivate'
   | 'paies'
 
 type ApiOk<T> = { data: T }

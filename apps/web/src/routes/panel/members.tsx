@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Users, UserX, CalendarOff, AlertTriangle, History } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
-import { useRemoveMemberAccess } from '@/hooks/mutations/useAnimationMutations'
+import { useRemoveMemberAccess, useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -206,6 +206,18 @@ function MemberTable({
 // ─── Former members table ─────────────────────────────────────────────────────
 
 function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
+  const { mutateAsync: reactivate, isPending } = useReactivateMember()
+
+  const handleReactivate = async (m: FormerMemberEntry) => {
+    if (!confirm(`Réactiver ${m.username} ? Il pourra se reconnecter une fois ses rôles Discord restaurés.`)) return
+    try {
+      await reactivate(m.id)
+      toast.success(`${m.username} réactivé`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
   if (entries.length === 0) {
     return <p className="text-center text-white/30 text-sm py-12">Aucun ancien membre</p>
   }
@@ -214,7 +226,7 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
     <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.'].map((h) => (
+          {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.', ''].map((h) => (
             <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
               {h}
             </th>
@@ -238,13 +250,9 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
             </td>
             <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
             <td className="px-4 py-3">
-              <span className="text-sm text-white/60 italic">
-                {m.deactivationReason ?? '—'}
-              </span>
+              <span className="text-sm text-white/60 italic">{m.deactivationReason ?? '—'}</span>
             </td>
-            <td className="px-4 py-3 text-sm text-white/40">
-              {m.deactivatedByUsername ?? '—'}
-            </td>
+            <td className="px-4 py-3 text-sm text-white/40">{m.deactivatedByUsername ?? '—'}</td>
             <td className="px-4 py-3 text-sm text-white/40 whitespace-nowrap">
               {m.deactivatedAt
                 ? formatDistanceToNow(new Date(m.deactivatedAt), { addSuffix: true, locale: fr })
@@ -252,6 +260,18 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
             </td>
             <td className="px-4 py-3 text-sm text-white/50">
               {m.totalAnimationsCreated} anim · {(m.totalHoursAnimated / 60).toFixed(1)}h
+            </td>
+            <td className="px-4 py-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleReactivate(m)}
+                disabled={isPending}
+                className="text-xs gap-1.5 h-7 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Réactiver
+              </Button>
             </td>
           </motion.tr>
         ))}

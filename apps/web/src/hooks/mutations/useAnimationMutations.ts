@@ -236,6 +236,18 @@ export function useCorrectFinishedAnimation() {
   })
 }
 
+export function useReactivateMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) =>
+      invokeEdge<object>('members-reactivate', { user_id: userId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.members.list })
+      qc.invalidateQueries({ queryKey: queryKeys.members.former })
+    },
+  })
+}
+
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({

@@ -121,6 +121,41 @@ export function useDeleteAnimation() {
   })
 }
 
+export function useRequestDeletion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (animationId: string) =>
+      invokeEdge<{ request: { id: string } }>('animations-request-deletion', { animation_id: animationId }),
+    onSuccess: (_, animationId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      qc.invalidateQueries({ queryKey: ['deletion-requests'] })
+    },
+  })
+}
+
+export function useApproveDeletion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ success: boolean }>('animations-approve-deletion', { request_id: requestId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      qc.invalidateQueries({ queryKey: ['deletion-requests'] })
+    },
+  })
+}
+
+export function useDenyDeletion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ success: boolean }>('animations-deny-deletion', { request_id: requestId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deletion-requests'] })
+    },
+  })
+}
+
 export function usePostponeAnimation() {
   const qc = useQueryClient()
   return useMutation({

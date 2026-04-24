@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
-import type { Animation } from '@/types/database'
+import type { Animation, AnimationParticipant, DeletionRequest } from '@/types/database'
 import type { AnimationStatus } from '@/types/database'
 import type { AnimationServer, Village, AnimationType } from '@/lib/schemas/animation'
 
@@ -34,8 +34,15 @@ export function useAnimations(filters: AnimationFilters = {}) {
 export function useAnimation(id: string) {
   return useQuery({
     queryKey: queryKeys.animations.detail(id),
-    queryFn: () => invokeEdge<{ animation: Animation; participants: import('@/types/database').AnimationParticipant[] }>('animations-get', { id }),
+    queryFn: () => invokeEdge<{ animation: Animation; participants: AnimationParticipant[]; deletionRequest: DeletionRequest | null }>('animations-get', { id }),
     enabled: !!id,
+  })
+}
+
+export function useDeletionRequests() {
+  return useQuery({
+    queryKey: ['deletion-requests'],
+    queryFn: () => invokeEdge<{ requests: DeletionRequest[] }>('deletion-requests-list'),
   })
 }
 

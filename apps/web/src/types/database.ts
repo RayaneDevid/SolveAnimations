@@ -58,6 +58,18 @@ export interface Animation {
   my_participant_status?: ParticipantStatus | null
 }
 
+export interface DeletionRequest {
+  id: string
+  animation_id: string
+  requested_by: string
+  requested_at: string
+  status: 'pending' | 'approved' | 'denied'
+  decided_by: string | null
+  decided_at: string | null
+  animation?: Pick<Animation, 'id' | 'title' | 'status' | 'scheduled_at' | 'server' | 'village' | 'type'>
+  requester?: Profile
+}
+
 export interface AnimationParticipant {
   id: string
   animation_id: string

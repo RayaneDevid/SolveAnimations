@@ -9,6 +9,7 @@ import { useAnimation } from '@/hooks/queries/useAnimations'
 import {
   useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
   useStopAnimation, useCancelAnimation, useDeleteAnimation,
+  useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation,
 } from '@/hooks/mutations/useAnimationMutations'
@@ -263,6 +264,7 @@ export default function AnimationDetail() {
   const { mutateAsync: stop, isPending: stopping } = useStopAnimation()
   const { mutateAsync: cancel, isPending: cancelling } = useCancelAnimation()
   const { mutate: deleteAnim, isPending: deleting } = useDeleteAnimation()
+  const { mutate: requestDeletion, isPending: requestingDeletion } = useRequestDeletion()
   const { mutateAsync: apply, isPending: applying } = useApplyParticipant()
 
   if (isLoading) {
@@ -276,7 +278,7 @@ export default function AnimationDetail() {
 
   if (!data) return null
 
-  const { animation, participants } = data
+  const { animation, participants, deletionRequest } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasRole(role, 'responsable')
   const isParticipant = participants.some(
@@ -341,6 +343,14 @@ export default function AnimationDetail() {
         toast.success('Animation supprimée.')
         navigate('/panel/animations')
       },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
+  }
+
+  const handleRequestDeletion = () => {
+    if (!confirm(`Demander la suppression de "${animation.title}" ? Un responsable devra valider.`)) return
+    requestDeletion(animation.id, {
+      onSuccess: () => toast.success('Demande de suppression envoyée aux responsables.'),
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
     })
   }
@@ -575,16 +585,35 @@ export default function AnimationDetail() {
                   </div>
                 )}
 
-                {/* ── Suppression ── */}
-                {(
-                  (isResponsable && animation.status !== 'running') ||
-                  (isCreator && ['cancelled', 'rejected'].includes(animation.status))
-                ) && (
+                {/* ── Suppression (responsable) ── */}
+                {isResponsable && animation.status !== 'running' && (
                   <div className="pt-3 border-t border-white/[0.06]">
                     <Button onClick={handleDelete} disabled={deleting} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">
                       <Trash2 className="h-4 w-4" />
                       {deleting ? 'Suppression...' : 'Supprimer définitivement'}
                     </Button>
+                  </div>
+                )}
+
+                {/* ── Demande de suppression (créateur) ── */}
+                {isCreator && !isResponsable && animation.status !== 'running' && (
+                  <div className="pt-3 border-t border-white/[0.06]">
+                    {['cancelled', 'rejected'].includes(animation.status) ? (
+                      <Button onClick={handleDelete} disabled={deleting} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">
+                        <Trash2 className="h-4 w-4" />
+                        {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+                      </Button>
+                    ) : deletionRequest ? (
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <Hourglass className="h-4 w-4 text-amber-400 shrink-0" />
+                        <p className="text-xs text-amber-300">Demande de suppression en attente de validation</p>
+                      </div>
+                    ) : (
+                      <Button onClick={handleRequestDeletion} disabled={requestingDeletion} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">
+                        <Trash2 className="h-4 w-4" />
+                        {requestingDeletion ? 'Envoi...' : 'Demander la suppression'}
+                      </Button>
+                    )}
                   </div>
                 )}
 

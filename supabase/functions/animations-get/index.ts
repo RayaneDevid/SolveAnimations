@@ -37,5 +37,12 @@ Deno.serve(async (req) => {
     .neq('status', 'rejected')
     .order('applied_at', { ascending: true })
 
-  return jsonResponse({ animation, participants: participants ?? [] })
+  const { data: deletionRequest } = await db
+    .from('deletion_requests')
+    .select('id, requested_by, requested_at, status')
+    .eq('animation_id', id)
+    .eq('status', 'pending')
+    .maybeSingle()
+
+  return jsonResponse({ animation, participants: participants ?? [], deletionRequest: deletionRequest ?? null })
 })

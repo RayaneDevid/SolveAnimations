@@ -172,13 +172,13 @@ export default function Dashboard() {
             </div>
           </GlassCard>
         </Link>
-        
+
         {/* Upcoming animations */}
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-white/80 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-cyan-400" />
-              Animations à venir
+              Participer à une animation
             </h2>
             <Link to="/panel/animations">
               <Button variant="ghost" size="sm" className="text-xs gap-1">
@@ -235,14 +235,6 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-          <div className="mt-3 pt-3 border-t border-white/[0.06]">
-            <Link to="/panel/animations/new">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-                <Plus className="h-3.5 w-3.5" />
-                Créer une animation
-              </Button>
-            </Link>
-          </div>
         </GlassCard>
 
         {/* Pending reports */}

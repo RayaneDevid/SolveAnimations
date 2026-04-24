@@ -1,8 +1,10 @@
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { PieChart as PieIcon } from 'lucide-react'
-import { useVillageStats } from '@/hooks/queries/useAnimations'
+import { useVillageStats, useWeeklyEvolution } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VILLAGE_LABELS } from '@/components/shared/VillageBadge'
 import type { Village } from '@/lib/schemas/animation'
 
@@ -37,8 +39,22 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   )
 }
 
+function EvolutionTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={CUSTOM_TOOLTIP_STYLE} className="p-3">
+      <p className="text-white/50 text-xs mb-1">{label}</p>
+      <p className="font-semibold">{payload[0].value} animation{payload[0].value !== 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
 export default function Villages() {
+  const [selectedUser, setSelectedUser] = useState<string>('all')
   const { data, isLoading } = useVillageStats()
+  const { data: evoData, isLoading: evoLoading } = useWeeklyEvolution(
+    selectedUser === 'all' ? null : selectedUser
+  )
 
   if (isLoading) {
     return (
@@ -115,9 +131,7 @@ export default function Villages() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip
-                    content={<CustomTooltip />}
-                  />
+                  <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
 
@@ -190,6 +204,59 @@ export default function Villages() {
           </ResponsiveContainer>
         </GlassCard>
       </div>
+
+      {/* Weekly evolution line chart */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+            Évolution hebdomadaire
+          </h2>
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-48 h-8 text-xs bg-white/[0.04] border-white/10">
+              <SelectValue placeholder="Tous les animateurs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les animateurs</SelectItem>
+              {(evoData?.profiles ?? []).map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.username}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {evoLoading ? (
+          <Skeleton className="h-56 w-full" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={evoData?.weeks ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<EvolutionTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#22d3ee"
+                strokeWidth={2}
+                dot={{ fill: '#22d3ee', r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: '#22d3ee', strokeWidth: 0 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </GlassCard>
     </div>
   )
 }

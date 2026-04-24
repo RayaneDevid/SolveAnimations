@@ -47,7 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/panel/calendar',   label: 'Calendrier',         icon: CalendarDays },
       { to: '/panel/reports',    label: 'Mes rapports',       icon: FileText },
       { to: '/panel/absences',   label: 'Mes absences',       icon: CalendarOff },
-      { to: '/panel/villages',   label: 'Graphique villages', icon: PieChart },
+      { to: '/panel/villages',   label: 'Statistiques', icon: PieChart },
     ],
   },
   {

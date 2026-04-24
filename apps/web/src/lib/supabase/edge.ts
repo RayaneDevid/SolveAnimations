@@ -34,6 +34,7 @@ export type EdgeFunctionName =
   | 'absences-delete'
   | 'stats-weekly'
   | 'stats-villages'
+  | 'stats-weekly-evolution'
   | 'leaderboard'
   | 'members-list'
   | 'members-former-list'

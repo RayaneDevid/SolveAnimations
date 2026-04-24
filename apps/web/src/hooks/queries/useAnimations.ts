@@ -119,6 +119,35 @@ export function useUserReports(userId: string) {
   })
 }
 
+export interface WeeklyEvolutionPoint {
+  weekStart: string
+  label: string
+  count: number
+}
+
+export interface WeeklyEvolutionProfile {
+  id: string
+  username: string
+  avatar_url: string | null
+}
+
+export interface WeeklyEvolutionResult {
+  weeks: WeeklyEvolutionPoint[]
+  profiles: WeeklyEvolutionProfile[]
+}
+
+export function useWeeklyEvolution(userId?: string | null, weeks = 12) {
+  return useQuery({
+    queryKey: ['stats', 'weekly-evolution', userId ?? null, weeks] as const,
+    queryFn: () =>
+      invokeEdge<WeeklyEvolutionResult>('stats-weekly-evolution', {
+        ...(userId ? { user_id: userId } : {}),
+        weeks,
+      }),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function usePaies(weekStart?: Date) {
   return useQuery({
     queryKey: ['paies', weekStart?.toISOString()] as const,

@@ -76,13 +76,8 @@ Deno.serve(async (req) => {
     weeklyAnimMap.set(a.creator_id, existing)
   }
 
-  const totalAnimMap = new Map<string, { count: number; minutes: number }>()
-  for (const a of totalAnims ?? []) {
-    const existing = totalAnimMap.get(a.creator_id) ?? { count: 0, minutes: 0 }
-    existing.count++
-    existing.minutes += a.actual_duration_min ?? 0
-    totalAnimMap.set(a.creator_id, existing)
-  }
+  const globalTotalCount = (totalAnims ?? []).length
+  const globalTotalMinutes = (totalAnims ?? []).reduce((sum, a) => sum + (a.actual_duration_min ?? 0), 0)
 
   const weeklyPartMap = new Map<string, number>()
   for (const p of weeklyParts ?? []) {
@@ -99,7 +94,6 @@ Deno.serve(async (req) => {
 
   const members = (profiles ?? []).map((p) => {
     const weekly = weeklyAnimMap.get(p.id) ?? { count: 0, minutes: 0 }
-    const total = totalAnimMap.get(p.id) ?? { count: 0, minutes: 0 }
     return {
       id: p.id,
       discordId: p.discord_id,
@@ -116,8 +110,8 @@ Deno.serve(async (req) => {
         quotaMax: QUOTA_MAX[p.role] ?? null,
       },
       totalStats: {
-        animationsCreated: total.count,
-        hoursAnimated: total.minutes,
+        animationsCreated: globalTotalCount,
+        hoursAnimated: globalTotalMinutes,
       },
     }
   })

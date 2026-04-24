@@ -20,19 +20,37 @@ Deno.serve(async (req) => {
     creator_id,
     from,
     to,
+    as_participant,
+    order = 'desc',
     page = 1,
     pageSize = 20,
   } = body
 
   const db = getServiceClient()
+
+  // When as_participant=true, restrict to animations where the user has a validated participation
+  let participantAnimationIds: string[] | null = null
+  if (as_participant) {
+    const { data: participations } = await db
+      .from('animation_participants')
+      .select('animation_id')
+      .eq('user_id', profile.id)
+      .eq('status', 'validated')
+    participantAnimationIds = (participations ?? []).map((p: { animation_id: string }) => p.animation_id)
+    if (participantAnimationIds.length === 0) {
+      return jsonResponse({ animations: [], total: 0, page, pageSize })
+    }
+  }
+
   let query = db
     .from('animations')
     .select(`
       *,
       creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)
     `, { count: 'exact' })
-    .order('scheduled_at', { ascending: false })
+    .order('scheduled_at', { ascending: order === 'asc' })
 
+  if (participantAnimationIds) query = query.in('id', participantAnimationIds)
   if (Array.isArray(status) && status.length > 0) query = query.in('status', status)
   else if (status) query = query.eq('status', status)
   if (server)     query = query.eq('server', server)

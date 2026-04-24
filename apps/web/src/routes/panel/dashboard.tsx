@@ -69,7 +69,14 @@ export default function Dashboard() {
   const { user, role } = useRequiredAuth()
   const { data: stats, isLoading: statsLoading } = useWeeklyStats()
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
-    status: 'open',
+    status: ['pending_validation', 'open'],
+    order: 'asc',
+    pageSize: 5,
+  })
+  const { data: scheduledResult, isLoading: scheduledLoading } = useAnimations({
+    as_participant: true,
+    status: ['pending_validation', 'open', 'preparing', 'running'],
+    order: 'asc',
     pageSize: 5,
   })
   const { data: reports, isLoading: reportsLoading } = useMyReports()
@@ -79,6 +86,7 @@ export default function Dashboard() {
 
   const pendingReports = reports?.filter((r) => !r.submitted_at) ?? []
   const upcomingAnims = animsResult?.animations?.slice(0, 4) ?? []
+  const scheduledAnims = scheduledResult?.animations?.slice(0, 4) ?? []
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -157,7 +165,7 @@ export default function Dashboard() {
         </GlassCard>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Create animation */}
         <Link to="/panel/animations/new" className="block">
           <GlassCard className="p-5 h-full flex flex-col items-center justify-center gap-5 glass-hover cursor-pointer group min-h-[200px]">
@@ -173,12 +181,56 @@ export default function Dashboard() {
           </GlassCard>
         </Link>
 
-        {/* Upcoming animations */}
+        {/* Scheduled (user is participant) */}
+        <GlassCard className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+              <Users className="h-4 w-4 text-violet-400" />
+              Programmé
+            </h2>
+            <Link to="/panel/animations">
+              <Button variant="ghost" size="sm" className="text-xs gap-1">
+                Voir tout <ChevronRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+          {scheduledLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : scheduledAnims.length === 0 ? (
+            <p className="text-sm text-white/30 text-center py-6">Aucune animation programmée</p>
+          ) : (
+            <div className="space-y-2">
+              {scheduledAnims.map((anim) => (
+                <Link
+                  key={anim.id}
+                  to={`/panel/animations/${anim.id}`}
+                  className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/[0.04] transition-colors group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white/90 truncate group-hover:text-cyan-400 transition-colors">
+                      {anim.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-xs text-white/40">{formatDateTime(anim.scheduled_at)}</span>
+                      <ServerBadge server={anim.server} />
+                      <VillageBadge village={anim.village} />
+                    </div>
+                  </div>
+                  <StatusBadge status={anim.status} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* S'inscrire */}
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-white/80 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-cyan-400" />
-              Participer à une animation
+              S'inscrire
             </h2>
             <Link to="/panel/animations">
               <Button variant="ghost" size="sm" className="text-xs gap-1">

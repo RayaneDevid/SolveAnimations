@@ -13,6 +13,8 @@ export interface AnimationFilters {
   creator_id?: string
   from?: string
   to?: string
+  as_participant?: boolean
+  order?: 'asc' | 'desc'
   page?: number
   pageSize?: number
 }

@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
-  if (!['open', 'running'].includes(anim.status))
+  if (!['pending_validation', 'open', 'running'].includes(anim.status))
     return errorResponse('CONFLICT', "L'animation n'est pas ouverte aux inscriptions")
   if (anim.creator_id === profile.id)
     return errorResponse('FORBIDDEN', 'Le créateur ne peut pas se proposer sur sa propre animation')

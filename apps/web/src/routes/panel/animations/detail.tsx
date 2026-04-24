@@ -494,7 +494,7 @@ export default function AnimationDetail() {
           )}
 
           {/* Apply CTA */}
-          {['open', 'preparing', 'running'].includes(animation.status) && !isCreator && !isParticipant && (
+          {['pending_validation', 'open', 'preparing', 'running'].includes(animation.status) && !isCreator && !isParticipant && (
             <GlassCard className="p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -505,7 +505,7 @@ export default function AnimationDetail() {
                 </div>
                 <Button onClick={handleApply} disabled={applying} className="gap-2">
                   <UserPlus className="h-4 w-4" />
-                  {applying ? 'Envoi...' : 'Se proposer'}
+                  {applying ? 'Envoi...' : 'S\'inscrire'}
                 </Button>
               </div>
             </GlassCard>

@@ -132,12 +132,20 @@ function RankingTable({ entries }: { entries: LeaderboardEntry[] }) {
   )
 }
 
+const ANIM_ROLES = ['responsable', 'senior', 'animateur']
+const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
+
 export default function Leaderboard() {
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [metric, setMetric] = useState<'byHours' | 'byAnimations' | 'byParticipations'>('byHours')
+  const [pole, setPole] = useState<'anim' | 'mj'>('anim')
   const { data, isLoading } = useLeaderboard(period)
 
-  const entries = data?.[metric] ?? []
+  const rawEntries = data?.[metric] ?? []
+  const poleRoles = pole === 'anim' ? ANIM_ROLES : MJ_ROLES
+  const entries = rawEntries
+    .filter((e) => poleRoles.includes(e.role))
+    .map((e, i) => ({ ...e, rank: i + 1 }))
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -149,7 +157,13 @@ export default function Leaderboard() {
           </h1>
           <p className="text-sm text-white/40 mt-0.5">Performances de l'équipe</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Tabs value={pole} onValueChange={(v) => setPole(v as typeof pole)}>
+            <TabsList>
+              <TabsTrigger value="anim">Pôle Animation</TabsTrigger>
+              <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Tabs value={metric} onValueChange={(v) => setMetric(v as typeof metric)}>
             <TabsList>
               <TabsTrigger value="byHours">Heures</TabsTrigger>

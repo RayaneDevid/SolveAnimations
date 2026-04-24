@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { usePaies } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
@@ -155,8 +156,12 @@ function SummaryCard({ label, value, sub }: { label: string; value: string; sub?
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Paies() {
+  const { role } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
+
+  const showAnim = role !== 'responsable_mj'
+  const showMj   = role !== 'responsable'
 
   const poleAnim = useMemo(() =>
     sortEntries((data?.entries ?? []).filter((e) => ANIM_ROLE_ORDER.includes(e.role)), ANIM_ROLE_ORDER)
@@ -305,14 +310,16 @@ export default function Paies() {
           ))}
         </GlassCard>
       ) : (
-        <Tabs defaultValue="animation">
-          <TabsList>
-            <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>
-            <TabsTrigger value="mj">Pôle MJ ({poleMj.length})</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue={showAnim ? 'animation' : 'mj'}>
+          {showAnim && showMj && (
+            <TabsList>
+              <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>
+              <TabsTrigger value="mj">Pôle MJ ({poleMj.length})</TabsTrigger>
+            </TabsList>
+          )}
           {[
-            { key: 'animation', entries: poleAnim },
-            { key: 'mj',        entries: poleMj },
+            ...(showAnim ? [{ key: 'animation', entries: poleAnim }] : []),
+            ...(showMj   ? [{ key: 'mj',        entries: poleMj   }] : []),
           ].map(({ key, entries }) => {
             const poleTotal = entries.reduce((s, e) => s + e.remuneration, 0)
             return (

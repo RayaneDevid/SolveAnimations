@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Plus, CalendarOff, Trash2 } from 'lucide-react'
+import { Plus, CalendarOff, Trash2, Users } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { isAfter, parseISO } from 'date-fns'
-import { useAbsences } from '@/hooks/queries/useAnimations'
+import { useAbsences, useAbsencesSummary } from '@/hooks/queries/useAnimations'
 import { useCreateAbsence, useDeleteAbsence } from '@/hooks/mutations/useAnimationMutations'
 import { absenceSchema, type AbsenceInput } from '@/lib/schemas/animation'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -127,6 +127,7 @@ function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => v
 export default function Absences() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: absences, isLoading } = useAbsences()
+  const { data: summary } = useAbsencesSummary()
   const { mutateAsync: deleteAbsence } = useDeleteAbsence()
 
   const now = new Date()
@@ -147,7 +148,7 @@ export default function Absences() {
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Mes absences</h1>
+          <h1 className="text-2xl font-bold text-white">Absences</h1>
           <p className="text-sm text-white/40 mt-0.5">
             Déclare tes indisponibilités pour bloquer les inscriptions
           </p>
@@ -157,6 +158,20 @@ export default function Absences() {
           Déclarer
         </Button>
       </div>
+
+      {summary && (
+        <GlassCard className="p-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <Users className="h-4 w-4 text-violet-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white/80">
+              {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} absent{summary.absentCount > 1 ? 's' : ''} cette semaine
+            </p>
+            <p className="text-xs text-white/30 mt-0.5">absences déclarées sur la semaine en cours</p>
+          </div>
+        </GlassCard>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">

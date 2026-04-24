@@ -5,6 +5,7 @@ import { useVillageStats, useWeeklyEvolution } from '@/hooks/queries/useAnimatio
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VILLAGE_LABELS } from '@/components/shared/VillageBadge'
 import type { Village } from '@/lib/schemas/animation'
 
@@ -55,9 +56,12 @@ function EvolutionTooltip({ active, payload, label }: { active?: boolean; payloa
 
 export default function Villages() {
   const [selectedUser, setSelectedUser] = useState<string>('all')
+  const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>('anim')
   const { data, isLoading } = useVillageStats()
   const { data: evoData, isLoading: evoLoading } = useWeeklyEvolution(
-    selectedUser === 'all' ? null : selectedUser
+    selectedUser === 'all' ? null : selectedUser,
+    12,
+    selectedPole,
   )
 
   if (isLoading) {
@@ -211,23 +215,31 @@ export default function Villages() {
 
       {/* Weekly evolution line chart */}
       <GlassCard className="p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
             Évolution hebdomadaire
           </h2>
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-48 h-8 text-xs bg-white/[0.04] border-white/10">
-              <SelectValue placeholder="Tous les animateurs" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les animateurs</SelectItem>
-              {(evoData?.profiles ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.username}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Tabs value={selectedPole} onValueChange={(v) => { setSelectedPole(v as 'anim' | 'mj'); setSelectedUser('all') }}>
+              <TabsList className="h-8">
+                <TabsTrigger value="anim" className="text-xs px-3">Pôle Anim</TabsTrigger>
+                <TabsTrigger value="mj" className="text-xs px-3">Pôle MJ</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="w-44 h-8 text-xs bg-white/[0.04] border-white/10">
+                <SelectValue placeholder="Tous" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                {(evoData?.profiles ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         {evoLoading ? (
           <Skeleton className="h-56 w-full" />

@@ -12,7 +12,10 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body = await req.json().catch(() => ({}))
-  const { user_id, weeks = 12 } = body
+  const { user_id, weeks = 12, pole } = body
+
+  const ANIM_ROLES = ['responsable', 'senior', 'animateur']
+  const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
 
   const db = getServiceClient()
 
@@ -43,10 +46,10 @@ Deno.serve(async (req) => {
 
   const rangeEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Always fetch all-users totals
-  const { data: allAnims, error: allErr } = await db
+  // Fetch all finished animations in range with creator role (for pole filter)
+  const { data: rawAnims, error: allErr } = await db
     .from('animations')
-    .select('ended_at, creator_id')
+    .select('ended_at, creator_id, creator:profiles!animations_creator_id_fkey(role)')
     .eq('status', 'finished')
     .gte('ended_at', oldest.toISOString())
     .lt('ended_at', rangeEnd)
@@ -55,10 +58,17 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', allErr.message)
   }
 
-  // If filtering by user, also fetch user-specific rows (subset of allAnims)
+  // Apply pole filter
+  const allAnims = pole
+    ? (rawAnims ?? []).filter((a: { creator: { role: string } | null }) =>
+        a.creator && (pole === 'anim' ? ANIM_ROLES : MJ_ROLES).includes(a.creator.role)
+      )
+    : (rawAnims ?? [])
+
+  // Apply user filter (subset of pole-filtered)
   const userAnims = user_id
-    ? (allAnims ?? []).filter((a: { creator_id: string }) => a.creator_id === user_id)
-    : allAnims ?? []
+    ? allAnims.filter((a: { creator_id: string }) => a.creator_id === user_id)
+    : allAnims
 
   // Count per bucket
   const weekData = buckets.map(({ weekStart, weekEnd, label }) => {
@@ -71,11 +81,15 @@ Deno.serve(async (req) => {
     return { weekStart: weekStart.toISOString(), label, count, total }
   })
 
-  // Fetch all staff profiles for the user selector
-  const { data: profiles } = await db
+  // Fetch profiles for the user selector (filtered by pole if set)
+  let profilesQuery = db
     .from('profiles')
     .select('id, username, avatar_url')
     .order('username', { ascending: true })
+  if (pole) {
+    profilesQuery = profilesQuery.in('role', pole === 'anim' ? ANIM_ROLES : MJ_ROLES)
+  }
+  const { data: profiles } = await profilesQuery
 
   return jsonResponse({ weeks: weekData, profiles: profiles ?? [] })
 })

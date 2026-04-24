@@ -69,6 +69,19 @@ export function useAbsences(userId?: string) {
   })
 }
 
+export interface AbsencesSummary {
+  absentCount: number
+  totalStaff: number
+}
+
+export function useAbsencesSummary() {
+  return useQuery({
+    queryKey: ['absences', 'week-summary'] as const,
+    queryFn: () => invokeEdge<AbsencesSummary>('absences-list', { week_summary: true }),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useVillageStats() {
   return useQuery({
     queryKey: queryKeys.stats.villages,
@@ -137,12 +150,13 @@ export interface WeeklyEvolutionResult {
   profiles: WeeklyEvolutionProfile[]
 }
 
-export function useWeeklyEvolution(userId?: string | null, weeks = 12) {
+export function useWeeklyEvolution(userId?: string | null, weeks = 12, pole?: 'anim' | 'mj' | null) {
   return useQuery({
-    queryKey: ['stats', 'weekly-evolution', userId ?? null, weeks] as const,
+    queryKey: ['stats', 'weekly-evolution', userId ?? null, weeks, pole ?? null] as const,
     queryFn: () =>
       invokeEdge<WeeklyEvolutionResult>('stats-weekly-evolution', {
         ...(userId ? { user_id: userId } : {}),
+        ...(pole ? { pole } : {}),
         weeks,
       }),
     staleTime: 5 * 60 * 1000,

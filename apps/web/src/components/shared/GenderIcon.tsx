@@ -10,8 +10,11 @@ export function GenderIcon({ gender, className }: GenderIconProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center justify-center text-[10px] font-bold leading-none select-none',
-        gender === 'femme' ? 'text-pink-400' : 'text-blue-400',
+        'inline-flex items-center justify-center rounded-full text-xs font-bold leading-none select-none shrink-0',
+        'h-4 w-4',
+        gender === 'femme'
+          ? 'bg-pink-500/20 text-pink-400 ring-1 ring-pink-500/30'
+          : 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30',
         className,
       )}
       aria-label={gender === 'femme' ? 'Femme' : 'Homme'}

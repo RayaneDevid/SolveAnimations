@@ -8,11 +8,13 @@ import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/auth-store'
 import { supabase } from '@/lib/supabase/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 
 export default function PanelLayout() {
   const { auth } = useAuth()
   const logout = useAuthStore((s) => s.logout)
   const qc = useQueryClient()
+  useRealtimeSync()
 
   // Revalidate role every hour, trigger re-validate if > 24h
   useEffect(() => {

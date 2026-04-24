@@ -152,6 +152,7 @@ export function useDenyDeletion() {
       invokeEdge<{ success: boolean }>('animations-deny-deletion', { request_id: requestId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['deletion-requests'] })
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
 }
@@ -178,6 +179,7 @@ export function useApplyParticipant() {
       invokeEdge<object>('participants-apply', { animation_id: animationId }),
     onSuccess: (_, { animationId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
 }
@@ -211,6 +213,7 @@ export function useDecideParticipant() {
       }),
     onSuccess: (_, { animationId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
     },
   })
 }

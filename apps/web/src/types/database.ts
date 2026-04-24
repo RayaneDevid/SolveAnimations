@@ -201,6 +201,15 @@ export interface PaiesResult {
   uniqueAnimationsTotalMin: number
 }
 
+export interface AnimationMessage {
+  id: string
+  animation_id: string
+  user_id: string
+  content: string
+  created_at: string
+  user?: Pick<Profile, 'id' | 'username' | 'avatar_url' | 'role'>
+}
+
 // ─── Recrutement / Formation ──────────────────────────────────────────────────
 
 export interface SeniorProfile {
@@ -288,6 +297,7 @@ export type Database = {
       animations: { Row: Animation }
       animation_participants: { Row: AnimationParticipant }
       animation_reports: { Row: AnimationReport }
+      animation_messages: { Row: AnimationMessage }
       user_absences: { Row: UserAbsence }
     }
   }

@@ -29,6 +29,9 @@ export const queryKeys = {
   calendar: {
     week: (weekStart: string) => ['calendar', weekStart] as const,
   },
+  messages: {
+    forAnimation: (animationId: string) => ['messages', animationId] as const,
+  },
 } as const
 
 export type QueryKeys = typeof queryKeys

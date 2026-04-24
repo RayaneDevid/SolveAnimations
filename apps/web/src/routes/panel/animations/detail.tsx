@@ -14,6 +14,7 @@ import {
   useCorrectFinishedAnimation,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
+import { AnimationChat } from '@/components/animations/AnimationChat'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
@@ -662,6 +663,9 @@ export default function AnimationDetail() {
           )}
         </div>
       </div>
+
+      {/* Chat */}
+      <AnimationChat animationId={animation.id} currentUserId={user.id} />
 
     </div>
   )

@@ -199,6 +199,86 @@ export interface PaiesResult {
   uniqueAnimationsTotalMin: number
 }
 
+// ─── Recrutement / Formation ──────────────────────────────────────────────────
+
+export interface SeniorProfile {
+  id: string
+  username: string
+  avatar_url: string | null
+  role: string
+}
+
+export interface RecruitEntry {
+  id: string
+  steam_id: string
+  name: string
+  profile_id: string | null
+  profile: { username: string; avatar_url: string | null } | null
+}
+
+export interface RecrutementSession {
+  id: string
+  type: 'ecrit' | 'oral'
+  pole: 'mj' | 'animation'
+  created_at: string
+  created_by_profile: { username: string; avatar_url: string | null } | null
+  recruiters: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
+  recruits: RecruitEntry[]
+}
+
+export interface TraineeEntry {
+  id: string
+  steam_id: string
+  name: string
+  profile_id: string | null
+  profile: { username: string; avatar_url: string | null } | null
+}
+
+export interface FormationSession {
+  id: string
+  pole: 'mj' | 'animation'
+  created_at: string
+  created_by_profile: { username: string; avatar_url: string | null } | null
+  trainers: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
+  trainees: TraineeEntry[]
+}
+
+export interface RecentRecruit {
+  id: string
+  steam_id: string
+  name: string
+  profile_id: string | null
+  session_id: string
+}
+
+export interface ProfileHistory {
+  recruitments: Array<{
+    id: string
+    name: string
+    steam_id: string
+    created_at: string
+    session: {
+      id: string
+      type: 'ecrit' | 'oral'
+      pole: 'mj' | 'animation'
+      created_at: string
+      recruiters: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
+    } | null
+  }>
+  trainings: Array<{
+    id: string
+    name: string
+    steam_id: string
+    created_at: string
+    session: {
+      id: string
+      pole: 'mj' | 'animation'
+      created_at: string
+      trainers: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
+    } | null
+  }>
+}
+
 export type Database = {
   public: {
     Tables: {

@@ -4,6 +4,7 @@ import {
   FolderOpen, Search, X, CalendarOff, Clock, Sword,
   Users, Target, Calendar, ChevronRight, ExternalLink,
   FileText, CheckCircle2, AlertCircle, History, UserX, RotateCcw,
+  UserPlus, GraduationCap,
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -11,7 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   useMembers, useWeeklyStats, useAnimations, useAbsences,
-  useUserReports, useFormerMembers,
+  useUserReports, useFormerMembers, useProfileHistory,
 } from '@/hooks/queries/useAnimations'
 import { useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -315,6 +316,8 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
 
           <ReportsSection userId={member.id} onClose={onClose} />
 
+          <ProfileHistorySection memberId={member.id} />
+
           <section>
             <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Absences déclarées</h3>
             {absencesLoading ? <Skeleton className="h-14" /> : futureAbsences.length === 0 ? (
@@ -470,6 +473,86 @@ function FormerMemberDetail({ member, onClose }: { member: FormerMemberEntry; on
         </div>
       </motion.div>
     </>
+  )
+}
+
+// ─── Profile history (recrutement / formation) ────────────────────────────────
+
+function ProfileHistorySection({ memberId }: { memberId: string }) {
+  const { data: history, isLoading } = useProfileHistory(memberId)
+
+  const hasRecruit = (history?.recruitments.length ?? 0) > 0
+  const hasTrain = (history?.trainings.length ?? 0) > 0
+
+  if (!isLoading && !hasRecruit && !hasTrain) return null
+
+  return (
+    <section>
+      <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Parcours</h3>
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {history?.recruitments.map((r) => {
+            const recruiterNames = (r.session?.recruiters ?? [])
+              .map((rec) => rec.profile?.username)
+              .filter(Boolean)
+              .join(', ')
+            return (
+              <div key={r.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <UserPlus className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-white/80">
+                    Recrutement{' '}
+                    <span className="text-white/40 font-normal">
+                      {r.session?.pole === 'animation' ? 'Animation' : 'MJ'} · {r.session?.type === 'ecrit' ? 'Écrit' : 'Oral'}
+                    </span>
+                  </p>
+                  {recruiterNames && (
+                    <p className="text-xs text-white/40 mt-0.5">par {recruiterNames}</p>
+                  )}
+                  {r.session?.created_at && (
+                    <p className="text-xs text-white/25 mt-0.5">
+                      {format(new Date(r.session.created_at), 'd MMM yyyy', { locale: fr })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {history?.trainings.map((t) => {
+            const trainerNames = (t.session?.trainers ?? [])
+              .map((tr) => tr.profile?.username)
+              .filter(Boolean)
+              .join(', ')
+            return (
+              <div key={t.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <GraduationCap className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-white/80">
+                    Formation{' '}
+                    <span className="text-white/40 font-normal">
+                      {t.session?.pole === 'animation' ? 'Animation' : 'MJ'}
+                    </span>
+                  </p>
+                  {trainerNames && (
+                    <p className="text-xs text-white/40 mt-0.5">par {trainerNames}</p>
+                  )}
+                  {t.session?.created_at && (
+                    <p className="text-xs text-white/25 mt-0.5">
+                      {format(new Date(t.session.created_at), 'd MMM yyyy', { locale: fr })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }
 

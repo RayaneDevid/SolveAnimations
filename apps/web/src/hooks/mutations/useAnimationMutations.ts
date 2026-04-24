@@ -327,3 +327,39 @@ export function useRemoveMemberAccess() {
     },
   })
 }
+
+// ─── Recrutement / Formation ──────────────────────────────────────────────────
+
+export interface RecrutementInput {
+  type: 'ecrit' | 'oral'
+  pole: 'mj' | 'animation'
+  recruiter_ids: string[]
+  recruits: { steam_id: string; name: string }[]
+}
+
+export function useCreateRecrutement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: RecrutementInput) => invokeEdge<{ id: string }>('recrutement-create', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recrutements'] })
+      qc.invalidateQueries({ queryKey: ['recruits-recent'] })
+    },
+  })
+}
+
+export interface FormationInput {
+  pole: 'mj' | 'animation'
+  trainer_ids: string[]
+  trainees: { steam_id: string; name: string }[]
+}
+
+export function useCreateFormation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: FormationInput) => invokeEdge<{ id: string }>('formation-create', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['formations'] })
+    },
+  })
+}

@@ -11,6 +11,8 @@ import {
   PieChart,
   FolderOpen,
   Banknote,
+  UserPlus,
+  GraduationCap,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -55,7 +57,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Anim. Senior / MJ Senior',
     minRole: 'senior',
     items: [
-      // Views restricted to senior+ go here
+      { to: '/panel/recrutement', label: 'Recrutement', icon: UserPlus },
+      { to: '/panel/formation',   label: 'Formation',   icon: GraduationCap },
     ],
   },
   {

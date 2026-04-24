@@ -21,6 +21,8 @@ import Casiers from '@/routes/panel/casiers'
 import Paies from '@/routes/panel/paies'
 import Villages from '@/routes/panel/villages'
 import ProfilePage from '@/routes/panel/profile'
+import Recrutement from '@/routes/panel/recrutement'
+import Formation from '@/routes/panel/formation'
 
 export default function App() {
   return (
@@ -87,6 +89,22 @@ export default function App() {
           />
           <Route path="villages" element={<Villages />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route
+            path="recrutement"
+            element={
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+                <Recrutement />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="formation"
+            element={
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+                <Formation />
+              </RoleGate>
+            }
+          />
         </Route>
       </Routes>
       <Toaster

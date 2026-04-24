@@ -172,3 +172,43 @@ export function usePaies(weekStart?: Date) {
     queryFn: () => invokeEdge<import('@/types/database').PaiesResult>('paies', weekStart ? { week_start: weekStart.toISOString() } : {}),
   })
 }
+
+// ─── Recrutement / Formation ──────────────────────────────────────────────────
+
+export function useSeniors() {
+  return useQuery({
+    queryKey: ['seniors'] as const,
+    queryFn: () => invokeEdge<import('@/types/database').SeniorProfile[]>('seniors-list'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useRecrutements() {
+  return useQuery({
+    queryKey: ['recrutements'] as const,
+    queryFn: () => invokeEdge<import('@/types/database').RecrutementSession[]>('recrutement-list'),
+  })
+}
+
+export function useFormations() {
+  return useQuery({
+    queryKey: ['formations'] as const,
+    queryFn: () => invokeEdge<import('@/types/database').FormationSession[]>('formation-list'),
+  })
+}
+
+export function useRecentRecruits(pole?: 'mj' | 'animation') {
+  return useQuery({
+    queryKey: ['recruits-recent', pole ?? null] as const,
+    queryFn: () => invokeEdge<import('@/types/database').RecentRecruit[]>('recruits-recent-list', pole ? { pole } : {}),
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function useProfileHistory(profileId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile-history', profileId] as const,
+    queryFn: () => invokeEdge<import('@/types/database').ProfileHistory>('profile-history', { profile_id: profileId }),
+    enabled: !!profileId,
+  })
+}

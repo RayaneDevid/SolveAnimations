@@ -43,6 +43,13 @@ export type EdgeFunctionName =
   | 'members-update-perms'
   | 'profile-update'
   | 'paies'
+  | 'seniors-list'
+  | 'recrutement-create'
+  | 'recrutement-list'
+  | 'formation-create'
+  | 'formation-list'
+  | 'recruits-recent-list'
+  | 'profile-history'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

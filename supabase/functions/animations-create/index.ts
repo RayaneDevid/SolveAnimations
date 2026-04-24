@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
     server, type, prepTimeMin = 0, village, description,
+    requestValidation = true,
   } = body
 
   // Basic validation
@@ -39,6 +40,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Village invalide')
 
   const db = getServiceClient()
+  const now = new Date().toISOString()
+  const autoValidate = requestValidation === false
 
   const { data: animation, error } = await db
     .from('animations')
@@ -53,7 +56,8 @@ Deno.serve(async (req) => {
       village,
       description: description?.trim() || null,
       creator_id: profile.id,
-      status: 'pending_validation',
+      status: autoValidate ? 'open' : 'pending_validation',
+      ...(autoValidate ? { validated_by: profile.id, validated_at: now } : {}),
     })
     .select(`*, creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)`)
     .single()
@@ -63,26 +67,48 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', 'Erreur lors de la création')
   }
 
-  // Notify bot and save the admin message ID for future embed updates
-  const botRes = await notifyBot<{ data: { adminMessageId: string } }>('animation-created', {
-    animationId: animation.id,
-    title: animation.title,
-    scheduledAt: animation.scheduled_at,
-    plannedDurationMin: animation.planned_duration_min,
-    prepTimeMin: animation.prep_time_min,
-    requiredParticipants: animation.required_participants,
-    server: animation.server,
-    village: animation.village,
-    type: animation.type,
-    creatorUsername: profile.username,
-    creatorDiscordId: profile.discord_id,
-    ...(animation.document_url ? { documentUrl: animation.document_url } : {}),
-  })
-
-  const adminMessageId = botRes?.data?.adminMessageId
-  if (adminMessageId) {
-    await db.from('animations').update({ discord_message_id: adminMessageId }).eq('id', animation.id)
-    animation.discord_message_id = adminMessageId
+  if (autoValidate) {
+    // Auto-validée : on poste directement dans le canal public
+    const botRes = await notifyBot<{ data: { publicMessageId: string } }>('animation-validated', {
+      animationId: animation.id,
+      creatorDiscordId: profile.discord_id,
+      title: animation.title,
+      scheduledAt: animation.scheduled_at,
+      plannedDurationMin: animation.planned_duration_min,
+      prepTimeMin: animation.prep_time_min,
+      requiredParticipants: animation.required_participants,
+      server: animation.server,
+      village: animation.village,
+      type: animation.type,
+      documentUrl: animation.document_url ?? undefined,
+      creatorUsername: profile.username,
+    })
+    const publicMessageId = botRes?.data?.publicMessageId
+    if (publicMessageId) {
+      await db.from('animations').update({ discord_message_id: publicMessageId }).eq('id', animation.id)
+      animation.discord_message_id = publicMessageId
+    }
+  } else {
+    // Validation requise : on poste dans le canal de validation
+    const botRes = await notifyBot<{ data: { adminMessageId: string } }>('animation-created', {
+      animationId: animation.id,
+      title: animation.title,
+      scheduledAt: animation.scheduled_at,
+      plannedDurationMin: animation.planned_duration_min,
+      prepTimeMin: animation.prep_time_min,
+      requiredParticipants: animation.required_participants,
+      server: animation.server,
+      village: animation.village,
+      type: animation.type,
+      creatorUsername: profile.username,
+      creatorDiscordId: profile.discord_id,
+      ...(animation.document_url ? { documentUrl: animation.document_url } : {}),
+    })
+    const adminMessageId = botRes?.data?.adminMessageId
+    if (adminMessageId) {
+      await db.from('animations').update({ discord_message_id: adminMessageId }).eq('id', animation.id)
+      animation.discord_message_id = adminMessageId
+    }
   }
 
   return jsonResponse({ animation }, 201)

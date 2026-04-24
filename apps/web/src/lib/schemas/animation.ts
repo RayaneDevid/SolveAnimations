@@ -41,6 +41,7 @@ export const createAnimationSchema = z.object({
     .default(0),
   village: z.enum(VILLAGES, { required_error: 'Village requis' }),
   description: z.string().trim().max(2000).optional(),
+  requestValidation: z.boolean().default(true),
 })
 
 export type CreateAnimationInput = z.infer<typeof createAnimationSchema>

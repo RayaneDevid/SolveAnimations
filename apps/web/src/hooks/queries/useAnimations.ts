@@ -123,6 +123,7 @@ export interface WeeklyEvolutionPoint {
   weekStart: string
   label: string
   count: number
+  total: number
 }
 
 export interface WeeklyEvolutionProfile {

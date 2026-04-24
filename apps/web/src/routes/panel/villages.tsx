@@ -39,12 +39,16 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   )
 }
 
-function EvolutionTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+function EvolutionTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={CUSTOM_TOOLTIP_STYLE} className="p-3">
+    <div style={CUSTOM_TOOLTIP_STYLE} className="p-3 space-y-1">
       <p className="text-white/50 text-xs mb-1">{label}</p>
-      <p className="font-semibold">{payload[0].value} animation{payload[0].value !== 1 ? 's' : ''}</p>
+      {payload.map((p) => (
+        <p key={p.name} style={{ color: p.color }} className="text-sm">
+          {p.name === 'total' ? 'Total' : 'Animateur'}: <strong>{p.value}</strong>
+        </p>
+      ))}
     </div>
   )
 }
@@ -245,6 +249,17 @@ export default function Villages() {
                 tickLine={false}
               />
               <Tooltip content={<EvolutionTooltip />} />
+              {selectedUser !== 'all' && (
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="rgba(255,255,255,0.25)"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'rgba(255,255,255,0.4)', strokeWidth: 0 }}
+                />
+              )}
               <Line
                 type="monotone"
                 dataKey="count"

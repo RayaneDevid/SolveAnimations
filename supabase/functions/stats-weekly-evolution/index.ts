@@ -41,31 +41,34 @@ Deno.serve(async (req) => {
     buckets.push({ weekStart: start, weekEnd: end, label: `${day}/${month}` })
   }
 
-  // Fetch finished animations in the range
-  let query = db
+  const rangeEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  // Always fetch all-users totals
+  const { data: allAnims, error: allErr } = await db
     .from('animations')
     .select('ended_at, creator_id')
     .eq('status', 'finished')
     .gte('ended_at', oldest.toISOString())
-    .lt('ended_at', new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString())
+    .lt('ended_at', rangeEnd)
 
-  if (user_id) {
-    query = query.eq('creator_id', user_id)
+  if (allErr) {
+    return errorResponse('INTERNAL_ERROR', allErr.message)
   }
 
-  const { data: animations, error: animErr } = await query
-
-  if (animErr) {
-    return errorResponse('INTERNAL_ERROR', animErr.message)
-  }
+  // If filtering by user, also fetch user-specific rows (subset of allAnims)
+  const userAnims = user_id
+    ? (allAnims ?? []).filter((a: { creator_id: string }) => a.creator_id === user_id)
+    : allAnims ?? []
 
   // Count per bucket
   const weekData = buckets.map(({ weekStart, weekEnd, label }) => {
-    const count = (animations ?? []).filter((a: { ended_at: string }) => {
+    const inRange = (a: { ended_at: string }) => {
       const t = new Date(a.ended_at).getTime()
       return t >= weekStart.getTime() && t < weekEnd.getTime()
-    }).length
-    return { weekStart: weekStart.toISOString(), label, count }
+    }
+    const count = userAnims.filter(inRange).length
+    const total = (allAnims ?? []).filter(inRange).length
+    return { weekStart: weekStart.toISOString(), label, count, total }
   })
 
   // Fetch all staff profiles for the user selector

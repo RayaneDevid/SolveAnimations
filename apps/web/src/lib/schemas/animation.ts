@@ -29,7 +29,7 @@ export const createAnimationSchema = z.object({
   requiredParticipants: z
     .number({ required_error: 'Requis' })
     .int()
-    .min(1, 'Minimum 1')
+    .min(0, 'Minimum 0')
     .max(100, 'Maximum 100'),
   server: z.enum(SERVERS, { required_error: 'Serveur requis' }),
   type: z.enum(TYPES, { required_error: 'Type requis' }),

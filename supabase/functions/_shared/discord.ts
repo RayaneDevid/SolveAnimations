@@ -55,11 +55,13 @@ export async function getGuildMember(
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`
     : null
 
+  const displayName: string = member.nick ?? user.global_name ?? user.username
+
   return {
     ok: true,
     role: bestRole,
     discordId: user.id,
-    username: user.username,
+    username: displayName,
     avatarUrl,
   }
 }

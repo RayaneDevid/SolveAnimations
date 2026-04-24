@@ -150,14 +150,29 @@ export default function Dashboard() {
               quotaPercent >= 100
                 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
                 : quotaPercent < 50
-                ? 'bg-gradient-to-r from-red-400 to-orange-400'
-                : undefined
+                  ? 'bg-gradient-to-r from-red-400 to-orange-400'
+                  : undefined
             }
           />
         </GlassCard>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Create animation */}
+        <Link to="/panel/animations/new" className="block">
+          <GlassCard className="p-5 h-full flex flex-col items-center justify-center gap-5 glass-hover cursor-pointer group min-h-[200px]">
+            <div className="h-16 w-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 transition-all">
+              <Plus className="h-8 w-8 text-cyan-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">
+                Créer une animation
+              </p>
+              <p className="text-xs text-white/30 mt-0.5">Proposer une nouvelle session</p>
+            </div>
+          </GlassCard>
+        </Link>
+        
         {/* Upcoming animations */}
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -276,21 +291,6 @@ export default function Dashboard() {
             </div>
           )}
         </GlassCard>
-
-        {/* Create animation */}
-        <Link to="/panel/animations/new" className="block">
-          <GlassCard className="p-5 h-full flex flex-col items-center justify-center gap-5 glass-hover cursor-pointer group min-h-[200px]">
-            <div className="h-16 w-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 transition-all">
-              <Plus className="h-8 w-8 text-cyan-400" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">
-                Créer une animation
-              </p>
-              <p className="text-xs text-white/30 mt-0.5">Proposer une nouvelle session</p>
-            </div>
-          </GlassCard>
-        </Link>
       </div>
     </div>
   )

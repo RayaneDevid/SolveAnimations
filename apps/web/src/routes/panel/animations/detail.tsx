@@ -472,7 +472,7 @@ export default function AnimationDetail() {
           )}
 
           {/* Apply CTA */}
-          {['open', 'preparing'].includes(animation.status) && !isCreator && !isParticipant && (
+          {['open', 'preparing', 'running'].includes(animation.status) && !isCreator && !isParticipant && (
             <GlassCard className="p-5">
               <div className="flex items-center justify-between">
                 <div>

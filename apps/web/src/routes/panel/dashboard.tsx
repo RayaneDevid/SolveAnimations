@@ -200,6 +200,10 @@ export default function Dashboard() {
                       <span className="text-xs text-white/40">{formatDateTime(anim.scheduled_at)}</span>
                       <ServerBadge server={anim.server} />
                       <VillageBadge village={anim.village} />
+                      <span className="text-xs text-white/40 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {anim.validated_participants_count ?? 0}/{anim.required_participants}
+                      </span>
                     </div>
                   </div>
                   <StatusBadge status={anim.status} />

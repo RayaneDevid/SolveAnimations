@@ -15,8 +15,19 @@ export function useAnimationMessages(animationId: string) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'animation_messages' },
         (payload) => {
-          const record = payload.new as { animation_id?: string }
-          if (record.animation_id !== animationId) return
+          const newMsg = payload.new as AnimationMessage
+          if (newMsg.animation_id !== animationId) return
+
+          // Append instantly from the WAL payload so the message appears immediately
+          qc.setQueryData(
+            queryKeys.messages.forAnimation(animationId),
+            (old: AnimationMessage[] | undefined) => {
+              if (!old) return [newMsg]
+              if (old.some((m) => m.id === newMsg.id)) return old
+              return [...old, newMsg]
+            },
+          )
+          // Background refetch to fill in the joined user profile
           qc.invalidateQueries({ queryKey: queryKeys.messages.forAnimation(animationId) })
         },
       )

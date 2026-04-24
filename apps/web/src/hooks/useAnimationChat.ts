@@ -8,20 +8,15 @@ import type { AnimationMessage } from '@/types/database'
 export function useAnimationMessages(animationId: string) {
   const qc = useQueryClient()
 
-  // Realtime: append new messages directly to cache without refetch
   useEffect(() => {
     const channel = supabase
       .channel(`chat:${animationId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'animation_messages',
-          filter: `animation_id=eq.${animationId}`,
-        },
-        () => {
-          // Refetch to get the full message with joined user profile
+        { event: 'INSERT', schema: 'public', table: 'animation_messages' },
+        (payload) => {
+          const record = payload.new as { animation_id?: string }
+          if (record.animation_id !== animationId) return
           qc.invalidateQueries({ queryKey: queryKeys.messages.forAnimation(animationId) })
         },
       )
@@ -39,6 +34,7 @@ export function useAnimationMessages(animationId: string) {
         (r) => r.messages,
       ),
     staleTime: 0,
+    refetchInterval: 10_000,
   })
 }
 

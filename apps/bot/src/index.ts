@@ -1,6 +1,13 @@
+import { REST, Routes, SlashCommandBuilder } from 'discord.js';
 import { env } from './config/env.js';
 import client from './discord/client.js';
 import { createFastifyServer } from './http/server.js';
+
+const SLASH_COMMANDS = [
+  new SlashCommandBuilder()
+    .setName('animation-create')
+    .setDescription('Créer une nouvelle animation via un formulaire'),
+].map((cmd) => cmd.toJSON());
 
 async function bootstrap(): Promise<void> {
   console.log('🚀 Starting Solve Animations Bot...');
@@ -13,6 +20,13 @@ async function bootstrap(): Promise<void> {
   });
 
   console.log('✅ Discord client connected.');
+
+  // Register slash commands on the guild
+  const rest = new REST().setToken(env.DISCORD_BOT_TOKEN);
+  await rest.put(Routes.applicationGuildCommands(client.user!.id, env.DISCORD_GUILD_ID), {
+    body: SLASH_COMMANDS,
+  });
+  console.log('✅ Slash commands registered.');
 
   // 2. Start the Fastify HTTP server
   const app = await createFastifyServer();

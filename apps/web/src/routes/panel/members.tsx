@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, Calendar, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
@@ -147,8 +147,36 @@ function MemberTable({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
-                  <span className="text-sm font-medium text-white/90">{m.username}</span>
-                  {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400" />}
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-white/90">{m.username}</span>
+                      {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400" />}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      {m.steamId ? (
+                        <span className="flex items-center gap-1 text-xs text-white/35 font-mono">
+                          <Gamepad2 className="h-3 w-3" />{m.steamId}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-400/60 italic">Steam manquant</span>
+                      )}
+                      {m.arrivalDate ? (
+                        <span className="flex items-center gap-1 text-xs text-white/35">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(m.arrivalDate).toLocaleDateString('fr-FR')}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-400/60 italic">Arrivée manquante</span>
+                      )}
+                      {m.contactEmail ? (
+                        <span className="flex items-center gap-1 text-xs text-white/35">
+                          <Mail className="h-3 w-3" />{m.contactEmail}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-400/60 italic">Mail manquant</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </td>
               <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>

@@ -105,6 +105,9 @@ Deno.serve(async (req) => {
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),
+      steamId: p.steam_id ?? null,
+      arrivalDate: p.arrival_date ?? null,
+      contactEmail: p.contact_email ?? null,
       weeklyStats: {
         animationsCreated: weekly.count,
         hoursAnimated: weekly.minutes,

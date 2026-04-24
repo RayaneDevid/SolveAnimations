@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar } from 'lucide-react'
+import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useWeeklyStats, useAnimations, useMyReports } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
@@ -90,8 +90,34 @@ export default function Dashboard() {
   const upcomingAnims = animsResult?.animations?.slice(0, 4) ?? []
   const scheduledAnims = scheduledResult?.animations?.slice(0, 4) ?? []
 
+  const profileIncomplete = !user.steam_id || !user.arrival_date || !user.contact_email
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Profile incomplete banner */}
+      {profileIncomplete && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Link to="/panel/profile">
+            <div className="flex items-center gap-4 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/15 transition-colors cursor-pointer">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <UserCog className="h-5 w-5 text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-300">Profil incomplet</p>
+                <p className="text-xs text-amber-400/70 mt-0.5">
+                  Renseigne ton Steam ID, ta date d'arrivée et ton adresse mail pour compléter ton profil.
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-amber-400/60 shrink-0" />
+            </div>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Welcome */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}

@@ -158,6 +158,9 @@ export interface MemberEntry {
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean
+  steamId: string | null
+  arrivalDate: string | null
+  contactEmail: string | null
   weeklyStats: {
     animationsCreated: number
     hoursAnimated: number

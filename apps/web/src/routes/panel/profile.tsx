@@ -113,11 +113,13 @@ export default function ProfilePage() {
             maxLength={17}
             className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50 font-mono"
           />
-          <p className="text-xs text-white/30">17 chiffres — trouvable sur steamid.io</p>
+          <p className="text-xs text-white/30">17 chiffres — trouvable sur{' '}
+            <a href="https://steamid.io" target="_blank" rel="noopener noreferrer" className="text-cyan-400/70 hover:text-cyan-400 underline transition-colors">steamid.io</a>
+          </p>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-white/70">Date d'arrivée sur le serveur</Label>
+          <Label className="text-white/70">Date d'arrivée dans le staff</Label>
           <Input
             type="date"
             value={arrivalDate}

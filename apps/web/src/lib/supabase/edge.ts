@@ -50,6 +50,8 @@ export type EdgeFunctionName =
   | 'formation-list'
   | 'recruits-recent-list'
   | 'profile-history'
+  | 'messages-list'
+  | 'messages-send'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

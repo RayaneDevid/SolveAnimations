@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, Calendar, Mail } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, Mail, CheckCircle2, CircleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
@@ -107,6 +108,59 @@ function RemoveConfirmModal({
   )
 }
 
+// ─── Profile tooltip ──────────────────────────────────────────────────────────
+
+function ProfileTooltip({ member: m }: { member: MemberEntry }) {
+  const filled = [m.steamId, m.arrivalDate, m.contactEmail].filter(Boolean).length
+  const total = 3
+
+  const icon =
+    filled === total ? (
+      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+    ) : filled === 0 ? (
+      <CircleAlert className="h-3.5 w-3.5 text-red-400/70" />
+    ) : (
+      <CircleAlert className="h-3.5 w-3.5 text-amber-400" />
+    )
+
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>
+        <button className="shrink-0 opacity-70 hover:opacity-100 transition-opacity">{icon}</button>
+      </TooltipTrigger>
+      <TooltipContent side="right" className="space-y-1.5 p-3 max-w-xs">
+        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
+          Profil ({filled}/{total})
+        </p>
+        <div className="flex items-center gap-2 text-xs">
+          <Gamepad2 className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          {m.steamId ? (
+            <span className="font-mono text-white/80">{m.steamId}</span>
+          ) : (
+            <span className="text-red-400/80 italic">Non renseigné</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <CalendarDays className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          {m.arrivalDate ? (
+            <span className="text-white/80">{new Date(m.arrivalDate).toLocaleDateString('fr-FR')}</span>
+          ) : (
+            <span className="text-red-400/80 italic">Non renseignée</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <Mail className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          {m.contactEmail ? (
+            <span className="text-white/80">{m.contactEmail}</span>
+          ) : (
+            <span className="text-red-400/80 italic">Non renseigné</span>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
@@ -147,35 +201,10 @@ function MemberTable({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-white/90">{m.username}</span>
-                      {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400" />}
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      {m.steamId ? (
-                        <span className="flex items-center gap-1 text-xs text-white/35 font-mono">
-                          <Gamepad2 className="h-3 w-3" />{m.steamId}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-red-400/60 italic">Steam manquant</span>
-                      )}
-                      {m.arrivalDate ? (
-                        <span className="flex items-center gap-1 text-xs text-white/35">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(m.arrivalDate).toLocaleDateString('fr-FR')}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-red-400/60 italic">Arrivée manquante</span>
-                      )}
-                      {m.contactEmail ? (
-                        <span className="flex items-center gap-1 text-xs text-white/35">
-                          <Mail className="h-3 w-3" />{m.contactEmail}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-red-400/60 italic">Mail manquant</span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-sm font-medium text-white/90 truncate">{m.username}</span>
+                    {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
+                    <ProfileTooltip member={m} />
                   </div>
                 </div>
               </td>

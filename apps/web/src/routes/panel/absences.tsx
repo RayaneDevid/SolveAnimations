@@ -160,16 +160,32 @@ export default function Absences() {
       </div>
 
       {summary && (
-        <GlassCard className="p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-            <Users className="h-4 w-4 text-violet-400" />
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white/80">
+                {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} absent{summary.absentCount > 1 ? 's' : ''} cette semaine
+              </p>
+              <p className="text-xs text-white/30 mt-0.5">absences déclarées sur la semaine en cours</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white/80">
-              {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} absent{summary.absentCount > 1 ? 's' : ''} cette semaine
-            </p>
-            <p className="text-xs text-white/30 mt-0.5">absences déclarées sur la semaine en cours</p>
-          </div>
+          {summary.absentMembers.length > 0 && (
+            <div className="flex flex-wrap gap-2 pl-12">
+              {summary.absentMembers.map((m) => (
+                <div key={m.username} className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.07] rounded-full px-2.5 py-1">
+                  {m.avatar_url ? (
+                    <img src={m.avatar_url} alt={m.username} className="h-4 w-4 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full bg-white/10" />
+                  )}
+                  <span className="text-xs text-white/70">{m.username}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </GlassCard>
       )}
 

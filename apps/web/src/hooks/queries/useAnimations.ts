@@ -72,6 +72,7 @@ export function useAbsences(userId?: string) {
 export interface AbsencesSummary {
   absentCount: number
   totalStaff: number
+  absentMembers: { username: string; avatar_url: string | null }[]
 }
 
 export function useAbsencesSummary() {

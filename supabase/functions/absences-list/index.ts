@@ -26,13 +26,20 @@ Deno.serve(async (req) => {
 
     const { data: absences } = await db
       .from('user_absences')
-      .select('user_id')
+      .select('user_id, profiles(username, avatar_url)')
       .lte('from_date', wEndDate)
       .gte('to_date', wStartDate)
 
-    const absentCount = new Set((absences ?? []).map((a: { user_id: string }) => a.user_id)).size
+    const seen = new Map<string, { username: string; avatar_url: string | null }>()
+    for (const a of absences ?? []) {
+      if (!seen.has(a.user_id)) {
+        const p = a.profiles as { username: string; avatar_url: string | null } | null
+        seen.set(a.user_id, { username: p?.username ?? 'Inconnu', avatar_url: p?.avatar_url ?? null })
+      }
+    }
+    const absentMembers = Array.from(seen.values())
     const { count: totalStaff } = await db.from('profiles').select('*', { count: 'exact', head: true })
-    return jsonResponse({ absentCount, totalStaff: totalStaff ?? 0 })
+    return jsonResponse({ absentCount: absentMembers.length, totalStaff: totalStaff ?? 0, absentMembers })
   }
 
   // Only responsable can query other users' absences

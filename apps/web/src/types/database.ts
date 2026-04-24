@@ -55,6 +55,7 @@ export interface Animation {
   updated_at: string
   creator?: Profile
   validated_participants_count?: number
+  my_participant_status?: ParticipantStatus | null
 }
 
 export interface AnimationParticipant {

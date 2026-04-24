@@ -79,7 +79,7 @@ export default function Villages() {
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <PieIcon className="h-6 w-6 text-cyan-400" />
-          Graphique villages
+          Statistiques
         </h1>
         <p className="text-sm text-white/40 mt-0.5">
           Répartition des animations par village

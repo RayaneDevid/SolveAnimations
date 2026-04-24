@@ -52,23 +52,29 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', error.message)
   }
 
-  // Fetch validated participant counts for this page
+  // Fetch validated participant counts + current user's status for this page
   const ids = (animations ?? []).map((a: { id: string }) => a.id)
   let validatedCounts: Record<string, number> = {}
+  let myStatuses: Record<string, string> = {}
   if (ids.length > 0) {
     const { data: participantRows } = await db
       .from('animation_participants')
-      .select('animation_id')
+      .select('animation_id, user_id, status')
       .in('animation_id', ids)
-      .eq('status', 'validated')
     for (const row of participantRows ?? []) {
-      validatedCounts[row.animation_id] = (validatedCounts[row.animation_id] ?? 0) + 1
+      if (row.status === 'validated') {
+        validatedCounts[row.animation_id] = (validatedCounts[row.animation_id] ?? 0) + 1
+      }
+      if (row.user_id === profile.id && ['pending', 'validated'].includes(row.status)) {
+        myStatuses[row.animation_id] = row.status
+      }
     }
   }
 
   const animationsWithCounts = (animations ?? []).map((a: Record<string, unknown>) => ({
     ...a,
     validated_participants_count: validatedCounts[a.id as string] ?? 0,
+    my_participant_status: myStatuses[a.id as string] ?? null,
   }))
 
   return jsonResponse({ animations: animationsWithCounts, total: count ?? 0, page, pageSize })

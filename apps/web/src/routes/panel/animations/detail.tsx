@@ -577,7 +577,7 @@ export default function AnimationDetail() {
 
                 {/* ── Suppression ── */}
                 {(
-                  (isResponsable && !['running', 'finished'].includes(animation.status)) ||
+                  (isResponsable && animation.status !== 'running') ||
                   (isCreator && ['cancelled', 'rejected'].includes(animation.status))
                 ) && (
                   <div className="pt-3 border-t border-white/[0.06]">

@@ -59,7 +59,14 @@ function AnimationCard({ anim }: { anim: Animation }) {
                 )}
               </div>
             </div>
-            <StatusBadge status={anim.status} />
+            <div className="flex items-center gap-2 shrink-0">
+              {anim.my_participant_status && (
+                <span className="inline-flex items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs font-semibold text-cyan-400">
+                  Proposée
+                </span>
+              )}
+              <StatusBadge status={anim.status} />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap mb-3">

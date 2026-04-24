@@ -4,7 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
-const DELETABLE_BY_RESPONSABLE = ['pending_validation', 'open', 'preparing', 'cancelled', 'rejected', 'postponed']
+const DELETABLE_BY_RESPONSABLE = ['pending_validation', 'open', 'preparing', 'cancelled', 'rejected', 'postponed', 'finished']
 const DELETABLE_BY_CREATOR = ['cancelled', 'rejected']
 
 Deno.serve(async (req) => {

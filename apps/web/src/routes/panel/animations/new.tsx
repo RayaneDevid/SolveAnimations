@@ -43,7 +43,6 @@ export default function NewAnimation() {
   })
 
   const requiredParticipants = watch('requiredParticipants')
-  const requestValidation = watch('requestValidation')
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {

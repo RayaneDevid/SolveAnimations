@@ -10,6 +10,8 @@ const envSchema = z.object({
   APP_PUBLIC_URL: z.string().url(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  ROLE_DIRECTION: z.string().optional(),
+  ROLE_GERANCE: z.string().optional(),
   ROLE_RESPONSABLE: z.string().optional(),
   ROLE_RESPONSABLE_MJ: z.string().optional(),
   ROLE_SENIOR: z.string().optional(),
@@ -29,6 +31,8 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const STAFF_ROLE_IDS: string[] = [
+  env.ROLE_DIRECTION,
+  env.ROLE_GERANCE,
   env.ROLE_RESPONSABLE,
   env.ROLE_RESPONSABLE_MJ,
   env.ROLE_SENIOR,

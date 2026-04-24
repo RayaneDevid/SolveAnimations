@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
   }
 
   const QUOTA_MAX: Record<string, number | null> = {
+    direction: null,
+    gerance: null,
     responsable: null,
     responsable_mj: null,
     senior: 5,

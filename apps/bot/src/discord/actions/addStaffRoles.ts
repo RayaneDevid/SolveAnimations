@@ -1,9 +1,11 @@
 import client from '../client.js';
 import { env, STAFF_ROLE_IDS } from '../../config/env.js';
 
-type StaffRole = 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj';
+type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj';
 
 const ROLE_ID_MAP: Record<StaffRole, string | undefined> = {
+  direction:      env.ROLE_DIRECTION,
+  gerance:        env.ROLE_GERANCE,
   responsable:    env.ROLE_RESPONSABLE,
   responsable_mj: env.ROLE_RESPONSABLE_MJ,
   senior:         env.ROLE_SENIOR,

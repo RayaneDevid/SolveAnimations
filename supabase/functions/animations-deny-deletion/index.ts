@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  const isResponsable = profile.role === 'responsable' || profile.role === 'responsable_mj'
+  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
   if (!isResponsable)
     return errorResponse('FORBIDDEN', 'Seul un responsable peut refuser la suppression')
 

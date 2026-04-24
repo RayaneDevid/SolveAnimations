@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
 
   const isCreator = anim.creator_id === profile.id
-  const isResponsable = profile.role === 'responsable' || profile.role === 'responsable_mj'
+  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
 
   if (!isCreator && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut annuler')

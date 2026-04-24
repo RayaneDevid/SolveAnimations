@@ -15,6 +15,8 @@ const REMUNERATION: Record<string, number> = {
 const REMUNERATION_CAP = 10_000
 
 const QUOTA_MAX: Record<string, number | null> = {
+  direction:      null,
+  gerance:        null,
   responsable:    null,
   responsable_mj: null,
   senior:         5,

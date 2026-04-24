@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   }
 
   // Only responsable can query other users' absences
-  if (user_id && user_id !== profile.id && profile.role !== 'responsable' && profile.role !== 'responsable_mj')
+  if (user_id && user_id !== profile.id && !['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role))
     return errorResponse('FORBIDDEN', 'Accès refusé')
 
   const targetId = user_id ?? profile.id

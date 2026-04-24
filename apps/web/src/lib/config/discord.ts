@@ -1,6 +1,8 @@
 export const DISCORD_GUILD_ID = import.meta.env.VITE_DISCORD_GUILD_ID as string | undefined
 
 export const STAFF_ROLE_IDS = {
+  direction: import.meta.env.VITE_DISCORD_ROLE_DIRECTION as string | undefined,
+  gerance: import.meta.env.VITE_DISCORD_ROLE_GERANCE as string | undefined,
   responsable: import.meta.env.VITE_DISCORD_ROLE_RESPONSABLE as string | undefined,
   responsable_mj: import.meta.env.VITE_DISCORD_ROLE_RESPONSABLE_MJ as string | undefined,
   senior: import.meta.env.VITE_DISCORD_ROLE_SENIOR as string | undefined,
@@ -9,9 +11,11 @@ export const STAFF_ROLE_IDS = {
   mj: import.meta.env.VITE_DISCORD_ROLE_MJ as string | undefined,
 } as const
 
-export type StaffRoleKey = 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
+export type StaffRoleKey = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
 
 export const ROLE_HIERARCHY: Record<StaffRoleKey, number> = {
+  direction: 6,
+  gerance: 5,
   responsable: 4,
   responsable_mj: 4,
   senior: 3,
@@ -21,6 +25,8 @@ export const ROLE_HIERARCHY: Record<StaffRoleKey, number> = {
 }
 
 export const ROLE_LABELS: Record<StaffRoleKey, string> = {
+  direction: 'Direction',
+  gerance: 'Gérance',
   responsable: 'Responsable Animation',
   responsable_mj: 'Responsable MJ',
   senior: 'Animateur Senior',
@@ -30,6 +36,8 @@ export const ROLE_LABELS: Record<StaffRoleKey, string> = {
 }
 
 export const ROLE_COLORS: Record<StaffRoleKey, string> = {
+  direction: '#F8FAFC',
+  gerance: '#C084FC',
   responsable: '#F59E0B',
   responsable_mj: '#F59E0B',
   senior: '#A855F7',

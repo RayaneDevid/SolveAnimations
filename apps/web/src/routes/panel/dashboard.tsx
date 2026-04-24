@@ -15,6 +15,8 @@ import { formatDateTime, formatTime } from '@/lib/utils/format'
 import { ROLE_LABELS } from '@/lib/config/discord'
 
 const QUOTA_MAX: Record<string, number | null> = {
+  direction: null,
+  gerance: null,
   responsable: null,
   responsable_mj: null,
   senior: 5,

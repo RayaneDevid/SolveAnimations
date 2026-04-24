@@ -2,6 +2,8 @@ import type { Profile } from './auth.ts'
 import { errorResponse } from './errorResponse.ts'
 
 const ROLE_HIERARCHY: Record<string, number> = {
+  direction: 6,
+  gerance: 5,
   responsable: 4,
   responsable_mj: 4,
   senior: 3,
@@ -11,12 +13,12 @@ const ROLE_HIERARCHY: Record<string, number> = {
 }
 
 export function isResponsableRole(role: string): boolean {
-  return role === 'responsable' || role === 'responsable_mj'
+  return ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(role)
 }
 
 export function requireRole(
   profile: Profile,
-  minRole: 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'mj' | 'animateur',
+  minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'mj' | 'animateur',
 ): Response | null {
   if ((ROLE_HIERARCHY[profile.role] ?? 0) < ROLE_HIERARCHY[minRole]) {
     return errorResponse('FORBIDDEN', `Rôle requis : ${minRole}`)

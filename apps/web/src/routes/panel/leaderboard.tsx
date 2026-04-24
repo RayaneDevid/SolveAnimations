@@ -132,7 +132,7 @@ function RankingTable({ entries }: { entries: LeaderboardEntry[] }) {
   )
 }
 
-const ANIM_ROLES = ['responsable', 'senior', 'animateur']
+const ANIM_ROLES = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
 const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
 
 export default function Leaderboard() {

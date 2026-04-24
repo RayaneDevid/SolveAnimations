@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
   const { user_id, weeks = 12, pole } = body
 
-  const ANIM_ROLES = ['responsable', 'senior', 'animateur']
+  const ANIM_ROLES = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
   const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
 
   const db = getServiceClient()

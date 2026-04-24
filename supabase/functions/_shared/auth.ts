@@ -32,5 +32,6 @@ export async function requireAuth(req: Request): Promise<Profile | Response> {
     .single()
 
   if (!profile) return errorResponse('FORBIDDEN', 'No staff profile found')
+  if (profile.is_active === false) return errorResponse('FORBIDDEN', 'Compte désactivé')
   return profile as Profile
 }

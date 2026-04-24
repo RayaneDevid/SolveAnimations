@@ -5,10 +5,13 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/stores/auth-store'
+import { supabase } from '@/lib/supabase/client'
 import { queryKeys } from '@/lib/query/keys'
 
 export default function PanelLayout() {
   const { auth } = useAuth()
+  const logout = useAuthStore((s) => s.logout)
   const qc = useQueryClient()
 
   // Revalidate role every hour, trigger re-validate if > 24h
@@ -25,6 +28,25 @@ export default function PanelLayout() {
     const id = setInterval(check, 60 * 60 * 1000)
     return () => clearInterval(id)
   }, [auth, qc])
+
+  // Realtime: sign out immediately if account is deactivated
+  useEffect(() => {
+    if (auth.status !== 'authenticated') return
+    const userId = auth.user.id
+    const channel = supabase
+      .channel(`profile-active:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload) => {
+          if ((payload.new as { is_active: boolean }).is_active === false) {
+            logout()
+          }
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [auth.status, auth.status === 'authenticated' ? auth.user.id : null, logout])
 
   return (
     <TooltipProvider>

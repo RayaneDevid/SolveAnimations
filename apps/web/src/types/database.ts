@@ -22,6 +22,7 @@ export interface Profile {
   last_role_check_at: string
   created_at: string
   last_login_at: string
+  is_active: boolean
 }
 
 export interface Animation {

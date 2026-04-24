@@ -203,9 +203,18 @@ export default function Dashboard() {
                   className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/[0.04] transition-colors group"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white/90 truncate group-hover:text-cyan-400 transition-colors">
-                      {anim.title}
-                    </p>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      {anim.creator && (
+                        <>
+                          <UserAvatar avatarUrl={anim.creator.avatar_url} username={anim.creator.username} size="xs" />
+                          <span className="text-xs text-white/35 truncate">{anim.creator.username}</span>
+                          <span className="text-white/20 text-xs">·</span>
+                        </>
+                      )}
+                      <p className="text-sm font-medium text-white/90 truncate group-hover:text-cyan-400 transition-colors">
+                        {anim.title}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {(anim.prep_time_min ?? 0) > 0 && (
                         <span className="text-xs text-white/30">

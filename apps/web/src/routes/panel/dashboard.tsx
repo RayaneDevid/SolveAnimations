@@ -120,19 +120,19 @@ export default function Dashboard() {
           loading={statsLoading}
         />
         <StatCard
-          icon={Clock}
-          label="Heures animées"
-          value={stats ? `${(stats.hoursAnimated / 60).toFixed(1)}h` : '0h'}
-          sub="cette semaine"
-          color="violet"
-          loading={statsLoading}
-        />
-        <StatCard
           icon={Users}
           label="Participations"
           value={stats?.participationsValidated ?? 0}
           sub="validées cette semaine"
           color="emerald"
+          loading={statsLoading}
+        />
+        <StatCard
+          icon={Clock}
+          label="Heures animées"
+          value={stats ? `${(stats.hoursAnimated / 60).toFixed(1)}h` : '0h'}
+          sub="cette semaine"
+          color="violet"
           loading={statsLoading}
         />
         <StatCard

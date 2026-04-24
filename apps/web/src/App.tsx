@@ -20,6 +20,7 @@ import Members from '@/routes/panel/members'
 import Casiers from '@/routes/panel/casiers'
 import Paies from '@/routes/panel/paies'
 import Villages from '@/routes/panel/villages'
+import ProfilePage from '@/routes/panel/profile'
 
 export default function App() {
   return (
@@ -85,6 +86,7 @@ export default function App() {
             }
           />
           <Route path="villages" element={<Villages />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Routes>
       <Toaster

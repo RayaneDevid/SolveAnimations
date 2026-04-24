@@ -1,0 +1,125 @@
+import { useState, useEffect } from 'react'
+import { User, Save } from 'lucide-react'
+import { toast } from 'sonner'
+import { motion } from 'framer-motion'
+import { useRequiredAuth } from '@/hooks/useAuth'
+import { useUpdateProfile } from '@/hooks/mutations/useAnimationMutations'
+import { GlassCard } from '@/components/shared/GlassCard'
+import { UserAvatar } from '@/components/shared/UserAvatar'
+import { RoleBadge } from '@/components/shared/RoleBadge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+export default function ProfilePage() {
+  const { user, role } = useRequiredAuth()
+  const { mutateAsync, isPending } = useUpdateProfile()
+
+  const [steamId, setSteamId] = useState(user.steam_id ?? '')
+  const [arrivalDate, setArrivalDate] = useState(user.arrival_date ?? '')
+  const [contactEmail, setContactEmail] = useState(user.contact_email ?? '')
+
+  useEffect(() => {
+    setSteamId(user.steam_id ?? '')
+    setArrivalDate(user.arrival_date ?? '')
+    setContactEmail(user.contact_email ?? '')
+  }, [user.steam_id, user.arrival_date, user.contact_email])
+
+  const handleSave = async () => {
+    try {
+      await mutateAsync({
+        steam_id: steamId.trim() || null,
+        arrival_date: arrivalDate || null,
+        contact_email: contactEmail.trim() || null,
+      })
+      toast.success('Profil mis à jour')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+    }
+  }
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <User className="h-6 w-6 text-cyan-400" />
+          Mon profil
+        </h1>
+        <p className="text-sm text-white/40 mt-0.5">Informations personnelles complémentaires</p>
+      </motion.div>
+
+      {/* Discord info (readonly) */}
+      <GlassCard className="p-6">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          Compte Discord
+        </p>
+        <div className="flex items-center gap-4">
+          <UserAvatar avatarUrl={user.avatar_url} username={user.username} size="lg" />
+          <div>
+            <p className="text-lg font-bold text-white">{user.username}</p>
+            <div className="mt-1">
+              <RoleBadge role={role} size="md" />
+            </div>
+            <p className="text-xs text-white/30 mt-2">ID Discord : {user.discord_id}</p>
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* Editable fields */}
+      <GlassCard className="p-6 space-y-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+          Informations complémentaires
+        </p>
+
+        <div className="space-y-2">
+          <Label className="text-white/70">Steam ID 64</Label>
+          <Input
+            value={steamId}
+            onChange={(e) => setSteamId(e.target.value)}
+            placeholder="76561198XXXXXXXXX"
+            maxLength={17}
+            className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50 font-mono"
+          />
+          <p className="text-xs text-white/30">17 chiffres — trouvable sur steamid.io</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-white/70">Date d'arrivée sur le serveur</Label>
+          <Input
+            type="date"
+            value={arrivalDate}
+            onChange={(e) => setArrivalDate(e.target.value)}
+            className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-white/70">Adresse mail de contact</Label>
+          <Input
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="exemple@gmail.com"
+            maxLength={255}
+            className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50"
+          />
+        </div>
+
+        <div className="pt-2">
+          <Button
+            onClick={handleSave}
+            disabled={isPending}
+            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {isPending ? 'Sauvegarde…' : 'Sauvegarder'}
+          </Button>
+        </div>
+      </GlassCard>
+    </div>
+  )
+}

@@ -23,6 +23,9 @@ export interface Profile {
   created_at: string
   last_login_at: string
   is_active: boolean
+  steam_id: string | null
+  arrival_date: string | null
+  contact_email: string | null
 }
 
 export interface Animation {

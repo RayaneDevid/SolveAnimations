@@ -41,6 +41,7 @@ export type EdgeFunctionName =
   | 'members-remove-access'
   | 'members-reactivate'
   | 'members-update-perms'
+  | 'profile-update'
   | 'paies'
 
 type ApiOk<T> = { data: T }

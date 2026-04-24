@@ -113,10 +113,14 @@ export function Sidebar() {
       </div>
 
       {/* User card */}
-      <div className={cn(
-        'flex items-center gap-3 px-4 py-4 border-b border-white/[0.06]',
-        sidebarCollapsed && 'justify-center px-0',
-      )}>
+      <NavLink
+        to="/panel/profile"
+        className={({ isActive }) => cn(
+          'flex items-center gap-3 px-4 py-4 border-b border-white/[0.06] transition-colors hover:bg-white/[0.04]',
+          sidebarCollapsed && 'justify-center px-0',
+          isActive && 'bg-white/[0.04]',
+        )}
+      >
         <UserAvatar
           avatarUrl={user.avatar_url}
           username={user.username}
@@ -128,7 +132,7 @@ export function Sidebar() {
             <RoleBadge role={role} className="mt-0.5" />
           </div>
         )}
-      </div>
+      </NavLink>
 
       {/* Navigation */}
       <nav className={cn('flex-1 overflow-y-auto py-3', sidebarCollapsed ? 'px-0' : 'px-2')}>

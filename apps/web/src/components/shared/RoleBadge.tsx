@@ -8,6 +8,8 @@ interface RoleBadgeProps {
 }
 
 const ROLE_STYLES: Record<StaffRoleKey, string> = {
+  direction: 'bg-slate-100/15 text-slate-100 border-slate-100/25',
+  gerance: 'bg-purple-400/15 text-purple-400 border-purple-400/25',
   responsable: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
   responsable_mj: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
   senior: 'bg-violet-500/15 text-violet-400 border-violet-500/25',

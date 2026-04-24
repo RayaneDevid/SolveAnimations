@@ -30,6 +30,8 @@ import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 import type { StaffRoleKey } from '@/lib/config/discord'
 
 const QUOTA_MAX: Record<string, number | null> = {
+  direction: null,
+  gerance: null,
   responsable: null,
   responsable_mj: null,
   senior: 5,
@@ -42,7 +44,7 @@ type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj'
 
 const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
   { key: 'all',         label: 'Tous',           matches: () => true },
-  { key: 'responsable', label: 'Responsables',   matches: (r) => r === 'responsable' || r === 'responsable_mj' },
+  { key: 'responsable', label: 'Responsables',   matches: (r) => ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(r) },
   { key: 'senior',      label: 'Anim. Seniors',  matches: (r) => r === 'senior' },
   { key: 'animateur',   label: 'Animateurs',     matches: (r) => r === 'animateur' },
   { key: 'mj',          label: 'MJ',             matches: (r) => r === 'mj' || r === 'mj_senior' },

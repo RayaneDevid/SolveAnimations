@@ -17,8 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
-const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
-const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
+const ANIM_ROLE_ORDER = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
+const MJ_ROLE_ORDER   = ['direction', 'gerance', 'responsable_mj', 'mj_senior', 'mj']
 
 function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
   return [...members].sort((a, b) => {

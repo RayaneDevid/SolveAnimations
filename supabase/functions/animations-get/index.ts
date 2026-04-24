@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     .from('animations')
     .select(`
       *,
-      creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role, discord_id)
+      creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role, discord_id, gender)
     `)
     .eq('id', id)
     .single()
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     .from('animation_participants')
     .select(`
       *,
-      user:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role)
+      user:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role, gender)
     `)
     .eq('animation_id', id)
     .neq('status', 'rejected')

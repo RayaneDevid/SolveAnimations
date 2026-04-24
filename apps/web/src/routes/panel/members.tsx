@@ -9,6 +9,7 @@ import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPerms } from
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
+import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -71,8 +72,11 @@ function RemoveConfirmModal({
           <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]">
             <UserAvatar avatarUrl={member.avatarUrl} username={member.username} />
             <div>
-              <p className="text-sm font-medium text-white/90">{member.username}</p>
-              <RoleBadge role={member.role as never} />
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-white/90">{member.username}</p>
+                <GenderIcon gender={member.gender} />
+              </div>
+              <RoleBadge role={member.role as never} gender={member.gender} />
             </div>
           </div>
 
@@ -203,6 +207,7 @@ function MemberTable({
                   <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-sm font-medium text-white/90 truncate">{m.username}</span>
+                    <GenderIcon gender={m.gender} />
                     {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
                     <ProfileTooltip member={m} />
                   </div>

@@ -308,7 +308,7 @@ export function useUpdateMemberPerms() {
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; contact_email?: string | null }) =>
+    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; contact_email?: string | null; gender?: 'homme' | 'femme' | null }) =>
       invokeEdge<object>('profile-update', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.auth.me })

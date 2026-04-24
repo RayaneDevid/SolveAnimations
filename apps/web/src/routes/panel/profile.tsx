@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Save } from 'lucide-react'
+import { GenderIcon } from '@/components/shared/GenderIcon'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { useRequiredAuth } from '@/hooks/useAuth'
@@ -18,12 +19,14 @@ export default function ProfilePage() {
   const [steamId, setSteamId] = useState(user.steam_id ?? '')
   const [arrivalDate, setArrivalDate] = useState(user.arrival_date ?? '')
   const [contactEmail, setContactEmail] = useState(user.contact_email ?? '')
+  const [gender, setGender] = useState<'homme' | 'femme' | null>(user.gender ?? null)
 
   useEffect(() => {
     setSteamId(user.steam_id ?? '')
     setArrivalDate(user.arrival_date ?? '')
     setContactEmail(user.contact_email ?? '')
-  }, [user.steam_id, user.arrival_date, user.contact_email])
+    setGender(user.gender ?? null)
+  }, [user.steam_id, user.arrival_date, user.contact_email, user.gender])
 
   const handleSave = async () => {
     try {
@@ -31,6 +34,7 @@ export default function ProfilePage() {
         steam_id: steamId.trim() || null,
         arrival_date: arrivalDate || null,
         contact_email: contactEmail.trim() || null,
+        gender: gender ?? null,
       })
       toast.success('Profil mis à jour')
     } catch (err) {
@@ -60,9 +64,12 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <UserAvatar avatarUrl={user.avatar_url} username={user.username} size="lg" />
           <div>
-            <p className="text-lg font-bold text-white">{user.username}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-bold text-white">{user.username}</p>
+              <GenderIcon gender={user.gender} className="text-sm" />
+            </div>
             <div className="mt-1">
-              <RoleBadge role={role} size="md" />
+              <RoleBadge role={role} gender={user.gender} size="md" />
             </div>
             <p className="text-xs text-white/30 mt-2">ID Discord : {user.discord_id}</p>
           </div>
@@ -74,6 +81,28 @@ export default function ProfilePage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
           Informations complémentaires
         </p>
+
+        <div className="space-y-2">
+          <Label className="text-white/70">Genre</Label>
+          <div className="flex gap-2">
+            {([['homme', '♂ Homme'], ['femme', '♀ Femme']] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setGender(gender === v ? null : v)}
+                className={`flex-1 h-10 rounded-lg text-sm font-medium border transition-colors ${
+                  gender === v
+                    ? v === 'homme'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                      : 'bg-pink-500/10 border-pink-500/30 text-pink-400'
+                    : 'bg-white/[0.03] border-white/[0.08] text-white/50 hover:text-white/70'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="space-y-2">
           <Label className="text-white/70">Steam ID 64</Label>

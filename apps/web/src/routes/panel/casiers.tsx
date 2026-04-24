@@ -18,6 +18,7 @@ import { useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
+import { GenderIcon } from '@/components/shared/GenderIcon'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
@@ -82,9 +83,10 @@ function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => v
               <p className="text-sm font-semibold text-white/90 truncate group-hover:text-cyan-400 transition-colors">
                 {member.username}
               </p>
+              <GenderIcon gender={member.gender} />
               <ChevronRight className="h-3.5 w-3.5 text-white/20 group-hover:text-cyan-400 shrink-0 transition-colors" />
             </div>
-            <RoleBadge role={member.role as StaffRoleKey} className="mt-1" />
+            <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
             {member.isAbsent && (
               <span className="inline-block mt-1 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">
                 Absent
@@ -225,8 +227,11 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-white truncate">{member.username}</h2>
-            <RoleBadge role={member.role as StaffRoleKey} className="mt-1" />
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white truncate">{member.username}</h2>
+              <GenderIcon gender={member.gender} className="text-sm shrink-0" />
+            </div>
+            <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
             <p className="text-xs text-white/30 mt-2">
               Connecté {formatDistanceToNow(new Date(member.lastLoginAt), { locale: fr, addSuffix: true })}
             </p>

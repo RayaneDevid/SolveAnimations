@@ -20,6 +20,7 @@ import { VillageBadge } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
+import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
@@ -214,7 +215,10 @@ function ParticipantRow({
     <div className="flex items-center gap-3 py-2.5">
       <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
+          <GenderIcon gender={p.user?.gender} />
+        </div>
         {p.character_name && (
           <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
         )}

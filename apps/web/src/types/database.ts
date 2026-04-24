@@ -26,6 +26,7 @@ export interface Profile {
   steam_id: string | null
   arrival_date: string | null
   contact_email: string | null
+  gender: 'homme' | 'femme' | null
 }
 
 export interface Animation {
@@ -161,6 +162,7 @@ export interface MemberEntry {
   steamId: string | null
   arrivalDate: string | null
   contactEmail: string | null
+  gender: 'homme' | 'femme' | null
   weeklyStats: {
     animationsCreated: number
     hoursAnimated: number

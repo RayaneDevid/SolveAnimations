@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils/cn'
-import { ROLE_LABELS, type StaffRoleKey } from '@/lib/config/discord'
+import { getRoleLabel, type StaffRoleKey } from '@/lib/config/discord'
 
 interface RoleBadgeProps {
   role: StaffRoleKey
+  gender?: 'homme' | 'femme' | null
   className?: string
   size?: 'sm' | 'md'
 }
@@ -18,7 +19,7 @@ const ROLE_STYLES: Record<StaffRoleKey, string> = {
   mj: 'bg-red-500/15 text-red-400 border-red-500/25',
 }
 
-export function RoleBadge({ role, className, size = 'sm' }: RoleBadgeProps) {
+export function RoleBadge({ role, gender, className, size = 'sm' }: RoleBadgeProps) {
   return (
     <span
       className={cn(
@@ -28,7 +29,7 @@ export function RoleBadge({ role, className, size = 'sm' }: RoleBadgeProps) {
         className,
       )}
     >
-      {ROLE_LABELS[role]}
+      {getRoleLabel(role, gender)}
     </span>
   )
 }

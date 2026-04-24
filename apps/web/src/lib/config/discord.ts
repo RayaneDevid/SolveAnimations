@@ -49,3 +49,13 @@ export const ROLE_COLORS: Record<StaffRoleKey, string> = {
 export function hasRole(userRole: StaffRoleKey, required: StaffRoleKey): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[required]
 }
+
+const ROLE_LABELS_FEMME: Partial<Record<StaffRoleKey, string>> = {
+  animateur: 'Animatrice',
+  senior: 'Animatrice Senior',
+}
+
+export function getRoleLabel(role: StaffRoleKey, gender?: 'homme' | 'femme' | null): string {
+  if (gender === 'femme' && ROLE_LABELS_FEMME[role]) return ROLE_LABELS_FEMME[role]!
+  return ROLE_LABELS[role]
+}

@@ -9,6 +9,7 @@ const bodySchema = z.object({
   steam_id: z.string().trim().regex(/^\d{17}$/, 'Steam ID doit contenir 17 chiffres').nullable().optional(),
   arrival_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   contact_email: z.string().trim().email('Email invalide').max(255).nullable().optional(),
+  gender: z.enum(['homme', 'femme']).nullable().optional(),
 })
 
 Deno.serve(async (req) => {

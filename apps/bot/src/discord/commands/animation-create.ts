@@ -9,6 +9,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   TextChannel,
+  MessageFlags,
 } from 'discord.js';
 import { supabase } from '../../lib/supabase.js';
 import { buildAnimationEmbed } from '../embeds/animation.js';
@@ -154,7 +155,7 @@ function buildModal2(): ModalBuilder {
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId('validation')
-          .setLabel('Demander validation d\'un responsable ? (oui/non)')
+          .setLabel('Validation responsable ? (oui / non)')
           .setStyle(TextInputStyle.Short)
           .setPlaceholder('oui')
           .setRequired(true),
@@ -175,7 +176,7 @@ export async function handleCreateCommand(interaction: ChatInputCommandInteracti
   if (!profile) {
     await interaction.reply({
       content: '❌ Tu dois être membre du staff (et t\'être connecté au panel au moins une fois) pour créer une animation.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -199,7 +200,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
   if (!scheduledAt) {
     await interaction.reply({
       content: '❌ Format de date invalide. Utilise : `JJ/MM/AAAA HH:MM`\nExemple : `25/04/2026 21:00`',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -211,7 +212,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
   if (!SERVERS.includes(serverRaw as (typeof SERVERS)[number])) {
     await interaction.reply({
       content: `❌ Serveur invalide. Valeurs acceptées : \`${SERVERS.join('`, `')}\``,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -219,7 +220,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
   if (!VILLAGES.includes(villageRaw as (typeof VILLAGES)[number])) {
     await interaction.reply({
       content: `❌ Village invalide. Valeurs acceptées : \`${VILLAGES.join('`, `')}\``,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -227,7 +228,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
   if (!TYPES.includes(typeRaw as (typeof TYPES)[number])) {
     await interaction.reply({
       content: `❌ Type invalide. Valeurs acceptées : \`${TYPES.join('`, `')}\``,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -249,7 +250,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
       `> **Date :** ${scheduledAtRaw} (Europe/Paris)`,
       `> **Serveur :** ${serverRaw} · **Village :** ${villageRaw} · **Type :** ${typeRaw}`,
     ].join('\n'),
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     components: [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -274,7 +275,7 @@ export async function handleStep2Button(interaction: ButtonInteraction, userId: 
   if (!pendingCreations.has(userId)) {
     await interaction.reply({
       content: '❌ Session expirée. Relance `/animation creer`.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }

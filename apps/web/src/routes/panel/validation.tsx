@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Check, X, Calendar, Clock } from 'lucide-react'
+import { Check, X, Calendar, Clock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAnimations } from '@/hooks/queries/useAnimations'
-import { useValidateAnimation, useRejectAnimation } from '@/hooks/mutations/useAnimationMutations'
-import type { AnimationStatus } from '@/types/database'
+import { useAnimations, useDeletionRequests } from '@/hooks/queries/useAnimations'
+import { useValidateAnimation, useRejectAnimation, useApproveDeletion, useDenyDeletion } from '@/hooks/mutations/useAnimationMutations'
+import type { AnimationStatus, DeletionRequest } from '@/types/database'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
@@ -165,17 +165,89 @@ function ValidationCard({ animation }: { animation: Animation }) {
   )
 }
 
-export default function Validation() {
-  const [tab, setTab] = useState<'pending' | 'open' | 'rejected'>('pending')
+function DeletionRequestCard({ request }: { request: DeletionRequest }) {
+  const { mutate: approve, isPending: approving } = useApproveDeletion()
+  const { mutate: deny, isPending: denying } = useDenyDeletion()
 
-  const statusMap: Record<typeof tab, AnimationStatus> = {
+  const handleApprove = () => {
+    if (!confirm(`Supprimer définitivement "${request.animation?.title}" ? Irréversible.`)) return
+    approve(request.id, {
+      onSuccess: () => toast.success('Animation supprimée.'),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
+  }
+
+  const handleDeny = () => {
+    deny(request.id, {
+      onSuccess: () => toast.success('Demande refusée.'),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
+  }
+
+  const anim = request.animation
+
+  return (
+    <GlassCard className="p-5 border-red-500/10">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          {anim ? (
+            <Link to={`/panel/animations/${anim.id}`} className="text-sm font-semibold text-white/90 hover:text-cyan-400 transition-colors">
+              {anim.title}
+            </Link>
+          ) : (
+            <span className="text-sm font-semibold text-white/90">Animation inconnue</span>
+          )}
+          {request.requester && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <UserAvatar avatarUrl={request.requester.avatar_url} username={request.requester.username} size="xs" />
+              <span className="text-xs text-white/40">Demandé par {request.requester.username}</span>
+            </div>
+          )}
+        </div>
+        {anim && <StatusBadge status={anim.status} />}
+      </div>
+
+      {anim && (
+        <div className="flex items-center gap-3 flex-wrap mb-3">
+          <div className="flex items-center gap-1.5 text-xs text-white/50">
+            <Calendar className="h-3.5 w-3.5 text-cyan-400" />
+            {formatDateTime(anim.scheduled_at)}
+          </div>
+          <ServerBadge server={anim.server} />
+          <VillageBadge village={anim.village} />
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-3 border-t border-white/[0.06]">
+        <Button onClick={handleApprove} disabled={approving || denying} variant="destructive" size="sm" className="flex-1 gap-2">
+          <Trash2 className="h-3.5 w-3.5" />
+          {approving ? 'Suppression...' : 'Approuver'}
+        </Button>
+        <Button onClick={handleDeny} disabled={approving || denying} variant="outline" size="sm" className="flex-1 gap-2">
+          <X className="h-3.5 w-3.5" />
+          {denying ? 'Refus...' : 'Refuser'}
+        </Button>
+      </div>
+    </GlassCard>
+  )
+}
+
+export default function Validation() {
+  const [tab, setTab] = useState<'pending' | 'open' | 'rejected' | 'deletion'>('pending')
+
+  const statusMap: Record<'pending' | 'open' | 'rejected', AnimationStatus> = {
     pending: 'pending_validation',
     open: 'open',
     rejected: 'rejected',
   }
 
-  const { data, isLoading } = useAnimations({ status: statusMap[tab] })
-  const animations = data?.animations ?? []
+  const { data, isLoading } = useAnimations(
+    tab !== 'deletion' ? { status: statusMap[tab as 'pending' | 'open' | 'rejected'] } : {},
+  )
+  const { data: deletionData, isLoading: deletionLoading } = useDeletionRequests()
+
+  const animations = tab !== 'deletion' ? (data?.animations ?? []) : []
+  const deletionRequests = deletionData?.requests ?? []
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -189,6 +261,14 @@ export default function Validation() {
           <TabsTrigger value="pending">En attente</TabsTrigger>
           <TabsTrigger value="open">Validées récemment</TabsTrigger>
           <TabsTrigger value="rejected">Refusées</TabsTrigger>
+          <TabsTrigger value="deletion" className="relative">
+            Supp. demandées
+            {deletionRequests.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 leading-none">
+                {deletionRequests.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {(['pending', 'open', 'rejected'] as const).map((t) => (
@@ -208,6 +288,22 @@ export default function Validation() {
             )}
           </TabsContent>
         ))}
+
+        <TabsContent value="deletion">
+          {deletionLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-48" />)}
+            </div>
+          ) : deletionRequests.length === 0 ? (
+            <GlassCard className="p-12 text-center">
+              <p className="text-white/30 text-sm">Aucune demande de suppression</p>
+            </GlassCard>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {deletionRequests.map((r) => <DeletionRequestCard key={r.id} request={r} />)}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   )

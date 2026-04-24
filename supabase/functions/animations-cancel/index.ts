@@ -31,10 +31,13 @@ Deno.serve(async (req) => {
   if (!isCreator && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut annuler')
 
-  if (!['pending_validation', 'open', 'preparing'].includes(anim.status))
-    return errorResponse('CONFLICT', 'Impossible d\'annuler une animation en cours ou terminée')
+  const cancelableStatuses = isResponsable
+    ? ['pending_validation', 'open', 'preparing', 'running']
+    : ['pending_validation', 'open', 'preparing']
+  if (!cancelableStatuses.includes(anim.status))
+    return errorResponse('CONFLICT', 'Impossible d\'annuler une animation terminée')
 
-  const hadPublicEmbed = anim.status !== 'pending_validation'
+  const hadPublicEmbed = !['pending_validation'].includes(anim.status)
 
   const { data: updated, error } = await db
     .from('animations')

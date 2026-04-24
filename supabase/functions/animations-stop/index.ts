@@ -24,8 +24,11 @@ Deno.serve(async (req) => {
     .single()
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
-  if (anim.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut terminer')
+
+  const isCreator = anim.creator_id === profile.id
+  const isResponsable = profile.role === 'responsable' || profile.role === 'responsable_mj'
+  if (!isCreator && !isResponsable)
+    return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut terminer')
   if (anim.status !== 'running')
     return errorResponse('CONFLICT', "L'animation doit être en cours pour être terminée")
 

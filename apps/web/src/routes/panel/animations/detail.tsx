@@ -544,12 +544,12 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Animation (indépendant) ── */}
-                {isCreator && (
+                {(isCreator || isResponsable) && (
                   <div className="space-y-2">
-                    {animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
+                    {isCreator && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
                       <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Animation</p>
                     )}
-                    {['open', 'preparing'].includes(animation.status) && (
+                    {isCreator && ['open', 'preparing'].includes(animation.status) && (
                       <Button onClick={handleStart} disabled={starting} className="w-full gap-2">
                         <Play className="h-4 w-4" />
                         Démarrer l'animation
@@ -568,7 +568,7 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Actions secondaires ── */}
-                {['open', 'pending_validation', 'preparing'].includes(animation.status) && (isCreator || isResponsable) && (
+                {(isCreator || isResponsable) && ['open', 'pending_validation', 'preparing', ...(isResponsable ? ['running'] : [])].includes(animation.status) && (
                   <div className="pt-3 border-t border-white/[0.06] space-y-2">
                     <Button onClick={handleCancel} disabled={cancelling} variant="destructive" className="w-full gap-2">
                       <Ban className="h-4 w-4" />
@@ -586,7 +586,7 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Suppression (responsable) ── */}
-                {isResponsable && animation.status !== 'running' && (
+                {isResponsable && (
                   <div className="pt-3 border-t border-white/[0.06]">
                     <Button onClick={handleDelete} disabled={deleting} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">
                       <Trash2 className="h-4 w-4" />
@@ -596,7 +596,7 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Demande de suppression (créateur) ── */}
-                {isCreator && !isResponsable && animation.status !== 'running' && (
+                {isCreator && !isResponsable && (
                   <div className="pt-3 border-t border-white/[0.06]">
                     {['cancelled', 'rejected'].includes(animation.status) ? (
                       <Button onClick={handleDelete} disabled={deleting} variant="destructive" className="w-full gap-2 opacity-70 hover:opacity-100">

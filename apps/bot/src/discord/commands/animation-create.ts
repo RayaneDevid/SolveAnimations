@@ -63,6 +63,18 @@ function parseParisDate(input: string): Date | null {
 
 // ─── Modal 1 — identité ───────────────────────────────────────────────────────
 
+function currentParisDateTime(): string {
+  return new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date()).replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2})/, '$1/$2/$3 $4:$5');
+}
+
 function buildModal1(): ModalBuilder {
   return new ModalBuilder()
     .setCustomId('anim-create-1')
@@ -83,7 +95,7 @@ function buildModal1(): ModalBuilder {
           .setCustomId('scheduled_at')
           .setLabel('Date et heure (JJ/MM/AAAA HH:MM)')
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('25/04/2026 21:00')
+          .setValue(currentParisDateTime())
           .setRequired(true),
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(

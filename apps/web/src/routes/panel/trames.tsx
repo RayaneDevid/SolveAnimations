@@ -247,7 +247,7 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Label htmlFor="validatedBy">Validé par <span className="text-red-400">*</span></Label>
             <Input
               id="validatedBy"
-              placeholder="ex. Saki Sato"
+              placeholder="ex. Drackar"
               {...register('validatedBy')}
             />
             {errors.validatedBy && (

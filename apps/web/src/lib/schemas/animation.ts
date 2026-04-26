@@ -20,9 +20,7 @@ export type Village = (typeof VILLAGES)[number]
 
 export const createAnimationSchema = z.object({
   title: z.string().trim().min(3, 'Minimum 3 caractères').max(120, 'Maximum 120 caractères'),
-  scheduledAt: z.coerce
-    .date()
-    .refine((d) => d.getTime() > Date.now(), "La date doit être dans le futur"),
+  scheduledAt: z.coerce.date(),
   plannedDurationMin: z
     .number({ required_error: 'Durée requise' })
     .int()

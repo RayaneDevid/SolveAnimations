@@ -10,6 +10,8 @@ const TYPES    = ['petite','moyenne','grande'] as const
 const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 
+const PAST_DURATION: Record<string, number> = { petite: 15, moyenne: 30, grande: 60 }
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -27,8 +29,8 @@ Deno.serve(async (req) => {
   // Basic validation
   if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 120)
     return errorResponse('VALIDATION_ERROR', 'Titre invalide (3–120 caractères)')
-  if (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())
-    return errorResponse('VALIDATION_ERROR', 'La date doit être dans le futur')
+  if (!scheduledAt || isNaN(new Date(scheduledAt).getTime()))
+    return errorResponse('VALIDATION_ERROR', 'Date invalide')
   if (!plannedDurationMin || plannedDurationMin < 15 || plannedDurationMin > 720)
     return errorResponse('VALIDATION_ERROR', 'Durée invalide (15–720 min)')
   if (requiredParticipants == null || requiredParticipants < 0 || requiredParticipants > 100)
@@ -44,6 +46,58 @@ Deno.serve(async (req) => {
 
   const db = getServiceClient()
   const now = new Date().toISOString()
+  const scheduledDate = new Date(scheduledAt)
+  const isPast = scheduledDate.getTime() < Date.now()
+
+  if (isPast) {
+    // Antedated animation → insert directly as finished
+    const actualDurationMin = PAST_DURATION[type] ?? 30
+    const startedAt = scheduledDate.toISOString()
+    const endedAt = new Date(scheduledDate.getTime() + actualDurationMin * 60_000).toISOString()
+
+    const { data: animation, error } = await db
+      .from('animations')
+      .insert({
+        title: title.trim(),
+        scheduled_at: scheduledAt,
+        planned_duration_min: plannedDurationMin,
+        required_participants: requiredParticipants,
+        server,
+        type,
+        pole,
+        prep_time_min: prepTimeMin,
+        village,
+        description: description?.trim() || null,
+        creator_id: profile.id,
+        status: 'finished',
+        validated_by: profile.id,
+        validated_at: now,
+        started_at: startedAt,
+        ended_at: endedAt,
+        actual_duration_min: actualDurationMin,
+      })
+      .select(`*, creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)`)
+      .single()
+
+    if (error || !animation) {
+      console.error('animations-create (past) error:', error)
+      return errorResponse('INTERNAL_ERROR', 'Erreur lors de la création')
+    }
+
+    // Generate creator report row
+    await db.from('animation_reports').insert({
+      animation_id: animation.id,
+      user_id: profile.id,
+      pole: pole === 'mj' ? 'mj' : 'animateur',
+      character_name: '—',
+      comments: null,
+      submitted_at: null,
+    })
+
+    return jsonResponse({ animation }, 201)
+  }
+
+  // Future animation — normal flow
   const autoValidate = requestValidation === false
 
   const { data: animation, error } = await db
@@ -72,7 +126,6 @@ Deno.serve(async (req) => {
   }
 
   if (autoValidate) {
-    // Auto-validée : on poste directement dans le canal public
     const botRes = await notifyBot<{ data: { publicMessageId: string } }>('animation-validated', {
       animationId: animation.id,
       creatorDiscordId: profile.discord_id,
@@ -95,7 +148,6 @@ Deno.serve(async (req) => {
       animation.discord_message_id = publicMessageId
     }
   } else {
-    // Validation requise : on poste dans le canal de validation
     const botRes = await notifyBot<{ data: { adminMessageId: string } }>('animation-created', {
       animationId: animation.id,
       title: animation.title,

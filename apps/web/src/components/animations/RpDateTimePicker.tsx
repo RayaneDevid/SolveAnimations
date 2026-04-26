@@ -106,7 +106,6 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
           <input
             type="date"
             value={dateStr}
-            min={todayStr}
             onChange={(e) => setDateStr(e.target.value)}
             className={cn(
               'w-full px-3 py-2 rounded-lg border text-sm bg-white/[0.03] text-white/90 focus:outline-none focus:border-cyan-500/50 transition-colors [color-scheme:dark]',

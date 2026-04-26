@@ -418,15 +418,14 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
     .maybeSingle();
 
   if (existing) {
-    const msg = existing.status === 'removed'
-      ? '❌ Tu as été retiré de cette animation et ne peux plus y participer.'
-      : existing.status === 'rejected'
-      ? '❌ Ta candidature a été refusée pour cette animation.'
-      : existing.status === 'validated'
-      ? '✅ Tu es déjà inscrit à cette animation.'
-      : '⏳ Tu as déjà une candidature en attente pour cette animation.';
-    await interaction.editReply({ content: msg });
-    return;
+    if (existing.status === 'validated') {
+      await interaction.editReply({ content: '✅ Tu es déjà inscrit à cette animation.' });
+      return;
+    }
+    if (existing.status === 'removed' || existing.status === 'rejected') {
+      await interaction.editReply({ content: '❌ Tu ne peux plus t\'inscrire à cette animation.' });
+      return;
+    }
   }
 
   // Check absence covering scheduled_at
@@ -444,15 +443,29 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
     return;
   }
 
-  // Insert participant (character name to be filled later from the panel)
-  const { error } = await supabase.from('animation_participants').insert({
-    animation_id: animationId,
-    user_id: profile.id,
-    character_name: '—',
-    status: 'pending',
-  });
+  const now = new Date().toISOString();
+  let inscriptionError: unknown = null;
 
-  if (error) {
+  if (existing) {
+    // Reactivate a pending row
+    const { error } = await supabase
+      .from('animation_participants')
+      .update({ status: 'validated', character_name: null, decided_at: now, decided_by: profile.id })
+      .eq('id', existing.id);
+    inscriptionError = error;
+  } else {
+    const { error } = await supabase.from('animation_participants').insert({
+      animation_id: animationId,
+      user_id: profile.id,
+      character_name: null,
+      status: 'validated',
+      decided_at: now,
+      decided_by: profile.id,
+    });
+    inscriptionError = error;
+  }
+
+  if (inscriptionError) {
     await interaction.editReply({ content: '❌ Erreur lors de l\'inscription. Réessaie depuis le panel.' });
     return;
   }
@@ -486,6 +499,6 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
   }
 
   await interaction.editReply({
-    content: `✋ Ta candidature pour **${anim.title}** a été soumise ! Le créateur devra l'accepter. Pense à renseigner ton personnage depuis le panel.`,
+    content: `✅ Tu es inscrit à **${anim.title}** ! Pense à renseigner ton personnage depuis le panel.`,
   });
 }

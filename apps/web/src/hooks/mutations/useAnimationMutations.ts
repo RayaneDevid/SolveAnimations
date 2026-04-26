@@ -403,3 +403,15 @@ export function useCreateTrameReport() {
     },
   })
 }
+
+export function useAddParticipantToFinished() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ animationId, userId, characterName }: { animationId: string; userId: string; characterName: string }) =>
+      invokeEdge<{ success: boolean }>('participants-add-to-finished', { animationId, userId, characterName }),
+    onSuccess: (_data, { animationId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+    },
+  })
+}
+

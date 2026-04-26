@@ -5,13 +5,13 @@ import {
   Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAnimation } from '@/hooks/queries/useAnimations'
+import { useAnimation, useMembers } from '@/hooks/queries/useAnimations'
 import {
   useStartAnimation, useStartPrepAnimation, useStopPrepAnimation,
   useStopAnimation, useCancelAnimation, useDeleteAnimation,
   useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
-  useCorrectFinishedAnimation,
+  useCorrectFinishedAnimation, useAddParticipantToFinished,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -23,8 +23,11 @@ import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
 import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
@@ -257,10 +260,98 @@ function ParticipantRow({
   )
 }
 
+function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, onClose }: {
+  animationId: string
+  existingUserIds: string[]
+  open: boolean
+  onClose: () => void
+}) {
+  const { data: members = [], isLoading } = useMembers()
+  const { mutateAsync: addParticipant, isPending } = useAddParticipantToFinished()
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [characterName, setCharacterName] = useState('')
+  const [search, setSearch] = useState('')
+
+  const filtered = members.filter(
+    (m) => !existingUserIds.includes(m.id) &&
+      m.username.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedUserId || !characterName.trim()) return
+    try {
+      await addParticipant({ animationId, userId: selectedUserId, characterName: characterName.trim() })
+      toast.success('Participant ajouté')
+      onClose()
+      setSelectedUserId('')
+      setCharacterName('')
+      setSearch('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="bg-[#0F1014] border-white/[0.08] text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Ajouter un participant</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label>Membre</Label>
+            <Input
+              placeholder="Rechercher..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.05]">
+              {isLoading ? (
+                <p className="text-xs text-white/40 p-3">Chargement...</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-xs text-white/40 p-3">Aucun membre</p>
+              ) : filtered.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(m.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                    selectedUserId === m.id ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <span className="text-sm text-white/90">{m.username}</span>
+                  <span className="text-xs text-white/40 ml-auto">{m.role}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="charname">Nom du personnage</Label>
+            <Input
+              id="charname"
+              placeholder="Ex: Saki Sato"
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
+            <Button type="submit" disabled={isPending || !selectedUserId || !characterName.trim()}>
+              {isPending ? 'Ajout...' : 'Ajouter'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AnimationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, role } = useRequiredAuth()
+  const [addParticipantOpen, setAddParticipantOpen] = useState(false)
 
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync: start, isPending: starting } = useStartAnimation()
@@ -514,6 +605,32 @@ export default function AnimationDetail() {
                 </Button>
               </div>
             </GlassCard>
+          )}
+
+          {/* Add participant (responsable, finished only) */}
+          {isResponsable && animation.status === 'finished' && (
+            <>
+              <GlassCard className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-white/80">Ajouter un participant</h2>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      Ajouter un membre présent non inscrit
+                    </p>
+                  </div>
+                  <Button onClick={() => setAddParticipantOpen(true)} className="gap-2" variant="secondary">
+                    <UserPlus className="h-4 w-4" />
+                    Ajouter
+                  </Button>
+                </div>
+              </GlassCard>
+              <AddParticipantToFinishedDialog
+                animationId={animation.id}
+                existingUserIds={participants.filter((p) => p.status === 'validated').map((p) => p.user_id)}
+                open={addParticipantOpen}
+                onClose={() => setAddParticipantOpen(false)}
+              />
+            </>
           )}
         </div>
 

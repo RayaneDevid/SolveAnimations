@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Plus, Minus, ShieldCheck, ShieldOff, BellRing, BellOff } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, type Village, type AnimationPole } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
@@ -51,7 +51,6 @@ export default function NewAnimation() {
     handleSubmit,
     control,
     watch,
-    setValue,
     formState: { errors },
   } = useForm<CreateAnimationInput>({
     resolver: zodResolver(createAnimationSchema),
@@ -59,12 +58,13 @@ export default function NewAnimation() {
       prepTimeMin: 0,
       requiredParticipants: 4,
       plannedDurationMin: 60,
-      requestValidation: true,
-      pingRoles: true,
+      requestValidation: false,
+      pingRoles: false,
     },
   })
 
-  const requiredParticipants = watch('requiredParticipants')
+  const scheduledAt = watch('scheduledAt')
+  const isPast = scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
@@ -115,6 +115,15 @@ export default function NewAnimation() {
                 />
               )}
             />
+            {isPast && (
+              <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-300/80">
+                  Date dans le passé — l'animation sera créée directement comme <strong className="text-amber-300">terminée</strong>.
+                  La durée réelle sera calculée selon le type : Petite 15 min · Moyenne 30 min · Grande 60 min.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -165,28 +174,20 @@ export default function NewAnimation() {
             </div>
           </div>
 
-          {/* Participants stepper */}
+          {/* Participants */}
           <div className="space-y-1.5">
-            <Label>Participants requis</Label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setValue('requiredParticipants', Math.max(0, (requiredParticipants ?? 0) - 1))}
-                className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              <span className="text-2xl font-bold text-white w-8 text-center">
-                {requiredParticipants ?? 1}
-              </span>
-              <button
-                type="button"
-                onClick={() => setValue('requiredParticipants', Math.min(100, (requiredParticipants ?? 1) + 1))}
-                className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
+            <Label htmlFor="requiredParticipants">Participants requis</Label>
+            <Input
+              id="requiredParticipants"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Ex: 4"
+              {...register('requiredParticipants', { valueAsNumber: true })}
+            />
+            {errors.requiredParticipants && (
+              <p className="text-xs text-red-400">{errors.requiredParticipants.message}</p>
+            )}
           </div>
 
         </GlassCard>
@@ -314,8 +315,8 @@ export default function NewAnimation() {
           {errors.pole && <p className="text-xs text-red-400">{errors.pole.message}</p>}
         </GlassCard>
 
-        {/* Validation */}
-        <GlassCard className="p-5">
+        {/* Validation — hidden for past dates */}
+        {!isPast && <GlassCard className="p-5">
           <Controller
             name="requestValidation"
             control={control}
@@ -357,10 +358,10 @@ export default function NewAnimation() {
               </button>
             )}
           />
-        </GlassCard>
+        </GlassCard>}
 
-        {/* Ping roles */}
-        <GlassCard className="p-5">
+        {/* Ping roles — hidden for past dates */}
+        {!isPast && <GlassCard className="p-5">
           <Controller
             name="pingRoles"
             control={control}
@@ -402,7 +403,7 @@ export default function NewAnimation() {
               </button>
             )}
           />
-        </GlassCard>
+        </GlassCard>}
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">
@@ -410,7 +411,7 @@ export default function NewAnimation() {
             Annuler
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Création...' : "Créer l'animation"}
+            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : "Créer l'animation"}
           </Button>
         </div>
       </form>

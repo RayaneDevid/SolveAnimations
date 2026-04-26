@@ -58,6 +58,7 @@ export type EdgeFunctionName =
   | 'requetes-list'
   | 'requetes-create'
   | 'requetes-decide'
+  | 'participants-add-to-finished'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

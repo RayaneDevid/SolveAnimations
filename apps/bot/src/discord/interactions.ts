@@ -6,7 +6,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
-  ButtonBuilder,
 } from 'discord.js';
 import { supabase } from '../lib/supabase.js';
 import { buildAnimationEmbed, buildJoinRow } from './embeds/animation.js';
@@ -350,27 +349,7 @@ export async function handleRequeteRefuseModal(interaction: ModalSubmitInteracti
 }
 
 export async function handleAnimJoinButton(interaction: ButtonInteraction, animationId: string) {
-  const modal = new ModalBuilder()
-    .setCustomId(`anim-join-modal:${animationId}`)
-    .setTitle("S'inscrire à l'animation");
-
-  const characterInput = new TextInputBuilder()
-    .setCustomId('character_name')
-    .setLabel('Nom de ton personnage')
-    .setStyle(TextInputStyle.Short)
-    .setMinLength(1)
-    .setMaxLength(64)
-    .setPlaceholder('Ex : Saki Sato')
-    .setRequired(true);
-
-  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(characterInput));
-  await interaction.showModal(modal);
-}
-
-export async function handleAnimJoinModal(interaction: ModalSubmitInteraction, animationId: string) {
   await interaction.deferReply({ ephemeral: true });
-
-  const characterName = interaction.fields.getTextInputValue('character_name').trim();
 
   // Check profile
   const { data: profile } = await supabase
@@ -442,11 +421,11 @@ export async function handleAnimJoinModal(interaction: ModalSubmitInteraction, a
     return;
   }
 
-  // Insert participant
+  // Insert participant (character name to be filled later from the panel)
   const { error } = await supabase.from('animation_participants').insert({
     animation_id: animationId,
     user_id: profile.id,
-    character_name: characterName,
+    character_name: '—',
     status: 'pending',
   });
 
@@ -484,6 +463,6 @@ export async function handleAnimJoinModal(interaction: ModalSubmitInteraction, a
   }
 
   await interaction.editReply({
-    content: `✋ Ta candidature pour **${anim.title}** a été soumise avec le personnage **${characterName}** ! Le créateur de l'animation devra l'accepter.`,
+    content: `✋ Ta candidature pour **${anim.title}** a été soumise ! Le créateur devra l'accepter. Pense à renseigner ton personnage depuis le panel.`,
   });
 }

@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Plus, Minus, ShieldCheck, ShieldOff } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
+import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, type Village, type AnimationPole } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,27 @@ const TYPE_DESCRIPTIONS = {
   moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
+
+const POLE_CONFIG: Record<AnimationPole, { label: string; description: string; color: string; active: string }> = {
+  animation: {
+    label: 'Pôle Animation',
+    description: 'Animation menée par des animateurs',
+    color: 'text-blue-400',
+    active: 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]',
+  },
+  mj: {
+    label: 'Pôle MJ',
+    description: 'Animation menée par des Maîtres du Jeu',
+    color: 'text-red-400',
+    active: 'bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]',
+  },
+  les_deux: {
+    label: 'Pôle Animation & MJ',
+    description: 'Animation co-menée par les deux pôles',
+    color: 'text-violet-400',
+    active: 'bg-violet-500/10 border-violet-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1)]',
+  },
+}
 
 export default function NewAnimation() {
   const navigate = useNavigate()
@@ -255,6 +276,41 @@ export default function NewAnimation() {
             )}
           />
           {errors.type && <p className="text-xs text-red-400">{errors.type.message}</p>}
+        </GlassCard>
+
+        {/* Pole */}
+        <GlassCard className="p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Pôle</h2>
+          <Controller
+            name="pole"
+            control={control}
+            render={({ field }) => (
+              <div className="grid grid-cols-3 gap-3">
+                {POLES.map((p) => {
+                  const cfg = POLE_CONFIG[p]
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => field.onChange(p)}
+                      className={cn(
+                        'p-4 rounded-xl border text-left transition-all',
+                        field.value === p
+                          ? cfg.active
+                          : 'bg-white/[0.03] border-white/[0.08] hover:border-white/20',
+                      )}
+                    >
+                      <p className={cn('text-sm font-bold', field.value === p ? cfg.color : 'text-white')}>
+                        {cfg.label}
+                      </p>
+                      <p className="text-xs text-white/40 mt-1">{cfg.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          />
+          {errors.pole && <p className="text-xs text-red-400">{errors.pole.message}</p>}
         </GlassCard>
 
         {/* Validation */}

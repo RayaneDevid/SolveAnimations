@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
 export const TYPES = ['petite', 'moyenne', 'grande'] as const
+export const POLES = ['animation', 'mj', 'les_deux'] as const
 export const VILLAGES = [
   'konoha',
   'suna',
@@ -14,6 +15,7 @@ export const VILLAGES = [
 
 export type AnimationServer = (typeof SERVERS)[number]
 export type AnimationType = (typeof TYPES)[number]
+export type AnimationPole = (typeof POLES)[number]
 export type Village = (typeof VILLAGES)[number]
 
 export const createAnimationSchema = z.object({
@@ -33,6 +35,7 @@ export const createAnimationSchema = z.object({
     .max(100, 'Maximum 100'),
   server: z.enum(SERVERS, { required_error: 'Serveur requis' }),
   type: z.enum(TYPES, { required_error: 'Type requis' }),
+  pole: z.enum(POLES, { required_error: 'Pôle requis' }),
   prepTimeMin: z
     .number()
     .int()

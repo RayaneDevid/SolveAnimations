@@ -19,6 +19,12 @@ export const TYPE_LABELS: Record<string, string> = {
   grande: 'Grande',
 };
 
+export const POLE_LABELS: Record<string, string> = {
+  animation: 'Pôle Animation',
+  mj: 'Pôle MJ',
+  les_deux: 'Pôle Animation & MJ',
+};
+
 export const VILLAGE_LABELS: Record<string, string> = {
   konoha: 'Konoha',
   suna: 'Suna',
@@ -108,6 +114,7 @@ export interface AnimationEmbedData {
   prepTimeMin: number;
   server: string;
   type: string;
+  pole?: string;
   village: string;
   documentUrl?: string;
   creatorUsername: string;
@@ -126,6 +133,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     prepTimeMin,
     server,
     type,
+    pole,
     village,
     documentUrl,
     creatorUsername,
@@ -139,6 +147,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
   const statusLabel = STATUS_LABELS[status] ?? status;
   const statusEmoji = STATUS_EMOJI[status] ?? '❓';
   const typeLabel = TYPE_LABELS[type] ?? type;
+  const poleLabel = pole ? (POLE_LABELS[pole] ?? pole) : null;
   const villageLabel = VILLAGE_LABELS[village] ?? village;
 
   const panelUrl = `${env.APP_PUBLIC_URL}/panel/animations/${animationId}`;
@@ -159,6 +168,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
         `🌐  Serveur : ${server}`,
         `🏯  Village : ${villageLabel}`,
         `🎯  Type : ${typeLabel}`,
+        ...(poleLabel ? [`🎪  Pôle : ${poleLabel}`] : []),
         `👥  Participants : ${currentParticipants} / ${requiredParticipants}`,
         ...(documentUrl ? [`📄  [Voir le document](${documentUrl})`] : []),
         '',

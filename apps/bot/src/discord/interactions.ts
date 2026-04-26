@@ -54,6 +54,26 @@ async function fetchAnimation(animationId: string) {
   return data;
 }
 
+function buildParticipantPingContent(pole: string | undefined, requiredParticipants: number): { content: string; allowedMentions: { roles: string[] } } | null {
+  if (requiredParticipants <= 0) return null;
+
+  const roleIds: string[] = [];
+  if (!pole || pole === 'animation' || pole === 'les_deux') {
+    if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
+    if (env.ROLE_SENIOR) roleIds.push(env.ROLE_SENIOR);
+  }
+  if (!pole || pole === 'mj' || pole === 'les_deux') {
+    if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
+    if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+
+  if (roleIds.length === 0) return null;
+  return {
+    content: roleIds.map((id) => `<@&${id}>`).join(' '),
+    allowedMentions: { roles: roleIds },
+  };
+}
+
 export async function handleValidateButton(interaction: ButtonInteraction, animationId: string) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -102,6 +122,7 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
     prepTimeMin: anim.prep_time_min,
     server: anim.server,
     type: anim.type,
+    pole: anim.pole ?? undefined,
     village: anim.village,
     documentUrl: anim.document_url,
     creatorUsername: anim.creator?.username ?? 'Inconnu',
@@ -110,11 +131,13 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
     status: 'open',
   });
 
+  const ping = buildParticipantPingContent(anim.pole ?? undefined, anim.required_participants);
+
   let publicMessageId = '';
   try {
     const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
     if (announceChannel?.isTextBased()) {
-      const msg = await (announceChannel as TextChannel).send({ embeds: [embed], components: [buildJoinRow(animationId)] });
+      const msg = await (announceChannel as TextChannel).send({ ...(ping ?? {}), embeds: [embed], components: [buildJoinRow(animationId)] });
       publicMessageId = msg.id;
     }
   } catch (err) {

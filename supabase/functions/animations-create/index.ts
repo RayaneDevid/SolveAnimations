@@ -7,6 +7,7 @@ import { notifyBot } from '../_shared/bot.ts'
 
 const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
 const TYPES    = ['petite','moyenne','grande'] as const
+const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 
 Deno.serve(async (req) => {
@@ -19,7 +20,7 @@ Deno.serve(async (req) => {
   const body = await req.json()
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
-    server, type, prepTimeMin = 0, village, description,
+    server, type, pole = 'animation', prepTimeMin = 0, village, description,
     requestValidation = true,
   } = body
 
@@ -36,6 +37,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Serveur invalide')
   if (!TYPES.includes(type))
     return errorResponse('VALIDATION_ERROR', 'Type invalide')
+  if (!POLES.includes(pole))
+    return errorResponse('VALIDATION_ERROR', 'Pôle invalide')
   if (!VILLAGES.includes(village))
     return errorResponse('VALIDATION_ERROR', 'Village invalide')
 
@@ -52,6 +55,7 @@ Deno.serve(async (req) => {
       required_participants: requiredParticipants,
       server,
       type,
+      pole,
       prep_time_min: prepTimeMin,
       village,
       description: description?.trim() || null,
@@ -80,6 +84,7 @@ Deno.serve(async (req) => {
       server: animation.server,
       village: animation.village,
       type: animation.type,
+      pole: animation.pole,
       documentUrl: animation.document_url ?? undefined,
       creatorUsername: profile.username,
     })
@@ -100,6 +105,7 @@ Deno.serve(async (req) => {
       server: animation.server,
       village: animation.village,
       type: animation.type,
+      pole: animation.pole,
       creatorUsername: profile.username,
       creatorDiscordId: profile.discord_id,
       ...(animation.document_url ? { documentUrl: animation.document_url } : {}),

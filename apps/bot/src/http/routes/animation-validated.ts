@@ -14,6 +14,7 @@ const bodySchema = z.object({
   prepTimeMin: z.number().int(),
   server: z.string(),
   type: z.string(),
+  pole: z.string().optional(),
   village: z.string(),
   documentUrl: z.string().optional(),
   creatorUsername: z.string(),
@@ -21,6 +22,33 @@ const bodySchema = z.object({
   requiredParticipants: z.number().int(),
   adminMessageId: z.string().optional(),
 });
+
+function buildParticipantPing(pole: string | undefined, requiredParticipants: number): { content: string; allowedMentions: import('discord.js').MessageCreateOptions['allowedMentions'] } | null {
+  if (requiredParticipants <= 0) return null;
+
+  const roleIds: string[] = [];
+  if (pole === 'animation' || pole === 'les_deux') {
+    if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
+    if (env.ROLE_SENIOR) roleIds.push(env.ROLE_SENIOR);
+  }
+  if (pole === 'mj' || pole === 'les_deux') {
+    if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
+    if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+  // Default (no pole): ping all staff
+  if (!pole) {
+    if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
+    if (env.ROLE_SENIOR) roleIds.push(env.ROLE_SENIOR);
+    if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
+    if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+
+  if (roleIds.length === 0) return null;
+  return {
+    content: roleIds.map((id) => `<@&${id}>`).join(' '),
+    allowedMentions: { roles: roleIds },
+  };
+}
 
 export async function registerAnimationValidated(app: FastifyInstance): Promise<void> {
   app.post(
@@ -60,7 +88,9 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
           status: 'open',
         });
 
+        const ping = buildParticipantPing(payload.pole, payload.requiredParticipants);
         const message = await (announceChannel as import('discord.js').TextChannel).send({
+          ...(ping ?? {}),
           embeds: [embed],
           components: [buildJoinRow(payload.animationId)],
         });

@@ -40,6 +40,7 @@ export interface Animation {
   prep_time_min: number
   village: Village
   description: string | null
+  pole: 'animation' | 'mj' | 'les_deux'
   creator_id: string
   status: AnimationStatus
   validated_by: string | null

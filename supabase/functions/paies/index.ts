@@ -5,7 +5,12 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
-const BASE_PAY = 1_000
+const BASE_PAY: Record<string, number> = {
+  animateur:  1_000,
+  senior:     1_000,
+  mj:         4_000,
+  mj_senior:  5_000,
+}
 
 const REMUNERATION: Record<string, number> = {
   petite:  200,
@@ -22,6 +27,7 @@ const QUOTA_MAX: Record<string, number | null> = {
   senior:         5,
   animateur:      5,
   mj:             3,
+  mj_senior:      3,
 }
 
 Deno.serve(async (req) => {
@@ -123,7 +129,8 @@ Deno.serve(async (req) => {
       s.petite  * REMUNERATION.petite +
       s.moyenne * REMUNERATION.moyenne +
       s.grande  * REMUNERATION.grande
-    const rawRemuneration = (quotaFilled ? BASE_PAY : 0) + animPay
+    const basePay = BASE_PAY[p.role] ?? 0
+    const rawRemuneration = (quotaFilled ? basePay : 0) + animPay
     return {
       id: p.id,
       username: p.username,

@@ -132,7 +132,9 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           )}
           {entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              +1 000 base
+              +{(['mj', 'mj_senior'].includes(entry.role)
+                ? (entry.role === 'mj_senior' ? '5 000' : '4 000')
+                : '1 000')} base
             </span>
           )}
         </div>
@@ -273,7 +275,7 @@ export default function Paies() {
       <div className="flex items-center gap-4 text-xs text-white/30 flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          Base 1 000 crédits (quota atteint)
+          Base quota atteint : Anim 1 000 · MJ 4 000 · MJS 5 000 crédits
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-white/20" />

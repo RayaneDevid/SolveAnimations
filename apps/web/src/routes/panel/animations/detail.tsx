@@ -277,7 +277,7 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
 }) {
   const { data: members = [], isLoading } = useMembers()
   const { mutateAsync: addParticipant, isPending } = useAddParticipantToFinished()
-  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
 
   const filtered = members.filter(
@@ -285,14 +285,20 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
       m.username.toLowerCase().includes(search.toLowerCase()),
   )
 
+  const toggle = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!selectedUserId) return
+    if (selectedIds.size === 0) return
     try {
-      await addParticipant({ animationId, userId: selectedUserId })
-      toast.success('Participant ajouté')
+      const { added } = await addParticipant({ animationId, userIds: [...selectedIds] })
+      toast.success(`${added} participant${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}`)
       onClose()
-      setSelectedUserId('')
+      setSelectedIds(new Set())
       setSearch('')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
@@ -303,40 +309,55 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="bg-[#0F1014] border-white/[0.08] text-white max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">Ajouter un participant</DialogTitle>
+          <DialogTitle className="text-white">Ajouter des participants</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label>Membre</Label>
+            <Label>Membres</Label>
             <Input
               placeholder="Rechercher..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.05]">
+            <div className="max-h-52 overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.05]">
               {isLoading ? (
                 <p className="text-xs text-white/40 p-3">Chargement...</p>
               ) : filtered.length === 0 ? (
-                <p className="text-xs text-white/40 p-3">Aucun membre</p>
-              ) : filtered.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setSelectedUserId(m.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                    selectedUserId === m.id ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <span className="text-sm text-white/90">{m.username}</span>
-                  <span className="text-xs text-white/40 ml-auto">{m.role}</span>
-                </button>
-              ))}
+                <p className="text-xs text-white/40 p-3">Aucun membre disponible</p>
+              ) : filtered.map((m) => {
+                const checked = selectedIds.has(m.id)
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggle(m.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                      checked ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-all ${
+                      checked ? 'bg-cyan-500/30 border-cyan-500/60' : 'border-white/20 bg-white/[0.04]'
+                    }`}>
+                      {checked && (
+                        <svg className="h-2.5 w-2.5 text-cyan-400" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-white/90 flex-1">{m.username}</span>
+                    <span className="text-xs text-white/40">{m.role}</span>
+                  </button>
+                )
+              })}
             </div>
+            {selectedIds.size > 0 && (
+              <p className="text-xs text-cyan-400">{selectedIds.size} membre{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</p>
+            )}
           </div>
           <div className="flex gap-2 justify-end pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
-            <Button type="submit" disabled={isPending || !selectedUserId}>
-              {isPending ? 'Ajout...' : 'Ajouter'}
+            <Button type="submit" disabled={isPending || selectedIds.size === 0}>
+              {isPending ? 'Ajout...' : `Ajouter${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
             </Button>
           </div>
         </form>

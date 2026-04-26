@@ -15,12 +15,12 @@ Deno.serve(async (req) => {
     return errorResponse('FORBIDDEN', 'Réservé aux responsables')
 
   const body = await req.json()
-  const { animationId, userId } = body
+  const { animationId, userIds } = body
 
   if (!animationId || typeof animationId !== 'string')
     return errorResponse('VALIDATION_ERROR', 'animationId requis')
-  if (!userId || typeof userId !== 'string')
-    return errorResponse('VALIDATION_ERROR', 'userId requis')
+  if (!Array.isArray(userIds) || userIds.length === 0 || userIds.some((u) => typeof u !== 'string'))
+    return errorResponse('VALIDATION_ERROR', 'userIds requis (tableau non vide)')
 
   const db = getServiceClient()
 
@@ -36,25 +36,33 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'L\'animation doit être terminée')
 
   const now = new Date().toISOString()
+  const pole = animation.pole === 'mj' ? 'mj' : 'animateur'
 
-  const { data: existing } = await db
+  // Fetch all existing participant rows for these users in one query
+  const { data: existingRows } = await db
     .from('animation_participants')
-    .select('id, status')
+    .select('id, user_id, status')
     .eq('animation_id', animationId)
-    .eq('user_id', userId)
-    .maybeSingle()
+    .in('user_id', userIds)
 
-  if (existing) {
-    if (existing.status === 'validated')
-      return errorResponse('CONFLICT', 'Ce membre est déjà inscrit')
-    await db
-      .from('animation_participants')
-      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null })
-      .eq('id', existing.id)
-  } else {
-    const { error: insertError } = await db
-      .from('animation_participants')
-      .insert({
+  const existingByUser = Object.fromEntries((existingRows ?? []).map((r) => [r.user_id, r]))
+
+  const toInsert: string[] = []
+  const toUpdate: string[] = []
+
+  for (const userId of userIds) {
+    const existing = existingByUser[userId]
+    if (!existing) {
+      toInsert.push(userId)
+    } else if (existing.status !== 'validated') {
+      toUpdate.push(existing.id)
+    }
+    // already validated → skip silently
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await db.from('animation_participants').insert(
+      toInsert.map((userId) => ({
         animation_id: animationId,
         user_id: userId,
         character_name: null,
@@ -62,32 +70,43 @@ Deno.serve(async (req) => {
         applied_at: now,
         decided_at: now,
         decided_by: profile.id,
-      })
-    if (insertError) {
-      console.error('participants-add-to-finished insert error:', insertError)
+      })),
+    )
+    if (error) {
+      console.error('participants-add-to-finished insert error:', error)
       return errorResponse('INTERNAL_ERROR', 'Erreur lors de l\'ajout')
     }
   }
 
-  // Ensure an animation_reports row exists for this participant
-  const { data: existingReport } = await db
-    .from('animation_reports')
-    .select('id')
-    .eq('animation_id', animationId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!existingReport) {
-    const pole = animation.pole === 'mj' ? 'mj' : 'animateur'
-    await db.from('animation_reports').insert({
-      animation_id: animationId,
-      user_id: userId,
-      pole,
-      character_name: '—',
-      comments: null,
-      submitted_at: null,
-    })
+  if (toUpdate.length > 0) {
+    await db
+      .from('animation_participants')
+      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null })
+      .in('id', toUpdate)
   }
 
-  return jsonResponse({ success: true }, 200)
+  // Ensure animation_reports rows exist for all added users
+  const { data: existingReports } = await db
+    .from('animation_reports')
+    .select('user_id')
+    .eq('animation_id', animationId)
+    .in('user_id', userIds)
+
+  const reportedUserIds = new Set((existingReports ?? []).map((r) => r.user_id))
+  const reportsToInsert = userIds.filter((uid) => !reportedUserIds.has(uid))
+
+  if (reportsToInsert.length > 0) {
+    await db.from('animation_reports').insert(
+      reportsToInsert.map((userId) => ({
+        animation_id: animationId,
+        user_id: userId,
+        pole,
+        character_name: '—',
+        comments: null,
+        submitted_at: null,
+      })),
+    )
+  }
+
+  return jsonResponse({ success: true, added: toInsert.length + toUpdate.length }, 200)
 })

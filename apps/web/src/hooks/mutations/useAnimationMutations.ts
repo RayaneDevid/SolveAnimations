@@ -408,8 +408,8 @@ export function useCreateTrameReport() {
 export function useAddParticipantToFinished() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ animationId, userId }: { animationId: string; userId: string }) =>
-      invokeEdge<{ success: boolean }>('participants-add-to-finished', { animationId, userId }),
+    mutationFn: ({ animationId, userIds }: { animationId: string; userIds: string[] }) =>
+      invokeEdge<{ success: boolean; added: number }>('participants-add-to-finished', { animationId, userIds }),
     onSuccess: (_data, { animationId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
     },

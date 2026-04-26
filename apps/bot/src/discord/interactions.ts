@@ -6,9 +6,10 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  ButtonBuilder,
 } from 'discord.js';
 import { supabase } from '../lib/supabase.js';
-import { buildAnimationEmbed } from './embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow } from './embeds/animation.js';
 import { sendDM } from './actions/sendDM.js';
 import client from './client.js';
 import { env } from '../config/env.js';
@@ -114,7 +115,7 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
   try {
     const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
     if (announceChannel?.isTextBased()) {
-      const msg = await (announceChannel as TextChannel).send({ embeds: [embed] });
+      const msg = await (announceChannel as TextChannel).send({ embeds: [embed], components: [buildJoinRow(animationId)] });
       publicMessageId = msg.id;
     }
   } catch (err) {
@@ -346,4 +347,143 @@ export async function handleRequeteRefuseModal(interaction: ModalSubmitInteracti
   }
 
   await interaction.editReply({ content: `❌ Requête refusée.` });
+}
+
+export async function handleAnimJoinButton(interaction: ButtonInteraction, animationId: string) {
+  const modal = new ModalBuilder()
+    .setCustomId(`anim-join-modal:${animationId}`)
+    .setTitle("S'inscrire à l'animation");
+
+  const characterInput = new TextInputBuilder()
+    .setCustomId('character_name')
+    .setLabel('Nom de ton personnage')
+    .setStyle(TextInputStyle.Short)
+    .setMinLength(1)
+    .setMaxLength(64)
+    .setPlaceholder('Ex : Saki Sato')
+    .setRequired(true);
+
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(characterInput));
+  await interaction.showModal(modal);
+}
+
+export async function handleAnimJoinModal(interaction: ModalSubmitInteraction, animationId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const characterName = interaction.fields.getTextInputValue('character_name').trim();
+
+  // Check profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, role, username')
+    .eq('discord_id', interaction.user.id)
+    .single();
+
+  if (!profile) {
+    await interaction.editReply({ content: '❌ Tu n\'as pas de compte sur le panel. Connecte-toi d\'abord sur le site.' });
+    return;
+  }
+
+  const staffRoles = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'direction', 'gerance'];
+  if (!staffRoles.includes(profile.role)) {
+    await interaction.editReply({ content: '❌ Tu n\'as pas accès au panel.' });
+    return;
+  }
+
+  // Fetch animation
+  const { data: anim } = await supabase
+    .from('animations')
+    .select('id, title, status, scheduled_at, creator_id, required_participants, discord_message_id')
+    .eq('id', animationId)
+    .single();
+
+  if (!anim || anim.status !== 'open') {
+    await interaction.editReply({ content: '❌ Cette animation n\'accepte plus d\'inscriptions.' });
+    return;
+  }
+
+  if (anim.creator_id === profile.id) {
+    await interaction.editReply({ content: '❌ Tu ne peux pas t\'inscrire à ta propre animation.' });
+    return;
+  }
+
+  // Check existing participant row
+  const { data: existing } = await supabase
+    .from('animation_participants')
+    .select('id, status')
+    .eq('animation_id', animationId)
+    .eq('user_id', profile.id)
+    .maybeSingle();
+
+  if (existing) {
+    const msg = existing.status === 'removed'
+      ? '❌ Tu as été retiré de cette animation et ne peux plus y participer.'
+      : existing.status === 'rejected'
+      ? '❌ Ta candidature a été refusée pour cette animation.'
+      : existing.status === 'validated'
+      ? '✅ Tu es déjà inscrit à cette animation.'
+      : '⏳ Tu as déjà une candidature en attente pour cette animation.';
+    await interaction.editReply({ content: msg });
+    return;
+  }
+
+  // Check absence covering scheduled_at
+  const scheduledDate = anim.scheduled_at.slice(0, 10);
+  const { data: absence } = await supabase
+    .from('user_absences')
+    .select('id')
+    .eq('user_id', profile.id)
+    .lte('from_date', scheduledDate)
+    .gte('to_date', scheduledDate)
+    .maybeSingle();
+
+  if (absence) {
+    await interaction.editReply({ content: '❌ Tu as déclaré une absence couvrant la date de cette animation.' });
+    return;
+  }
+
+  // Insert participant
+  const { error } = await supabase.from('animation_participants').insert({
+    animation_id: animationId,
+    user_id: profile.id,
+    character_name: characterName,
+    status: 'pending',
+  });
+
+  if (error) {
+    await interaction.editReply({ content: '❌ Erreur lors de l\'inscription. Réessaie depuis le panel.' });
+    return;
+  }
+
+  // Update embed participant count (validated only)
+  if (anim.discord_message_id) {
+    try {
+      const { count } = await supabase
+        .from('animation_participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('animation_id', animationId)
+        .eq('status', 'validated');
+
+      const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
+      if (announceChannel?.isTextBased()) {
+        const msg = await (announceChannel as TextChannel).messages.fetch(anim.discord_message_id);
+        const existingEmbed = msg.embeds[0];
+        if (existingEmbed) {
+          const updatedDesc = (existingEmbed.description ?? '').replace(
+            /👥  Participants : \d+ \/ \d+/,
+            `👥  Participants : ${count ?? 0} / ${anim.required_participants}`,
+          );
+          const { EmbedBuilder } = await import('discord.js');
+          const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(updatedDesc);
+          await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(animationId)] });
+        }
+      }
+    } catch {
+      // Non-blocking — the embed update failing doesn't affect the inscription
+    }
+  }
+
+  await interaction.editReply({
+    content: `✋ Ta candidature pour **${anim.title}** a été soumise avec le personnage **${characterName}** ! Le créateur de l'animation devra l'accepter.`,
+  });
 }

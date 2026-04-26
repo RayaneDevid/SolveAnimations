@@ -54,7 +54,7 @@ export async function registerAnimationFinished(app: FastifyInstance): Promise<v
               const updatedEmbed = EmbedBuilder.from(existingEmbed)
                 .setColor(STATUS_COLORS['finished'])
                 .setDescription(description);
-              await msg.edit({ embeds: [updatedEmbed] });
+              await msg.edit({ embeds: [updatedEmbed], components: [] });
             }
           }
         } catch (err) {

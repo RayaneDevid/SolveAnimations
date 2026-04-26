@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyBotSecret } from '../auth.js';
-import { buildAnimationEmbed } from '../../discord/embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow } from '../../discord/embeds/animation.js';
 import { sendDM } from '../../discord/actions/sendDM.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
@@ -60,7 +60,10 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
           status: 'open',
         });
 
-        const message = await (announceChannel as import('discord.js').TextChannel).send({ embeds: [embed] });
+        const message = await (announceChannel as import('discord.js').TextChannel).send({
+          embeds: [embed],
+          components: [buildJoinRow(payload.animationId)],
+        });
         publicMessageId = message.id;
       } catch (err) {
         console.error('[animation-validated] Error posting public embed:', err);

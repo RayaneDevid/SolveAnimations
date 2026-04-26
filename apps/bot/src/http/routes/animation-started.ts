@@ -40,7 +40,7 @@ export async function registerAnimationStarted(app: FastifyInstance): Promise<vo
                     `Statut : ${STATUS_EMOJI['running']} ${STATUS_LABELS['running']}`,
                   ),
                 );
-              await msg.edit({ embeds: [updatedEmbed] });
+              await msg.edit({ embeds: [updatedEmbed], components: [] });
             }
           }
         } catch (err) {

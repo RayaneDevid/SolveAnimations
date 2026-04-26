@@ -1,5 +1,15 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { env } from '../../config/env.js';
+
+export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`anim-join:${animationId}`)
+      .setLabel("S'inscrire")
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('✋'),
+  );
+}
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
 

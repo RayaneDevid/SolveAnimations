@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyBotSecret } from '../auth.js';
-import { buildAnimationEmbed } from '../../discord/embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow } from '../../discord/embeds/animation.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
 
@@ -38,7 +38,7 @@ export async function registerAnimationUpdated(app: FastifyInstance): Promise<vo
           if (announceChannel?.isTextBased()) {
             const msg = await (announceChannel as import('discord.js').TextChannel).messages.fetch(payload.publicMessageId);
             const embed = buildAnimationEmbed({ ...payload, status: 'open' });
-            await msg.edit({ embeds: [embed] });
+            await msg.edit({ embeds: [embed], components: [buildJoinRow(payload.animationId)] });
           }
         } catch (err) {
           console.warn('[animation-updated] Could not edit public message:', err);

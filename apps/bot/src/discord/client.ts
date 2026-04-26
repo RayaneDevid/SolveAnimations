@@ -6,6 +6,8 @@ import {
   handleRequeteAcceptButton,
   handleRequeteRefuseButton,
   handleRequeteRefuseModal,
+  handleAnimJoinButton,
+  handleAnimJoinModal,
 } from './interactions.js';
 import {
   handleCreateCommand,
@@ -47,6 +49,8 @@ client.on('interactionCreate', async (interaction) => {
         await handleRequeteAcceptButton(interaction, customId.slice('requete-accept:'.length));
       } else if (customId.startsWith('requete-refuse:')) {
         await handleRequeteRefuseButton(interaction, customId.slice('requete-refuse:'.length));
+      } else if (customId.startsWith('anim-join:')) {
+        await handleAnimJoinButton(interaction, customId.slice('anim-join:'.length));
       }
     } else if (interaction.isModalSubmit()) {
       const { customId } = interaction;
@@ -58,6 +62,8 @@ client.on('interactionCreate', async (interaction) => {
         await handleRejectModal(interaction, customId.slice('reject-modal:'.length));
       } else if (customId.startsWith('requete-refuse-modal:')) {
         await handleRequeteRefuseModal(interaction, customId.slice('requete-refuse-modal:'.length));
+      } else if (customId.startsWith('anim-join-modal:')) {
+        await handleAnimJoinModal(interaction, customId.slice('anim-join-modal:'.length));
       }
     }
   } catch (err) {

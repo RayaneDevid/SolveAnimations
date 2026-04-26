@@ -38,7 +38,7 @@ function ReportModal({ report, onClose }: { report: AnimationReport; onClose: ()
     try {
       await mutateAsync({ reportId: report.id, characterName, comments })
       toast.success(isSubmitted ? 'Rapport mis à jour !' : 'Rapport soumis !')
-      setEditing(false)
+      onClose()
     } catch {
       toast.error('Erreur lors de la soumission')
     }

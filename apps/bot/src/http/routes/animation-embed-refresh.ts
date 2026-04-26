@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyBotSecret } from '../auth.js';
-import { buildAnimationEmbed } from '../../discord/embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow } from '../../discord/embeds/animation.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
 
@@ -40,7 +40,8 @@ export async function registerAnimationEmbedRefresh(app: FastifyInstance): Promi
         if (channel?.isTextBased()) {
           const msg = await (channel as import('discord.js').TextChannel).messages.fetch(payload.publicMessageId);
           const embed = buildAnimationEmbed(payload);
-          await msg.edit({ embeds: [embed] });
+          const components = payload.status === 'open' ? [buildJoinRow(payload.animationId)] : [];
+          await msg.edit({ embeds: [embed], components });
         }
       } catch (err) {
         console.warn('[animation-embed-refresh] Could not edit message:', err);

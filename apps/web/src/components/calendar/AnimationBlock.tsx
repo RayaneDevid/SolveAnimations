@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { toZonedTime } from 'date-fns-tz'
 import type { Animation } from '@/types/database'
@@ -48,10 +49,21 @@ function minutesFromSessionTop(scheduledAt: Date): number {
   return 24 * 60 - SESSION_START_MIN + mins
 }
 
-// Returns a time string `prep_time_min` minutes before scheduledAt
 function debriefStartTime(scheduledAt: Date, prepMin: number): string {
   const ms = new Date(scheduledAt).getTime() - prepMin * 60 * 1000
   return formatTime(new Date(ms).toISOString())
+}
+
+function elapsedMinutes(startedAt: string): number {
+  return Math.floor((Date.now() - new Date(startedAt).getTime()) / 60_000)
+}
+
+function formatDurationShort(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h${String(m).padStart(2, '0')}`
 }
 
 interface AnimationBlockProps {
@@ -61,16 +73,33 @@ interface AnimationBlockProps {
 }
 
 export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockProps) {
+  const isRunning = animation.status === 'running' && !!animation.started_at
+  const isFinished = animation.status === 'finished'
+
+  const [elapsed, setElapsed] = useState(() =>
+    isRunning ? elapsedMinutes(animation.started_at!) : 0,
+  )
+
+  useEffect(() => {
+    if (!isRunning) return
+    const id = setInterval(() => setElapsed(elapsedMinutes(animation.started_at!)), 30_000)
+    return () => clearInterval(id)
+  }, [isRunning, animation.started_at])
+
+  const effectiveDuration = isFinished
+    ? (animation.actual_duration_min ?? animation.planned_duration_min)
+    : isRunning
+      ? Math.max(elapsed, 1)
+      : animation.planned_duration_min
+
   const prep = animation.prep_time_min ?? 0
   const animStartMin = minutesFromSessionTop(new Date(animation.scheduled_at))
 
-  // Block starts at debrief start (or animation start if no debrief)
   const topMin = animStartMin - prep
   const top = topMin * PX_PER_MIN
 
-  // Debrief zone always tall enough to show its label
   const debriefHeight = prep > 0 ? Math.max(prep * PX_PER_MIN, MIN_DEBRIEF_HEIGHT) : 0
-  const animNaturalHeight = animation.planned_duration_min * PX_PER_MIN
+  const animNaturalHeight = effectiveDuration * PX_PER_MIN
   const totalHeight = Math.max(debriefHeight + animNaturalHeight, 28)
   const animHeight = totalHeight - debriefHeight
 
@@ -86,6 +115,12 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
   const validated = animation.validated_participants_count ?? 0
   const required = animation.required_participants
   const isFull = validated >= required
+
+  const durationLabel = isFinished
+    ? formatDurationShort(animation.actual_duration_min ?? animation.planned_duration_min)
+    : isRunning
+      ? `${formatDurationShort(elapsed)} en cours`
+      : formatDurationShort(animation.planned_duration_min)
 
   return (
     <Link
@@ -120,7 +155,7 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
           {animation.title}{animation.creator ? ` · ${animation.creator.username}` : ''}
         </p>
         <p className="text-[9px] opacity-70 leading-tight truncate">
-          {formatTime(animation.scheduled_at)}
+          {formatTime(animation.scheduled_at)} · {durationLabel}
         </p>
         {animHeight >= 40 && (
           <p className="text-[9px] opacity-60 leading-tight truncate">

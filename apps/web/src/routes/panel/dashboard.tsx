@@ -73,10 +73,16 @@ export default function Dashboard() {
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
     status: ['pending_validation', 'open'],
     order: 'asc',
+    pageSize: 12,
+  })
+  const { data: scheduledParticipantResult, isLoading: scheduledParticipantLoading } = useAnimations({
+    as_participant: true,
+    status: ['pending_validation', 'open', 'preparing', 'running'],
+    order: 'asc',
     pageSize: 5,
   })
-  const { data: scheduledResult, isLoading: scheduledLoading } = useAnimations({
-    as_participant: true,
+  const { data: scheduledCreatedResult, isLoading: scheduledCreatedLoading } = useAnimations({
+    creator_id: user.id,
     status: ['pending_validation', 'open', 'preparing', 'running'],
     order: 'asc',
     pageSize: 5,
@@ -87,8 +93,17 @@ export default function Dashboard() {
   const quotaPercent = quotaMax ? Math.min(100, ((stats?.quota ?? 0) / quotaMax) * 100) : 100
 
   const pendingReports = reports?.filter((r) => !r.submitted_at) ?? []
-  const upcomingAnims = animsResult?.animations?.slice(0, 4) ?? []
-  const scheduledAnims = scheduledResult?.animations?.slice(0, 4) ?? []
+  const upcomingAnims = (animsResult?.animations ?? [])
+    .filter((anim) => anim.creator_id !== user.id && !anim.my_participant_status)
+    .slice(0, 4)
+  const scheduledAnims = [
+    ...(scheduledParticipantResult?.animations ?? []),
+    ...(scheduledCreatedResult?.animations ?? []),
+  ]
+    .filter((anim, index, list) => list.findIndex((item) => item.id === anim.id) === index)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+    .slice(0, 4)
+  const scheduledLoading = scheduledParticipantLoading || scheduledCreatedLoading
 
   const profileIncomplete = !user.steam_id || !user.arrival_date
 
@@ -216,7 +231,7 @@ export default function Dashboard() {
               <Users className="h-4 w-4 text-violet-400" />
               Programmé
             </h2>
-            <Link to="/panel/animations">
+            <Link to="/panel/animations?as_participant=1">
               <Button variant="ghost" size="sm" className="text-xs gap-1">
                 Voir tout <ChevronRight className="h-3 w-3" />
               </Button>

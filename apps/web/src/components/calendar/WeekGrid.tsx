@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils/cn'
 
 const TZ = 'Europe/Paris'
 const PX_PER_MIN = 1.2
+const DAY_VIEW_PX_PER_MIN = 2.4
 const SESSION_START = 18 // 18:00
 
 // Week column order: Sat, Sun, Mon, Tue, Wed, Thu, Fri
@@ -94,6 +95,7 @@ function columnHeightMin(endHour: 3 | 4): number {
 
 export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
   const nowRef = useRef<HTMLDivElement>(null)
+  const pxPerMin = day ? DAY_VIEW_PX_PER_MIN : PX_PER_MIN
 
   // Group animations by RP day
   const byDay = useMemo(() => {
@@ -128,13 +130,13 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
   const isSessionTime = nowMins >= SESSION_START * 60 || nowMins <= 4 * 60
   const nowTop = isSessionTime
     ? nowMins >= SESSION_START * 60
-      ? (nowMins - SESSION_START * 60) * PX_PER_MIN
-      : (24 * 60 - SESSION_START * 60 + nowMins) * PX_PER_MIN
+      ? (nowMins - SESSION_START * 60) * pxPerMin
+      : (24 * 60 - SESSION_START * 60 + nowMins) * pxPerMin
     : -1
 
   // Shared hour axis (use Fri hours = 04:00 end for max)
   const hourLabels = buildHourLabels(4)
-  const maxHeight = columnHeightMin(4) * PX_PER_MIN
+  const maxHeight = columnHeightMin(4) * pxPerMin
 
   return (
     <div className="flex overflow-x-auto">
@@ -142,7 +144,7 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
       <div className="shrink-0 w-12 pt-10">
         <div className="relative" style={{ height: maxHeight }}>
           {hourLabels.map((h) => {
-            const top = ((h >= SESSION_START ? h - SESSION_START : 24 - SESSION_START + h) * 60) * PX_PER_MIN
+            const top = ((h >= SESSION_START ? h - SESSION_START : 24 - SESSION_START + h) * 60) * pxPerMin
             return (
               <div
                 key={h}
@@ -159,13 +161,13 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
       {/* Columns */}
       {columns.map(({ date, dow, label }) => {
         const endHour = sessionEndHour(dow)
-        const colHeight = columnHeightMin(endHour) * PX_PER_MIN
+        const colHeight = columnHeightMin(endHour) * pxPerMin
         const dateKey = format(date, 'yyyy-MM-dd')
         const dayAnims = byDay[dateKey] ?? []
         const isToday = isSameDay(date, nowParis)
 
         return (
-          <div key={dateKey} className={cn('flex-1', day ? 'min-w-[280px]' : 'min-w-[90px]')}>
+          <div key={dateKey} className={cn('flex-1', day ? 'min-w-[720px]' : 'min-w-[90px]')}>
             {/* Header */}
             <div
               className={cn(
@@ -188,7 +190,7 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
             >
               {/* Hour grid lines */}
               {hourLabels.map((h) => {
-                const top = ((h >= SESSION_START ? h - SESSION_START : 24 - SESSION_START + h) * 60) * PX_PER_MIN
+                const top = ((h >= SESSION_START ? h - SESSION_START : 24 - SESSION_START + h) * 60) * pxPerMin
                 return (
                   <div
                     key={h}
@@ -229,6 +231,7 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
                   animation={animation}
                   lane={lane}
                   totalLanes={totalLanes}
+                  pxPerMin={pxPerMin}
                 />
               ))}
             </div>

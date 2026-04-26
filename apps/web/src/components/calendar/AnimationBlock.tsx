@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils/cn'
 
 const TZ = 'Europe/Paris'
 
-const PX_PER_MIN = 1.2
+const DEFAULT_PX_PER_MIN = 1.2
 const SESSION_START_MIN = 18 * 60
 const MIN_DEBRIEF_HEIGHT = 18
 
@@ -70,9 +70,10 @@ interface AnimationBlockProps {
   animation: Animation
   lane: number
   totalLanes: number
+  pxPerMin?: number
 }
 
-export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockProps) {
+export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT_PX_PER_MIN }: AnimationBlockProps) {
   const isRunning = animation.status === 'running' && !!animation.started_at
   const isFinished = animation.status === 'finished'
 
@@ -96,10 +97,10 @@ export function AnimationBlock({ animation, lane, totalLanes }: AnimationBlockPr
   const animStartMin = minutesFromSessionTop(new Date(animation.scheduled_at))
 
   const topMin = animStartMin - prep
-  const top = topMin * PX_PER_MIN
+  const top = topMin * pxPerMin
 
-  const debriefHeight = prep > 0 ? Math.max(prep * PX_PER_MIN, MIN_DEBRIEF_HEIGHT) : 0
-  const animNaturalHeight = effectiveDuration * PX_PER_MIN
+  const debriefHeight = prep > 0 ? Math.max(prep * pxPerMin, MIN_DEBRIEF_HEIGHT) : 0
+  const animNaturalHeight = effectiveDuration * pxPerMin
   const totalHeight = Math.max(debriefHeight + animNaturalHeight, 28)
   const animHeight = totalHeight - debriefHeight
 

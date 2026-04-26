@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAnimations } from '@/hooks/queries/useAnimations'
@@ -91,13 +91,22 @@ function AnimationCard({ anim }: { anim: Animation }) {
 }
 
 export default function AnimationsList() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabValue>('active')
+  const asParticipant = searchParams.get('as_participant') === '1'
+  const creatorId = searchParams.get('creator_id') ?? undefined
 
-  const filters =
+  const tabFilters =
     activeTab === 'all'      ? {} :
     activeTab === 'active'   ? { status: ACTIVE_STATUSES } :
     activeTab === 'proposed' ? { status: 'pending_validation' as AnimationStatus } :
                                { status: activeTab as AnimationStatus }
+
+  const filters = {
+    ...tabFilters,
+    ...(asParticipant ? { as_participant: true } : {}),
+    ...(creatorId ? { creator_id: creatorId } : {}),
+  }
 
   const { data, isLoading } = useAnimations(filters)
 
@@ -109,7 +118,7 @@ export default function AnimationsList() {
         <div>
           <h1 className="text-2xl font-bold text-white">Animations</h1>
           <p className="text-sm text-white/40 mt-0.5">
-            {data?.total ?? 0} animation{(data?.total ?? 0) > 1 ? 's' : ''}
+            {asParticipant ? 'Mes inscriptions' : creatorId ? 'Animations du membre' : `${data?.total ?? 0} animation${(data?.total ?? 0) > 1 ? 's' : ''}`}
           </p>
         </div>
         <Link to="/panel/animations/new">

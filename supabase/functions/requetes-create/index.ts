@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { notifyBot } from '../_shared/bot.ts'
 
 const CREATOR_ROLES = ['animateur', 'mj', 'senior', 'mj_senior']
 
@@ -63,6 +64,16 @@ Deno.serve(async (req) => {
 
   if (error || !data)
     return errorResponse('INTERNAL_ERROR', error?.message ?? 'Création échouée')
+
+  // Notifier le bot Discord (fire-and-forget — ne bloque pas la réponse)
+  notifyBot('requete-created', {
+    requeteId: data.id,
+    subject,
+    destination,
+    description: description.trim(),
+    creatorUsername: profile.username,
+    creatorDiscordId: (profile as Record<string, unknown>).discord_id ?? null,
+  })
 
   return jsonResponse({ requete: data })
 })

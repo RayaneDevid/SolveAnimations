@@ -1,5 +1,12 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { handleValidateButton, handleRejectButton, handleRejectModal } from './interactions.js';
+import {
+  handleValidateButton,
+  handleRejectButton,
+  handleRejectModal,
+  handleRequeteAcceptButton,
+  handleRequeteRefuseButton,
+  handleRequeteRefuseModal,
+} from './interactions.js';
 import {
   handleCreateCommand,
   handleModal1Submit,
@@ -36,6 +43,10 @@ client.on('interactionCreate', async (interaction) => {
         await handleValidateButton(interaction, customId.slice('validate:'.length));
       } else if (customId.startsWith('reject:')) {
         await handleRejectButton(interaction, customId.slice('reject:'.length));
+      } else if (customId.startsWith('requete-accept:')) {
+        await handleRequeteAcceptButton(interaction, customId.slice('requete-accept:'.length));
+      } else if (customId.startsWith('requete-refuse:')) {
+        await handleRequeteRefuseButton(interaction, customId.slice('requete-refuse:'.length));
       }
     } else if (interaction.isModalSubmit()) {
       const { customId } = interaction;
@@ -45,6 +56,8 @@ client.on('interactionCreate', async (interaction) => {
         await handleModal2Submit(interaction);
       } else if (customId.startsWith('reject-modal:')) {
         await handleRejectModal(interaction, customId.slice('reject-modal:'.length));
+      } else if (customId.startsWith('requete-refuse-modal:')) {
+        await handleRequeteRefuseModal(interaction, customId.slice('requete-refuse-modal:'.length));
       }
     }
   } catch (err) {

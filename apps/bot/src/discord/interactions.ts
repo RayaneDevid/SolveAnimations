@@ -12,6 +12,28 @@ import { buildAnimationEmbed } from './embeds/animation.js';
 import { sendDM } from './actions/sendDM.js';
 import client from './client.js';
 import { env } from '../config/env.js';
+import { SUBJECT_LABELS, DESTINATION_LABELS } from './embeds/requete.js';
+
+async function getRequeteResponsableProfile(discordId: string) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, role, username, discord_id')
+    .eq('discord_id', discordId)
+    .single();
+  if (!data) return null;
+  const deciderRoles = ['responsable', 'responsable_mj', 'direction', 'gerance'];
+  if (!deciderRoles.includes(data.role)) return null;
+  return data;
+}
+
+async function fetchRequete(requeteId: string) {
+  const { data } = await supabase
+    .from('requetes')
+    .select('*, creator:profiles!creator_id(id, discord_id, username)')
+    .eq('id', requeteId)
+    .single();
+  return data;
+}
 
 async function getResponsableProfile(discordId: string) {
   const { data } = await supabase
@@ -192,4 +214,136 @@ export async function handleRejectModal(interaction: ModalSubmitInteraction, ani
   }
 
   await interaction.editReply({ content: `❌ Animation **${anim.title}** refusée.` });
+}
+
+export async function handleRequeteAcceptButton(interaction: ButtonInteraction, requeteId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const profile = await getRequeteResponsableProfile(interaction.user.id);
+  if (!profile) {
+    await interaction.editReply({ content: '❌ Tu n\'as pas les droits pour traiter cette requête.' });
+    return;
+  }
+
+  const requete = await fetchRequete(requeteId);
+  if (!requete || requete.status !== 'pending') {
+    await interaction.editReply({ content: '❌ Cette requête a déjà été traitée.' });
+    return;
+  }
+
+  // Validate destination matches role
+  if (requete.destination === 'ra' && profile.role !== 'responsable' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables Animation.' });
+    return;
+  }
+  if (requete.destination === 'rmj' && profile.role !== 'responsable_mj' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables MJ.' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('requetes')
+    .update({ status: 'accepted', decided_by: profile.id, decided_at: now })
+    .eq('id', requeteId);
+
+  if (error) {
+    await interaction.editReply({ content: '❌ Erreur lors de l\'acceptation.' });
+    return;
+  }
+
+  // Delete the Discord message
+  try {
+    await interaction.message.delete();
+  } catch {}
+
+  const subjectLabel = SUBJECT_LABELS[requete.subject] ?? requete.subject;
+  const destLabel = DESTINATION_LABELS[requete.destination] ?? requete.destination;
+
+  if (requete.creator?.discord_id) {
+    await sendDM(
+      requete.creator.discord_id,
+      `✅ Ta requête **${subjectLabel}** (${destLabel}) a été acceptée par ${profile.username}.`,
+    );
+  }
+
+  await interaction.editReply({ content: `✅ Requête acceptée.` });
+}
+
+export async function handleRequeteRefuseButton(interaction: ButtonInteraction, requeteId: string) {
+  const modal = new ModalBuilder()
+    .setCustomId(`requete-refuse-modal:${requeteId}`)
+    .setTitle('Refuser la requête');
+
+  const reasonInput = new TextInputBuilder()
+    .setCustomId('reason')
+    .setLabel('Raison du refus')
+    .setStyle(TextInputStyle.Paragraph)
+    .setMinLength(5)
+    .setMaxLength(500)
+    .setPlaceholder('Explique pourquoi cette requête est refusée…')
+    .setRequired(true);
+
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput));
+  await interaction.showModal(modal);
+}
+
+export async function handleRequeteRefuseModal(interaction: ModalSubmitInteraction, requeteId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const reason = interaction.fields.getTextInputValue('reason');
+
+  const profile = await getRequeteResponsableProfile(interaction.user.id);
+  if (!profile) {
+    await interaction.editReply({ content: '❌ Tu n\'as pas les droits pour traiter cette requête.' });
+    return;
+  }
+
+  const requete = await fetchRequete(requeteId);
+  if (!requete || requete.status !== 'pending') {
+    await interaction.editReply({ content: '❌ Cette requête a déjà été traitée.' });
+    return;
+  }
+
+  // Validate destination matches role
+  if (requete.destination === 'ra' && profile.role !== 'responsable' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables Animation.' });
+    return;
+  }
+  if (requete.destination === 'rmj' && profile.role !== 'responsable_mj' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables MJ.' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('requetes')
+    .update({ status: 'refused', decided_by: profile.id, decided_at: now, decision_reason: reason })
+    .eq('id', requeteId);
+
+  if (error) {
+    await interaction.editReply({ content: '❌ Erreur lors du refus.' });
+    return;
+  }
+
+  // Delete the Discord message
+  try {
+    const validationChannel = await client.channels.fetch(env.DISCORD_VALIDATION_CHANNEL_ID);
+    if (validationChannel?.isTextBased()) {
+      const msg = await (validationChannel as TextChannel).messages.fetch(interaction.message?.id ?? '');
+      await msg.delete();
+    }
+  } catch {}
+
+  const subjectLabel = SUBJECT_LABELS[requete.subject] ?? requete.subject;
+  const destLabel = DESTINATION_LABELS[requete.destination] ?? requete.destination;
+
+  if (requete.creator?.discord_id) {
+    await sendDM(
+      requete.creator.discord_id,
+      `❌ Ta requête **${subjectLabel}** (${destLabel}) a été refusée par ${profile.username}.\n\n**Raison :** ${reason}`,
+    );
+  }
+
+  await interaction.editReply({ content: `❌ Requête refusée.` });
 }

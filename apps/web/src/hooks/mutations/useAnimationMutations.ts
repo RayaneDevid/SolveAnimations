@@ -367,6 +367,30 @@ export function useCreateFormation() {
   })
 }
 
+// ─── Requêtes ─────────────────────────────────────────────────────────────────
+
+export function useCreateRequete() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { subject: string; destination: string; description: string }) =>
+      invokeEdge<{ requete: import('@/types/database').Requete }>('requetes-create', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requetes'] })
+    },
+  })
+}
+
+export function useDecideRequete() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision, reason }: { id: string; decision: 'accepted' | 'refused'; reason?: string }) =>
+      invokeEdge<{ requete: import('@/types/database').Requete }>('requetes-decide', { id, decision, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requetes'] })
+    },
+  })
+}
+
 // ─── Rapports trames ──────────────────────────────────────────────────────────
 
 export function useCreateTrameReport() {

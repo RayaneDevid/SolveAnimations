@@ -37,6 +37,9 @@ export const queryKeys = {
     list: () => ['trame-reports', 'list'] as const,
     user: (userId: string) => ['trame-reports', 'user', userId] as const,
   },
+  requetes: {
+    all: ['requetes'] as const,
+  },
 } as const
 
 export type QueryKeys = typeof queryKeys

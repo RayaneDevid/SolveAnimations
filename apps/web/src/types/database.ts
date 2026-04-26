@@ -194,6 +194,36 @@ export interface PaiesEntry {
   trameReportsCount?: number
 }
 
+export type RequeteSubject =
+  | 'grade_superieur_tkj'
+  | 'demande_give'
+  | 'setmodel_tenue'
+  | 'reservation_secteur'
+  | 'situation_problematique'
+
+export type RequeteDestination = 'ra' | 'rmj'
+export type RequeteStatus = 'pending' | 'accepted' | 'refused'
+
+export interface Requete {
+  id: string
+  subject: RequeteSubject
+  destination: RequeteDestination
+  description: string
+  creator_id: string
+  status: RequeteStatus
+  decided_by: string | null
+  decided_at: string | null
+  decision_reason: string | null
+  created_at: string
+  creator?: { id: string; username: string; avatar_url: string | null; role: string }
+  decider?: { id: string; username: string; avatar_url: string | null } | null
+}
+
+export interface RequetesListResult {
+  mine: Requete[]
+  incoming: Requete[]
+}
+
 export interface TrameReport {
   id: string
   title: string

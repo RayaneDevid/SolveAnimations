@@ -213,6 +213,13 @@ export function useProfileHistory(profileId: string | undefined) {
   })
 }
 
+export function useRequetes() {
+  return useQuery({
+    queryKey: queryKeys.requetes.all,
+    queryFn: () => invokeEdge<import('@/types/database').RequetesListResult>('requetes-list'),
+  })
+}
+
 export function useTrameReports() {
   return useQuery({
     queryKey: queryKeys.trameReports.list(),

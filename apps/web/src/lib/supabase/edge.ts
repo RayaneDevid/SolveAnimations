@@ -55,6 +55,9 @@ export type EdgeFunctionName =
   | 'trame-reports-list'
   | 'trame-reports-user'
   | 'trame-reports-create'
+  | 'requetes-list'
+  | 'requetes-create'
+  | 'requetes-decide'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

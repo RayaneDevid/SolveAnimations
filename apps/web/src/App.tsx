@@ -24,6 +24,7 @@ import ProfilePage from '@/routes/panel/profile'
 import Recrutement from '@/routes/panel/recrutement'
 import Formation from '@/routes/panel/formation'
 import Trames from '@/routes/panel/trames'
+import Requetes from '@/routes/panel/requetes'
 
 export default function App() {
   return (
@@ -89,6 +90,7 @@ export default function App() {
             }
           />
           <Route path="trames" element={<Trames />} />
+          <Route path="requetes" element={<Requetes />} />
           <Route path="villages" element={<Villages />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route

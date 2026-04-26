@@ -12,26 +12,34 @@ import {
   MessageFlags,
 } from 'discord.js';
 import { supabase } from '../../lib/supabase.js';
-import { buildAnimationEmbed } from '../embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow } from '../embeds/animation.js';
 import { env } from '../../config/env.js';
 import client from '../client.js';
 
 const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const;
 const TYPES = ['petite', 'moyenne', 'grande'] as const;
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const;
+const POLES = ['animation', 'mj', 'les_deux'] as const;
 
-// ─── State intermédiaire (étape 1 → étape 2) ─────────────────────────────────
+// ─── State intermédiaire ──────────────────────────────────────────────────────
 
-interface Step1Data {
+interface PendingData {
+  // Step 1
   title: string;
   scheduledAt: Date;
   server: string;
   village: string;
   type: string;
+  // Step 2 (filled after modal 2)
+  plannedDurationMin?: number;
+  requiredParticipants?: number;
+  prepTimeMin?: number;
+  description?: string | null;
+  requestValidation?: boolean;
   storedAt: number;
 }
 
-const pendingCreations = new Map<string, Step1Data>();
+const pendingCreations = new Map<string, PendingData>();
 
 // Nettoyer les entrées > 15 min (session expirée)
 setInterval(() => {
@@ -61,7 +69,27 @@ function parseParisDate(input: string): Date | null {
   return new Date(naiveUTC + (naiveDate.getTime() - parisAsLocal.getTime()));
 }
 
-// ─── Modal 1 — identité ───────────────────────────────────────────────────────
+function buildParticipantPingContent(pole: string, requiredParticipants: number, pingRoles: boolean): { content: string; allowedMentions: { roles: string[] } } | null {
+  if (!pingRoles || requiredParticipants <= 0) return null;
+
+  const roleIds: string[] = [];
+  if (pole === 'animation' || pole === 'les_deux') {
+    if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
+    if (env.ROLE_SENIOR) roleIds.push(env.ROLE_SENIOR);
+  }
+  if (pole === 'mj' || pole === 'les_deux') {
+    if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
+    if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+
+  if (roleIds.length === 0) return null;
+  return {
+    content: roleIds.map((id) => `<@&${id}>`).join(' '),
+    allowedMentions: { roles: roleIds },
+  };
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
 
 function currentParisDateTime(): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -78,7 +106,7 @@ function currentParisDateTime(): string {
 function buildModal1(): ModalBuilder {
   return new ModalBuilder()
     .setCustomId('anim-create-1')
-    .setTitle('Créer une animation (1/2)')
+    .setTitle('Créer une animation (1/3)')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
@@ -125,12 +153,10 @@ function buildModal1(): ModalBuilder {
     );
 }
 
-// ─── Modal 2 — paramètres ─────────────────────────────────────────────────────
-
 function buildModal2(): ModalBuilder {
   return new ModalBuilder()
     .setCustomId('anim-create-2')
-    .setTitle('Créer une animation (2/2)')
+    .setTitle('Créer une animation (2/3)')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
@@ -170,6 +196,32 @@ function buildModal2(): ModalBuilder {
           .setLabel('Validation responsable ? (oui / non)')
           .setStyle(TextInputStyle.Short)
           .setPlaceholder('oui')
+          .setRequired(true),
+      ),
+    );
+}
+
+function buildModal3(): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId('anim-create-3')
+    .setTitle('Créer une animation (3/3)')
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('pole')
+          .setLabel('Pôle')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('animation · mj · les_deux')
+          .setValue('animation')
+          .setRequired(true),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('ping_roles')
+          .setLabel('Notifier les rôles Discord ? (oui / non)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('oui')
+          .setValue('oui')
           .setRequired(true),
       ),
     );
@@ -245,7 +297,6 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
     return;
   }
 
-  // Stocker l'état step 1
   pendingCreations.set(interaction.user.id, {
     title,
     scheduledAt,
@@ -257,7 +308,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
 
   await interaction.reply({
     content: [
-      '✅ **Étape 1/2 enregistrée.** Clique sur le bouton ci-dessous pour renseigner les paramètres.',
+      '✅ **Étape 1/3 enregistrée.** Clique sur le bouton ci-dessous pour renseigner les paramètres.',
       `> **Titre :** ${title}`,
       `> **Date :** ${scheduledAtRaw} (Europe/Paris)`,
       `> **Serveur :** ${serverRaw} · **Village :** ${villageRaw} · **Type :** ${typeRaw}`,
@@ -295,22 +346,10 @@ export async function handleStep2Button(interaction: ButtonInteraction, userId: 
   await interaction.showModal(buildModal2());
 }
 
-export async function handleCancelButton(interaction: ButtonInteraction, userId: string): Promise<void> {
-  if (interaction.user.id !== userId) {
-    await interaction.reply({ content: '❌ Ce bouton ne t\'appartient pas.', ephemeral: true });
-    return;
-  }
-
-  pendingCreations.delete(userId);
-  await interaction.update({ content: '❌ Création annulée.', components: [] });
-}
-
 export async function handleModal2Submit(interaction: ModalSubmitInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
-
-  const step1 = pendingCreations.get(interaction.user.id);
-  if (!step1) {
-    await interaction.editReply({ content: '❌ Session expirée. Relance `/animation creer`.' });
+  const step = pendingCreations.get(interaction.user.id);
+  if (!step) {
+    await interaction.reply({ content: '❌ Session expirée. Relance `/animation creer`.', ephemeral: true });
     return;
   }
 
@@ -322,28 +361,103 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
 
   const plannedDurationMin = parseInt(durationRaw);
   if (isNaN(plannedDurationMin) || plannedDurationMin < 15 || plannedDurationMin > 720) {
-    await interaction.editReply({ content: '❌ Durée invalide (15–720 min).' });
+    await interaction.reply({ content: '❌ Durée invalide (15–720 min).', ephemeral: true });
     return;
   }
 
   const requiredParticipants = parseInt(participantsRaw);
   if (isNaN(requiredParticipants) || requiredParticipants < 0 || requiredParticipants > 100) {
-    await interaction.editReply({ content: '❌ Participants invalide (0–100).' });
+    await interaction.reply({ content: '❌ Participants invalide (0–100).', ephemeral: true });
     return;
   }
 
   const prepTimeMin = parseInt(debriefRaw);
   if (isNaN(prepTimeMin) || prepTimeMin < 0 || prepTimeMin > 600) {
-    await interaction.editReply({ content: '❌ Durée débrief invalide (0–600 min).' });
+    await interaction.reply({ content: '❌ Durée débrief invalide (0–600 min).', ephemeral: true });
     return;
   }
 
   if (!['oui', 'non'].includes(validationRaw)) {
-    await interaction.editReply({ content: '❌ Validation invalide. Réponds `oui` ou `non`.' });
+    await interaction.reply({ content: '❌ Validation invalide. Réponds `oui` ou `non`.', ephemeral: true });
     return;
   }
 
-  const requestValidation = validationRaw === 'oui';
+  // Store step 2 data into pending
+  pendingCreations.set(interaction.user.id, {
+    ...step,
+    plannedDurationMin,
+    requiredParticipants,
+    prepTimeMin,
+    description,
+    requestValidation: validationRaw === 'oui',
+    storedAt: Date.now(),
+  });
+
+  await interaction.reply({
+    content: [
+      '✅ **Étape 2/3 enregistrée.** Clique sur le bouton ci-dessous pour finir.',
+      `> **Durée :** ${plannedDurationMin} min · **Débrief :** ${prepTimeMin} min`,
+      `> **Participants :** ${requiredParticipants} · **Validation :** ${validationRaw}`,
+    ].join('\n'),
+    flags: MessageFlags.Ephemeral,
+    components: [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`anim-create-step3:${interaction.user.id}`)
+          .setLabel('Options Discord →')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(`anim-create-cancel:${interaction.user.id}`)
+          .setLabel('Annuler')
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    ],
+  });
+}
+
+export async function handleStep3Button(interaction: ButtonInteraction, userId: string): Promise<void> {
+  if (interaction.user.id !== userId) {
+    await interaction.reply({ content: '❌ Ce bouton ne t\'appartient pas.', ephemeral: true });
+    return;
+  }
+
+  if (!pendingCreations.has(userId)) {
+    await interaction.reply({
+      content: '❌ Session expirée. Relance `/animation creer`.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  await interaction.showModal(buildModal3());
+}
+
+export async function handleModal3Submit(interaction: ModalSubmitInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
+  const step = pendingCreations.get(interaction.user.id);
+  if (!step || step.plannedDurationMin == null) {
+    await interaction.editReply({ content: '❌ Session expirée. Relance `/animation creer`.' });
+    return;
+  }
+
+  const poleRaw = interaction.fields.getTextInputValue('pole').trim().toLowerCase();
+  const pingRaw = interaction.fields.getTextInputValue('ping_roles').trim().toLowerCase();
+
+  if (!POLES.includes(poleRaw as (typeof POLES)[number])) {
+    await interaction.editReply({ content: `❌ Pôle invalide. Valeurs acceptées : \`${POLES.join('`, `')}\`` });
+    return;
+  }
+
+  if (!['oui', 'non'].includes(pingRaw)) {
+    await interaction.editReply({ content: '❌ Notification invalide. Réponds `oui` ou `non`.' });
+    return;
+  }
+
+  const pole = poleRaw;
+  const pingRoles = pingRaw === 'oui';
+  const requestValidation = step.requestValidation ?? true;
+  const autoValidate = !requestValidation;
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -358,20 +472,20 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
   }
 
   const now = new Date().toISOString();
-  const autoValidate = !requestValidation;
 
   const { data: animation, error } = await supabase
     .from('animations')
     .insert({
-      title: step1.title,
-      scheduled_at: step1.scheduledAt.toISOString(),
-      planned_duration_min: plannedDurationMin,
-      required_participants: requiredParticipants,
-      server: step1.server,
-      type: step1.type,
-      prep_time_min: prepTimeMin,
-      village: step1.village,
-      description,
+      title: step.title,
+      scheduled_at: step.scheduledAt.toISOString(),
+      planned_duration_min: step.plannedDurationMin,
+      required_participants: step.requiredParticipants ?? 0,
+      server: step.server,
+      type: step.type,
+      pole,
+      prep_time_min: step.prepTimeMin ?? 0,
+      village: step.village,
+      description: step.description ?? null,
       creator_id: profile.id,
       status: autoValidate ? 'open' : 'pending_validation',
       ...(autoValidate ? { validated_by: profile.id, validated_at: now } : {}),
@@ -380,7 +494,7 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
     .single();
 
   if (error || !animation) {
-    console.error('[anim-create-2] DB error:', error);
+    console.error('[anim-create-3] DB error:', error);
     await interaction.editReply({ content: '❌ Erreur lors de la création.' });
     return;
   }
@@ -403,6 +517,7 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
     prepTimeMin: animation.prep_time_min,
     server: animation.server,
     type: animation.type,
+    pole: animation.pole,
     village: animation.village,
     creatorUsername: profile.username,
     requiredParticipants: animation.required_participants,
@@ -413,18 +528,21 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
   let discordMessageId = '';
 
   if (autoValidate) {
-    // Poster directement dans le canal d'annonces
     try {
       const ch = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
       if (ch?.isTextBased()) {
-        const msg = await (ch as TextChannel).send({ embeds: [embed] });
+        const ping = buildParticipantPingContent(pole, animation.required_participants, pingRoles);
+        const msg = await (ch as TextChannel).send({
+          ...(ping ?? {}),
+          embeds: [embed],
+          components: [buildJoinRow(animation.id)],
+        });
         discordMessageId = msg.id;
       }
     } catch (err) {
-      console.error('[anim-create-2] Failed to post announce embed:', err);
+      console.error('[anim-create-3] Failed to post announce embed:', err);
     }
   } else {
-    // Poster dans le canal de validation avec boutons
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`validate:${animation.id}`)
@@ -442,7 +560,7 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
         discordMessageId = msg.id;
       }
     } catch (err) {
-      console.error('[anim-create-2] Failed to post validation embed:', err);
+      console.error('[anim-create-3] Failed to post validation embed:', err);
     }
   }
 
@@ -460,4 +578,14 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
       `🔗 [Voir dans le panel](${env.APP_PUBLIC_URL}/panel/animations/${animation.id})`,
     ].join('\n'),
   });
+}
+
+export async function handleCancelButton(interaction: ButtonInteraction, userId: string): Promise<void> {
+  if (interaction.user.id !== userId) {
+    await interaction.reply({ content: '❌ Ce bouton ne t\'appartient pas.', ephemeral: true });
+    return;
+  }
+
+  pendingCreations.delete(userId);
+  await interaction.update({ content: '❌ Création annulée.', components: [] });
 }

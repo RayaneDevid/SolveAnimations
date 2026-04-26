@@ -12,7 +12,9 @@ import {
   handleCreateCommand,
   handleModal1Submit,
   handleModal2Submit,
+  handleModal3Submit,
   handleStep2Button,
+  handleStep3Button,
   handleCancelButton,
 } from './commands/animation-create.js';
 
@@ -38,6 +40,8 @@ client.on('interactionCreate', async (interaction) => {
       const { customId } = interaction;
       if (customId.startsWith('anim-create-step2:')) {
         await handleStep2Button(interaction, customId.slice('anim-create-step2:'.length));
+      } else if (customId.startsWith('anim-create-step3:')) {
+        await handleStep3Button(interaction, customId.slice('anim-create-step3:'.length));
       } else if (customId.startsWith('anim-create-cancel:')) {
         await handleCancelButton(interaction, customId.slice('anim-create-cancel:'.length));
       } else if (customId.startsWith('validate:')) {
@@ -57,6 +61,8 @@ client.on('interactionCreate', async (interaction) => {
         await handleModal1Submit(interaction);
       } else if (customId === 'anim-create-2') {
         await handleModal2Submit(interaction);
+      } else if (customId === 'anim-create-3') {
+        await handleModal3Submit(interaction);
       } else if (customId.startsWith('reject-modal:')) {
         await handleRejectModal(interaction, customId.slice('reject-modal:'.length));
       } else if (customId.startsWith('requete-refuse-modal:')) {

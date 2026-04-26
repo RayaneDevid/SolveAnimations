@@ -90,7 +90,7 @@ export default function Dashboard() {
   const upcomingAnims = animsResult?.animations?.slice(0, 4) ?? []
   const scheduledAnims = scheduledResult?.animations?.slice(0, 4) ?? []
 
-  const profileIncomplete = !user.steam_id || !user.arrival_date || !user.contact_email
+  const profileIncomplete = !user.steam_id || !user.arrival_date
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -109,7 +109,7 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-amber-300">Profil incomplet</p>
                 <p className="text-xs text-amber-400/70 mt-0.5">
-                  Renseigne ton Steam ID, ta date d'arrivée et ton adresse mail pour compléter ton profil.
+                  Renseigne ton Steam ID et ta date d'arrivée pour compléter ton profil.
                 </p>
               </div>
               <ChevronRight className="h-5 w-5 text-amber-400/60 shrink-0" />

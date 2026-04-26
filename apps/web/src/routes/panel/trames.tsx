@@ -30,9 +30,9 @@ const createTrameSchema = z.object({
   documentUrl: z.string().url('URL invalide'),
   writingTimeMin: z.preprocess(
     (value) => (value === '' || value == null ? undefined : Number(value)),
-    z.number().int('Temps invalide').min(1, 'Temps requis').max(10_080, 'Temps trop long').optional(),
+    z.number({ required_error: 'Temps requis' }).int('Temps invalide').min(1, 'Temps requis').max(10_080, 'Temps trop long'),
   ),
-  validatedBy: z.string().trim().max(64).optional(),
+  validatedBy: z.string().trim().min(2, 'Validateur requis').max(64),
 })
 
 type CreateTrameFormValues = z.infer<typeof createTrameSchema>
@@ -171,7 +171,7 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
         documentUrl: data.documentUrl,
         writingTimeMin: data.writingTimeMin,
         coAuthorIds,
-        validatedBy: data.validatedBy || undefined,
+        validatedBy: data.validatedBy,
       })
       toast.success('Rapport de trame créé !')
       handleClose()
@@ -225,7 +225,7 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
           {/* Writing time */}
           <div className="space-y-1.5">
-            <Label htmlFor="writingTimeMin">Temps d'écriture <span className="text-white/30 font-normal">(min, optionnel)</span></Label>
+            <Label htmlFor="writingTimeMin">Temps d'écriture <span className="text-red-400">*</span></Label>
             <Input
               id="writingTimeMin"
               type="number"
@@ -244,12 +244,18 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
           {/* Validated by */}
           <div className="space-y-1.5">
-            <Label htmlFor="validatedBy">Validé par <span className="text-white/30 font-normal">(optionnel)</span></Label>
+            <Label htmlFor="validatedBy">Validé par <span className="text-red-400">*</span></Label>
             <Input
               id="validatedBy"
               placeholder="ex. Saki Sato"
               {...register('validatedBy')}
             />
+            {errors.validatedBy && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.validatedBy.message}
+              </p>
+            )}
           </div>
 
           {/* Co-authors */}

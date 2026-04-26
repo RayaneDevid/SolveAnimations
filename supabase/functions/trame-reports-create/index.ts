@@ -8,8 +8,8 @@ interface Body {
   title: string
   documentUrl: string
   coAuthorIds?: string[]
-  writingTimeMin?: number
-  validatedBy?: string
+  writingTimeMin: number
+  validatedBy: string
 }
 
 Deno.serve(async (req) => {
@@ -28,8 +28,10 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Titre trop long (max 120 caractères)')
   if (!documentUrl || typeof documentUrl !== 'string')
     return errorResponse('VALIDATION_ERROR', 'Lien du document requis')
-  if (writingTimeMin != null && (!Number.isInteger(writingTimeMin) || writingTimeMin < 1 || writingTimeMin > 10_080))
+  if (!Number.isInteger(writingTimeMin) || writingTimeMin < 1 || writingTimeMin > 10_080)
     return errorResponse('VALIDATION_ERROR', "Temps d'écriture invalide")
+  if (!validatedBy || typeof validatedBy !== 'string' || validatedBy.trim().length < 2)
+    return errorResponse('VALIDATION_ERROR', 'Validateur requis')
 
   // Vérification basique URL
   try { new URL(documentUrl) } catch {
@@ -43,7 +45,7 @@ Deno.serve(async (req) => {
 
   const db = getServiceClient()
 
-  const validatedByTrimmed = validatedBy && typeof validatedBy === 'string' ? validatedBy.trim() || null : null
+  const validatedByTrimmed = validatedBy.trim()
 
   const { data: report, error: reportError } = await db
     .from('trame_reports')
@@ -51,7 +53,7 @@ Deno.serve(async (req) => {
       title: title.trim(),
       document_url: documentUrl,
       author_id: profile.id,
-      writing_time_min: writingTimeMin ?? null,
+      writing_time_min: writingTimeMin,
       validated_by: validatedByTrimmed,
     })
     .select('id, title, document_url, author_id, created_at, writing_time_min, validated_by')

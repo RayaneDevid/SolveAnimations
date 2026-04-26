@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, Mail, CheckCircle2, CircleAlert } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, CheckCircle2, CircleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
@@ -115,8 +115,8 @@ function RemoveConfirmModal({
 // ─── Profile tooltip ──────────────────────────────────────────────────────────
 
 function ProfileTooltip({ member: m }: { member: MemberEntry }) {
-  const filled = [m.steamId, m.arrivalDate, m.contactEmail].filter(Boolean).length
-  const total = 3
+  const filled = [m.steamId, m.arrivalDate].filter(Boolean).length
+  const total = 2
 
   const icon =
     filled === total ? (
@@ -150,14 +150,6 @@ function ProfileTooltip({ member: m }: { member: MemberEntry }) {
             <span className="text-white/80">{new Date(m.arrivalDate).toLocaleDateString('fr-FR')}</span>
           ) : (
             <span className="text-red-400/80 italic">Non renseignée</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <Mail className="h-3.5 w-3.5 text-white/40 shrink-0" />
-          {m.contactEmail ? (
-            <span className="text-white/80">{m.contactEmail}</span>
-          ) : (
-            <span className="text-red-400/80 italic">Non renseigné</span>
           )}
         </div>
       </TooltipContent>

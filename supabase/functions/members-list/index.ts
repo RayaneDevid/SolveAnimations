@@ -112,7 +112,6 @@ Deno.serve(async (req) => {
       isAbsent: absentIds.has(p.id),
       steamId: p.steam_id ?? null,
       arrivalDate: p.arrival_date ?? null,
-      contactEmail: p.contact_email ?? null,
       gender: p.gender ?? null,
       weeklyStats: {
         animationsCreated: weekly.count,

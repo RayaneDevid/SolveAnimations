@@ -86,8 +86,6 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr, effectiveTime])
 
-  const todayStr = toDateInputValue(new Date())
-
   const isAfterMidnight = (t: string) => parseInt(t.split(':')[0]) < 18
 
   const dayLabel = sessionDate

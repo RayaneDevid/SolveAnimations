@@ -80,9 +80,9 @@ export default function ProfilePage() {
         </p>
 
         <div className="space-y-2">
-          <Label className="text-white/70">Genre</Label>
+          <Label className="text-white/70">Rôle préférenciel</Label>
           <div className="flex gap-2">
-            {([['homme', '♂ Homme'], ['femme', '♀ Femme']] as const).map(([v, label]) => (
+            {([['homme', '♂ Masculin'], ['femme', '♀ Féminin']] as const).map(([v, label]) => (
               <button
                 key={v}
                 type="button"

@@ -71,6 +71,17 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         <span className="text-sm text-white/80">{entry.animationsCount}</span>
       </td>
 
+      {/* Nb rapports trames */}
+      <td className="py-3 pr-4 text-center tabular-nums">
+        {entry.trameReportsCount != null && entry.trameReportsCount > 0 ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-violet-500/10 text-violet-400">
+            {entry.trameReportsCount}
+          </span>
+        ) : (
+          <span className="text-xs text-white/20">—</span>
+        )}
+      </td>
+
       {/* Petite / Moyenne / Grande */}
       <td className="py-3 pr-4 text-center tabular-nums">
         <div className="flex items-center justify-center gap-1.5">
@@ -334,6 +345,7 @@ export default function Paies() {
                           <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Animations</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Trames</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">P / M / G</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
@@ -344,7 +356,7 @@ export default function Paies() {
                       <tbody>
                         {entries.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="px-4 py-12 text-center text-sm text-white/20">
+                            <td colSpan={9} className="px-4 py-12 text-center text-sm text-white/20">
                               Aucune activité cette semaine
                             </td>
                           </tr>
@@ -359,7 +371,7 @@ export default function Paies() {
                           <tr className="border-t border-white/[0.08] bg-white/[0.01]">
                             <td />
                             <td className="py-3 pr-4 text-xs font-medium text-white/50">Total</td>
-                            <td colSpan={5} />
+                            <td colSpan={6} />
                             <td className="py-3 pr-4 text-right text-sm font-bold text-emerald-400">
                               {formatMoney(poleTotal)}
                             </td>

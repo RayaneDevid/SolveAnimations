@@ -32,6 +32,11 @@ export const queryKeys = {
   messages: {
     forAnimation: (animationId: string) => ['messages', animationId] as const,
   },
+  trameReports: {
+    all: ['trame-reports'] as const,
+    list: () => ['trame-reports', 'list'] as const,
+    user: (userId: string) => ['trame-reports', 'user', userId] as const,
+  },
 } as const
 
 export type QueryKeys = typeof queryKeys

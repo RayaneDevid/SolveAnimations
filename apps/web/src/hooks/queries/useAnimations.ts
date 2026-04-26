@@ -212,3 +212,18 @@ export function useProfileHistory(profileId: string | undefined) {
     enabled: !!profileId,
   })
 }
+
+export function useTrameReports() {
+  return useQuery({
+    queryKey: queryKeys.trameReports.list(),
+    queryFn: () => invokeEdge<import('@/types/database').TrameReport[]>('trame-reports-list'),
+  })
+}
+
+export function useUserTrameReports(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.trameReports.user(userId),
+    queryFn: () => invokeEdge<import('@/types/database').TrameReport[]>('trame-reports-user', { user_id: userId }),
+    enabled: !!userId,
+  })
+}

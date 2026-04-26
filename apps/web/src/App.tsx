@@ -23,6 +23,7 @@ import Villages from '@/routes/panel/villages'
 import ProfilePage from '@/routes/panel/profile'
 import Recrutement from '@/routes/panel/recrutement'
 import Formation from '@/routes/panel/formation'
+import Trames from '@/routes/panel/trames'
 
 export default function App() {
   return (
@@ -87,6 +88,7 @@ export default function App() {
               </RoleGate>
             }
           />
+          <Route path="trames" element={<Trames />} />
           <Route path="villages" element={<Villages />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route

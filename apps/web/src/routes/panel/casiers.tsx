@@ -4,7 +4,7 @@ import {
   FolderOpen, Search, X, CalendarOff, Clock, Sword,
   Users, Target, Calendar, ChevronRight, ExternalLink,
   FileText, CheckCircle2, AlertCircle, History, UserX, RotateCcw,
-  UserPlus, GraduationCap,
+  UserPlus, GraduationCap, ScrollText,
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -12,7 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   useMembers, useWeeklyStats, useAnimations, useAbsences,
-  useUserReports, useFormerMembers, useProfileHistory,
+  useUserReports, useFormerMembers, useProfileHistory, useUserTrameReports,
 } from '@/hooks/queries/useAnimations'
 import { useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -321,6 +321,8 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
 
           <ReportsSection userId={member.id} onClose={onClose} />
 
+          <TrameReportsSection userId={member.id} />
+
           <ProfileHistorySection memberId={member.id} />
 
           <section>
@@ -475,6 +477,8 @@ function FormerMemberDetail({ member, onClose }: { member: FormerMemberEntry; on
           </section>
 
           <ReportsSection userId={member.id} onClose={onClose} />
+
+          <TrameReportsSection userId={member.id} />
         </div>
       </motion.div>
     </>
@@ -623,6 +627,64 @@ function ReportsSection({ userId, onClose }: { userId: string; onClose: () => vo
           {reports.length > 8 && (
             <p className="text-xs text-white/25 text-center pt-1">+{reports.length - 8} autres rapports</p>
           )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ─── Trame reports section ────────────────────────────────────────────────────
+
+function TrameReportsSection({ userId }: { userId: string }) {
+  const { data: trames, isLoading } = useUserTrameReports(userId)
+
+  if (!isLoading && (!trames || trames.length === 0)) return null
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Rapports trames</h3>
+        {trames && trames.length > 0 && (
+          <span className="text-[10px] text-white/30">{trames.length} rapport{trames.length > 1 ? 's' : ''}</span>
+        )}
+      </div>
+      {isLoading ? (
+        <div className="space-y-2">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+      ) : (
+        <div className="space-y-2">
+          {trames!.map((trame) => {
+            const isAuthor = trame.author_id === userId
+            return (
+              <a
+                key={trame.id}
+                href={trame.document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all group"
+              >
+                <ScrollText className="h-4 w-4 text-violet-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white/80 truncate group-hover:text-white transition-colors">
+                    {trame.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={cn(
+                      'text-[10px] rounded-full px-2 py-0.5',
+                      isAuthor
+                        ? 'text-violet-400 bg-violet-500/10'
+                        : 'text-white/40 bg-white/[0.05]',
+                    )}>
+                      {isAuthor ? 'Auteur' : 'Co-auteur'}
+                    </span>
+                    <span className="text-xs text-white/25">
+                      {new Date(trame.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-white/20 mt-0.5 shrink-0 group-hover:text-violet-400 transition-colors" />
+              </a>
+            )
+          })}
         </div>
       )}
     </section>

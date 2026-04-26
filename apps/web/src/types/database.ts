@@ -191,6 +191,17 @@ export interface PaiesEntry {
   quotaFilled: boolean
   remuneration: number
   remunerationCapped: boolean
+  trameReportsCount?: number
+}
+
+export interface TrameReport {
+  id: string
+  title: string
+  document_url: string
+  author_id: string
+  created_at: string
+  author?: { id: string; username: string; avatar_url: string | null }
+  co_authors?: Array<{ id: string; username: string; avatar_url: string | null }>
 }
 
 export interface PaiesResult {

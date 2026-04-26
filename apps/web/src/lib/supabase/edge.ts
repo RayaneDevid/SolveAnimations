@@ -52,6 +52,9 @@ export type EdgeFunctionName =
   | 'profile-history'
   | 'messages-list'
   | 'messages-send'
+  | 'trame-reports-list'
+  | 'trame-reports-user'
+  | 'trame-reports-create'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

@@ -366,3 +366,16 @@ export function useCreateFormation() {
     },
   })
 }
+
+// ─── Rapports trames ──────────────────────────────────────────────────────────
+
+export function useCreateTrameReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { title: string; documentUrl: string; coAuthorIds: string[] }) =>
+      invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-create', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trame-reports'] })
+    },
+  })
+}

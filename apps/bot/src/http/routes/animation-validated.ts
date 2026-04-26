@@ -20,6 +20,7 @@ const bodySchema = z.object({
   creatorUsername: z.string(),
   creatorDiscordId: z.string(),
   requiredParticipants: z.number().int(),
+  pingRoles: z.boolean().optional().default(true),
   adminMessageId: z.string().optional(),
 });
 
@@ -88,7 +89,7 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
           status: 'open',
         });
 
-        const ping = buildParticipantPing(payload.pole, payload.requiredParticipants);
+        const ping = payload.pingRoles ? buildParticipantPing(payload.pole, payload.requiredParticipants) : null;
         const message = await (announceChannel as import('discord.js').TextChannel).send({
           ...(ping ?? {}),
           embeds: [embed],

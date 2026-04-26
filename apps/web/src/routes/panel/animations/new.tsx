@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Plus, Minus, ShieldCheck, ShieldOff } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, ShieldCheck, ShieldOff, BellRing, BellOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, type Village, type AnimationPole } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
@@ -60,6 +60,7 @@ export default function NewAnimation() {
       requiredParticipants: 4,
       plannedDurationMin: 60,
       requestValidation: true,
+      pingRoles: true,
     },
   })
 
@@ -350,6 +351,51 @@ export default function NewAnimation() {
                     {field.value
                       ? "L'animation sera en attente de validation avant d'être ouverte aux inscriptions."
                       : "L'animation sera directement ouverte aux inscriptions sans validation préalable."
+                    }
+                  </p>
+                </div>
+              </button>
+            )}
+          />
+        </GlassCard>
+
+        {/* Ping roles */}
+        <GlassCard className="p-5">
+          <Controller
+            name="pingRoles"
+            control={control}
+            render={({ field }) => (
+              <button
+                type="button"
+                onClick={() => field.onChange(!field.value)}
+                className="flex items-start gap-4 w-full text-left"
+              >
+                <div className={cn(
+                  'mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border transition-all',
+                  field.value
+                    ? 'bg-cyan-500/20 border-cyan-500/50'
+                    : 'bg-white/[0.04] border-white/[0.15]',
+                )}>
+                  {field.value && (
+                    <svg className="h-3 w-3 text-cyan-400" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {field.value
+                      ? <BellRing className="h-4 w-4 text-cyan-400" />
+                      : <BellOff className="h-4 w-4 text-white/30" />
+                    }
+                    <span className="text-sm font-semibold text-white/80">
+                      Notifier les rôles Discord
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">
+                    {field.value
+                      ? 'Les rôles concernés seront mentionnés lors de l\'annonce sur Discord.'
+                      : 'L\'annonce sera postée sans mention de rôle.'
                     }
                   </p>
                 </div>

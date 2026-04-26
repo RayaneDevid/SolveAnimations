@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
-    requestValidation = true,
+    requestValidation = true, pingRoles = true,
   } = body
 
   // Basic validation
@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
       village: animation.village,
       type: animation.type,
       pole: animation.pole,
+      pingRoles,
       documentUrl: animation.document_url ?? undefined,
       creatorUsername: profile.username,
     })

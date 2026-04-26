@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
       scheduled_at: new_scheduled_at,
       postponed_from: anim.scheduled_at,
       postpone_count: (anim.postpone_count ?? 0) + 1,
+      reminder_15min_sent_at: null,
     })
     .eq('id', id)
     .select()

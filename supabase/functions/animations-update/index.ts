@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
   for (const key of allowed) {
     if (key in updates) patch[key] = updates[key]
   }
+  if ('scheduled_at' in patch) patch.reminder_15min_sent_at = null
 
   if (Object.keys(patch).length === 0)
     return errorResponse('VALIDATION_ERROR', 'Aucun champ modifiable fourni')

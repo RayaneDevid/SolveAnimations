@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyBotSecret } from '../auth.js';
-import { STATUS_COLORS, STATUS_EMOJI, STATUS_LABELS } from '../../discord/embeds/animation.js';
+import { buildJoinRow, STATUS_COLORS, STATUS_EMOJI, STATUS_LABELS } from '../../discord/embeds/animation.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
 import { EmbedBuilder } from 'discord.js';
@@ -40,7 +40,7 @@ export async function registerAnimationStarted(app: FastifyInstance): Promise<vo
                     `Statut : ${STATUS_EMOJI['running']} ${STATUS_LABELS['running']}`,
                   ),
                 );
-              await msg.edit({ embeds: [updatedEmbed], components: [] });
+              await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(parsed.data.animationId)] });
             }
           }
         } catch (err) {

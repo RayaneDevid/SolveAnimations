@@ -6,6 +6,7 @@ import { registerAnimationUpdated } from './routes/animation-updated.js';
 import { registerAnimationStarted } from './routes/animation-started.js';
 import { registerAnimationFinished } from './routes/animation-finished.js';
 import { registerAnimationPostponed } from './routes/animation-postponed.js';
+import { registerAnimationReminder } from './routes/animation-reminder.js';
 import { registerAnimationEmbedRefresh } from './routes/animation-embed-refresh.js';
 import { registerMemberRemoveRoles } from './routes/member-remove-roles.js';
 import { registerMemberRestoreRoles } from './routes/member-restore-roles.js';
@@ -41,6 +42,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
   await registerAnimationStarted(app);
   await registerAnimationFinished(app);
   await registerAnimationPostponed(app);
+  await registerAnimationReminder(app);
   await registerAnimationEmbedRefresh(app);
   await registerMemberRemoveRoles(app);
   await registerMemberRestoreRoles(app);

@@ -70,6 +70,9 @@ verify_jwt = false
 [functions.animations-postpone]
 verify_jwt = false
 
+[functions.animations-reminders]
+verify_jwt = false
+
 [functions.participants-apply]
 verify_jwt = false
 

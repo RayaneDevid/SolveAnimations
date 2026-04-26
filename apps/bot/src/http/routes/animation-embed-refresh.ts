@@ -40,7 +40,9 @@ export async function registerAnimationEmbedRefresh(app: FastifyInstance): Promi
         if (channel?.isTextBased()) {
           const msg = await (channel as import('discord.js').TextChannel).messages.fetch(payload.publicMessageId);
           const embed = buildAnimationEmbed(payload);
-          const components = payload.status === 'open' ? [buildJoinRow(payload.animationId)] : [];
+          const components = ['open', 'preparing', 'running'].includes(payload.status)
+            ? [buildJoinRow(payload.animationId)]
+            : [];
           await msg.edit({ embeds: [embed], components });
         }
       } catch (err) {

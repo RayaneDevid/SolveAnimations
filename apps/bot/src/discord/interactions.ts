@@ -422,7 +422,7 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
     .eq('id', animationId)
     .single();
 
-  if (!anim || anim.status !== 'open') {
+  if (!anim || !['open', 'preparing', 'running'].includes(anim.status)) {
     await interaction.editReply({ content: '❌ Cette animation n\'accepte plus d\'inscriptions.' });
     return;
   }
@@ -527,7 +527,7 @@ export async function handleAnimLeaveButton(interaction: ButtonInteraction, anim
     .eq('id', animationId)
     .single();
 
-  if (!anim || anim.status !== 'open') {
+  if (!anim || !['open', 'preparing', 'running'].includes(anim.status)) {
     await interaction.editReply({ content: '❌ Cette animation ne permet plus les désinscriptions depuis Discord.' });
     return;
   }

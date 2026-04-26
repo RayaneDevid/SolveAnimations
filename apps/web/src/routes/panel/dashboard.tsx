@@ -71,7 +71,7 @@ export default function Dashboard() {
   const { user, role } = useRequiredAuth()
   const { data: stats, isLoading: statsLoading } = useWeeklyStats()
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
-    status: ['pending_validation', 'open'],
+    status: ['pending_validation', 'open', 'preparing', 'running'],
     order: 'asc',
     pageSize: 12,
   })

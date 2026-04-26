@@ -74,6 +74,29 @@ function buildParticipantPingContent(pole: string | undefined, requiredParticipa
   };
 }
 
+async function refreshAnimationParticipantCount(animationId: string, messageId: string, requiredParticipants: number) {
+  const { count } = await supabase
+    .from('animation_participants')
+    .select('id', { count: 'exact', head: true })
+    .eq('animation_id', animationId)
+    .eq('status', 'validated');
+
+  const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
+  if (!announceChannel?.isTextBased()) return;
+
+  const msg = await (announceChannel as TextChannel).messages.fetch(messageId);
+  const existingEmbed = msg.embeds[0];
+  if (!existingEmbed) return;
+
+  const updatedDesc = (existingEmbed.description ?? '').replace(
+    /👥  Participants : \d+ \/ \d+/,
+    `👥  Participants : ${count ?? 0} / ${requiredParticipants}`,
+  );
+  const { EmbedBuilder } = await import('discord.js');
+  const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(updatedDesc);
+  await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(animationId)] });
+}
+
 export async function handleValidateButton(interaction: ButtonInteraction, animationId: string) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -473,26 +496,7 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
   // Update embed participant count (validated only)
   if (anim.discord_message_id) {
     try {
-      const { count } = await supabase
-        .from('animation_participants')
-        .select('id', { count: 'exact', head: true })
-        .eq('animation_id', animationId)
-        .eq('status', 'validated');
-
-      const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
-      if (announceChannel?.isTextBased()) {
-        const msg = await (announceChannel as TextChannel).messages.fetch(anim.discord_message_id);
-        const existingEmbed = msg.embeds[0];
-        if (existingEmbed) {
-          const updatedDesc = (existingEmbed.description ?? '').replace(
-            /👥  Participants : \d+ \/ \d+/,
-            `👥  Participants : ${count ?? 0} / ${anim.required_participants}`,
-          );
-          const { EmbedBuilder } = await import('discord.js');
-          const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(updatedDesc);
-          await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(animationId)] });
-        }
-      }
+      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants);
     } catch {
       // Non-blocking — the embed update failing doesn't affect the inscription
     }
@@ -501,4 +505,67 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
   await interaction.editReply({
     content: `✅ Tu es inscrit à **${anim.title}** ! Pense à renseigner ton personnage depuis le panel.`,
   });
+}
+
+export async function handleAnimLeaveButton(interaction: ButtonInteraction, animationId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, role, username')
+    .eq('discord_id', interaction.user.id)
+    .single();
+
+  if (!profile) {
+    await interaction.editReply({ content: '❌ Tu n\'as pas de compte sur le panel. Connecte-toi d\'abord sur le site.' });
+    return;
+  }
+
+  const { data: anim } = await supabase
+    .from('animations')
+    .select('id, title, status, required_participants, discord_message_id')
+    .eq('id', animationId)
+    .single();
+
+  if (!anim || anim.status !== 'open') {
+    await interaction.editReply({ content: '❌ Cette animation ne permet plus les désinscriptions depuis Discord.' });
+    return;
+  }
+
+  const { data: participant } = await supabase
+    .from('animation_participants')
+    .select('id, status')
+    .eq('animation_id', animationId)
+    .eq('user_id', profile.id)
+    .in('status', ['pending', 'validated'])
+    .maybeSingle();
+
+  if (!participant) {
+    await interaction.editReply({ content: 'ℹ️ Tu n\'es pas inscrit à cette animation.' });
+    return;
+  }
+
+  const { error } = await supabase
+    .from('animation_participants')
+    .update({
+      status: 'removed',
+      decided_at: new Date().toISOString(),
+      decided_by: profile.id,
+    })
+    .eq('id', participant.id);
+
+  if (error) {
+    await interaction.editReply({ content: '❌ Erreur lors de la désinscription. Réessaie depuis le panel.' });
+    return;
+  }
+
+  if (anim.discord_message_id) {
+    try {
+      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants);
+    } catch {
+      // Non-blocking — the embed update failing doesn't affect the désinscription
+    }
+  }
+
+  await interaction.editReply({ content: `✅ Tu es désinscrit de **${anim.title}**.` });
 }

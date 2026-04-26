@@ -8,6 +8,11 @@ export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilde
       .setLabel("S'inscrire")
       .setStyle(ButtonStyle.Primary)
       .setEmoji('✋'),
+    new ButtonBuilder()
+      .setCustomId(`anim-leave:${animationId}`)
+      .setLabel('Se désinscrire')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('🚪'),
   );
 }
 

@@ -396,6 +396,7 @@ export default function AnimationDetail() {
   const { animation, participants, deletionRequest } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasRole(role, 'responsable')
+  const canCorrectFinished = hasRole(role, 'senior')
   const isParticipant = participants.some(
     (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
   )
@@ -773,7 +774,7 @@ export default function AnimationDetail() {
           )}
 
           {animation.status === 'finished' && (
-            isResponsable ? (
+            canCorrectFinished ? (
               <FinishedEditForm animation={animation} />
             ) : animation.actual_duration_min ? (
               <GlassCard className="p-5 space-y-3">

@@ -7,6 +7,7 @@ import {
   handleRequeteRefuseButton,
   handleRequeteRefuseModal,
   handleAnimJoinButton,
+  handleAnimLeaveButton,
 } from './interactions.js';
 import {
   handleCreateCommand,
@@ -54,6 +55,8 @@ client.on('interactionCreate', async (interaction) => {
         await handleRequeteRefuseButton(interaction, customId.slice('requete-refuse:'.length));
       } else if (customId.startsWith('anim-join:')) {
         await handleAnimJoinButton(interaction, customId.slice('anim-join:'.length));
+      } else if (customId.startsWith('anim-leave:')) {
+        await handleAnimLeaveButton(interaction, customId.slice('anim-leave:'.length));
       }
     } else if (interaction.isModalSubmit()) {
       const { customId } = interaction;

@@ -2,7 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
-import { requireResponsable } from '../_shared/guards.ts'
+import { requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -27,9 +27,9 @@ Deno.serve(async (req) => {
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
 
-  // ── Responsable correcting a finished animation ──────────────────────────
+  // ── Senior/responsable correcting a finished animation ───────────────────
   if (anim.status === 'finished') {
-    const guard = requireResponsable(profile)
+    const guard = requireRole(profile, 'senior')
     if (guard) return guard
 
     const allowed = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type', 'scheduled_at']

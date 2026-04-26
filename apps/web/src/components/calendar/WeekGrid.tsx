@@ -13,6 +13,7 @@ const SESSION_START = 18 // 18:00
 // Week column order: Sat, Sun, Mon, Tue, Wed, Thu, Fri
 const DAY_ORDER = [6, 0, 1, 2, 3, 4, 5] // JS getDay()
 const DAY_SHORT = ['Sam', 'Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven']
+const DAY_SHORT_BY_DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 
 interface AnimationLayout {
   animation: Animation
@@ -76,6 +77,7 @@ function computeLayout(anims: Animation[]): AnimationLayout[] {
 interface WeekGridProps {
   weekStart: Date // saturday 04:00 Europe/Paris
   animations: Animation[]
+  day?: Date
 }
 
 function buildHourLabels(endHour: 3 | 4): number[] {
@@ -90,7 +92,7 @@ function columnHeightMin(endHour: 3 | 4): number {
   return (24 - SESSION_START + endHour) * 60
 }
 
-export function WeekGrid({ weekStart, animations }: WeekGridProps) {
+export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
   const nowRef = useRef<HTMLDivElement>(null)
 
   // Group animations by RP day
@@ -105,14 +107,20 @@ export function WeekGrid({ weekStart, animations }: WeekGridProps) {
     return map
   }, [animations])
 
-  // Column dates in order (Sat, Sun, ..., Fri)
+  // Column dates in order (Sat, Sun, ..., Fri), or one selected RP day.
   // weekStart is Saturday 04:00 Paris time
   const weekStartParis = toZonedTime(weekStart, TZ)
-  const columns = DAY_ORDER.map((dow, i) => {
-    // weekStart is Saturday = 0, Sunday = +1, ..., Friday = +6
-    const date = addDays(weekStartParis, i)
-    return { date, dow, label: DAY_SHORT[i] }
-  })
+  const columns = day
+    ? (() => {
+      const date = toZonedTime(day, TZ)
+      const dow = date.getDay()
+      return [{ date, dow, label: DAY_SHORT_BY_DOW[dow] }]
+    })()
+    : DAY_ORDER.map((dow, i) => {
+      // weekStart is Saturday = 0, Sunday = +1, ..., Friday = +6
+      const date = addDays(weekStartParis, i)
+      return { date, dow, label: DAY_SHORT[i] }
+    })
 
   const now = new Date()
   const nowParis = toZonedTime(now, TZ)
@@ -157,7 +165,7 @@ export function WeekGrid({ weekStart, animations }: WeekGridProps) {
         const isToday = isSameDay(date, nowParis)
 
         return (
-          <div key={dow} className="flex-1 min-w-[90px]">
+          <div key={dateKey} className={cn('flex-1', day ? 'min-w-[280px]' : 'min-w-[90px]')}>
             {/* Header */}
             <div
               className={cn(

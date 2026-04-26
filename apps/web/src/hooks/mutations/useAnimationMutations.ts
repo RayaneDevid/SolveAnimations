@@ -276,6 +276,7 @@ export function useCorrectFinishedAnimation() {
       village?: string
       server?: string
       type?: string
+      scheduled_at?: string
     }) => invokeEdge<{ animation: Animation }>('animations-update', body),
     onSuccess: (data, { id }) => {
       updateDetailCache(qc, id, data.animation)
@@ -407,8 +408,8 @@ export function useCreateTrameReport() {
 export function useAddParticipantToFinished() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ animationId, userId, characterName }: { animationId: string; userId: string; characterName: string }) =>
-      invokeEdge<{ success: boolean }>('participants-add-to-finished', { animationId, userId, characterName }),
+    mutationFn: ({ animationId, userId }: { animationId: string; userId: string }) =>
+      invokeEdge<{ success: boolean }>('participants-add-to-finished', { animationId, userId }),
     onSuccess: (_data, { animationId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
     },

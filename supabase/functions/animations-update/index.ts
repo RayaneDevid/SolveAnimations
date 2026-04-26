@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     const guard = requireResponsable(profile)
     if (guard) return guard
 
-    const allowed = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type']
+    const allowed = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type', 'scheduled_at']
     const patch: Record<string, unknown> = {}
     for (const key of allowed) {
       if (key in updates) patch[key] = updates[key]

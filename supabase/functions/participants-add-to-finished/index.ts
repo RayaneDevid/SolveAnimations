@@ -15,14 +15,12 @@ Deno.serve(async (req) => {
     return errorResponse('FORBIDDEN', 'Réservé aux responsables')
 
   const body = await req.json()
-  const { animationId, userId, characterName } = body
+  const { animationId, userId } = body
 
   if (!animationId || typeof animationId !== 'string')
     return errorResponse('VALIDATION_ERROR', 'animationId requis')
   if (!userId || typeof userId !== 'string')
     return errorResponse('VALIDATION_ERROR', 'userId requis')
-  if (!characterName || typeof characterName !== 'string' || characterName.trim().length === 0)
-    return errorResponse('VALIDATION_ERROR', 'characterName requis')
 
   const db = getServiceClient()
 
@@ -51,7 +49,7 @@ Deno.serve(async (req) => {
       return errorResponse('CONFLICT', 'Ce membre est déjà inscrit')
     await db
       .from('animation_participants')
-      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: characterName.trim() })
+      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null })
       .eq('id', existing.id)
   } else {
     const { error: insertError } = await db
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
       .insert({
         animation_id: animationId,
         user_id: userId,
-        character_name: characterName.trim(),
+        character_name: null,
         status: 'validated',
         applied_at: now,
         decided_at: now,
@@ -85,7 +83,7 @@ Deno.serve(async (req) => {
       animation_id: animationId,
       user_id: userId,
       pole,
-      character_name: characterName.trim(),
+      character_name: '—',
       comments: null,
       submitted_at: null,
     })

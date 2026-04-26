@@ -15,6 +15,7 @@ import {
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
+import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
@@ -41,6 +42,9 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
   const [village, setVillage] = useState(animation.village)
   const [server, setServer] = useState(animation.server)
   const [type, setType] = useState(animation.type)
+  const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
+    animation.scheduled_at ? new Date(animation.scheduled_at) : undefined,
+  )
 
   const handleSave = async () => {
     try {
@@ -51,6 +55,7 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
         village,
         server,
         type,
+        scheduled_at: scheduledAt?.toISOString(),
       })
       toast.success('Animation corrigée')
       setEditing(false)
@@ -98,6 +103,10 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
         </>
       ) : (
         <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Date et heure de session</label>
+            <RpDateTimePicker value={scheduledAt} onChange={setScheduledAt} />
+          </div>
           <div>
             <label className={labelCls}>Durée animation (min)</label>
             <input
@@ -269,7 +278,6 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
   const { data: members = [], isLoading } = useMembers()
   const { mutateAsync: addParticipant, isPending } = useAddParticipantToFinished()
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [characterName, setCharacterName] = useState('')
   const [search, setSearch] = useState('')
 
   const filtered = members.filter(
@@ -279,13 +287,12 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!selectedUserId || !characterName.trim()) return
+    if (!selectedUserId) return
     try {
-      await addParticipant({ animationId, userId: selectedUserId, characterName: characterName.trim() })
+      await addParticipant({ animationId, userId: selectedUserId })
       toast.success('Participant ajouté')
       onClose()
       setSelectedUserId('')
-      setCharacterName('')
       setSearch('')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
@@ -326,18 +333,9 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
               ))}
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="charname">Nom du personnage</Label>
-            <Input
-              id="charname"
-              placeholder="Ex: Saki Sato"
-              value={characterName}
-              onChange={(e) => setCharacterName(e.target.value)}
-            />
-          </div>
           <div className="flex gap-2 justify-end pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
-            <Button type="submit" disabled={isPending || !selectedUserId || !characterName.trim()}>
+            <Button type="submit" disabled={isPending || !selectedUserId}>
               {isPending ? 'Ajout...' : 'Ajouter'}
             </Button>
           </div>

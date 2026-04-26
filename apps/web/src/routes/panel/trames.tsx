@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ScrollText, Plus, ExternalLink, User, Users, Search, Check,
-  X, AlertTriangle, ChevronDown,
+  X, AlertTriangle, ChevronDown, ShieldCheck, Clock,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -22,11 +22,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
+import { formatDuration } from '@/lib/utils/format'
 import type { TrameReport } from '@/types/database'
 
 const createTrameSchema = z.object({
   title: z.string().trim().min(3, 'Titre requis (min 3 caractères)').max(120),
   documentUrl: z.string().url('URL invalide'),
+  writingTimeMin: z.preprocess(
+    (value) => (value === '' || value == null ? undefined : Number(value)),
+    z.number().int('Temps invalide').min(1, 'Temps requis').max(10_080, 'Temps trop long').optional(),
+  ),
+  validatedBy: z.string().trim().max(64).optional(),
 })
 
 type CreateTrameFormValues = z.infer<typeof createTrameSchema>
@@ -74,6 +80,20 @@ function TrameCard({ report }: { report: TrameReport }) {
                   <span className="text-xs text-white/30">
                     {report.co_authors.map((ca) => ca.username).join(', ')}
                   </span>
+                </div>
+              )}
+
+              {report.validated_by && (
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-3 w-3 text-white/30 shrink-0" />
+                  <span className="text-xs text-white/50">{report.validated_by}</span>
+                </div>
+              )}
+
+              {report.writing_time_min != null && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-white/30 shrink-0" />
+                  <span className="text-xs text-white/50">{formatDuration(report.writing_time_min)}</span>
                 </div>
               )}
 
@@ -146,7 +166,13 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
   const onSubmit = async (data: CreateTrameFormValues) => {
     try {
-      await mutateAsync({ title: data.title, documentUrl: data.documentUrl, coAuthorIds })
+      await mutateAsync({
+        title: data.title,
+        documentUrl: data.documentUrl,
+        writingTimeMin: data.writingTimeMin,
+        coAuthorIds,
+        validatedBy: data.validatedBy || undefined,
+      })
       toast.success('Rapport de trame créé !')
       handleClose()
     } catch (err) {
@@ -195,6 +221,35 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
                 {errors.documentUrl.message}
               </p>
             )}
+          </div>
+
+          {/* Writing time */}
+          <div className="space-y-1.5">
+            <Label htmlFor="writingTimeMin">Temps d'écriture <span className="text-white/30 font-normal">(min, optionnel)</span></Label>
+            <Input
+              id="writingTimeMin"
+              type="number"
+              min={1}
+              max={10080}
+              placeholder="ex. 120"
+              {...register('writingTimeMin')}
+            />
+            {errors.writingTimeMin && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.writingTimeMin.message}
+              </p>
+            )}
+          </div>
+
+          {/* Validated by */}
+          <div className="space-y-1.5">
+            <Label htmlFor="validatedBy">Validé par <span className="text-white/30 font-normal">(optionnel)</span></Label>
+            <Input
+              id="validatedBy"
+              placeholder="ex. Saki Sato"
+              {...register('validatedBy')}
+            />
           </div>
 
           {/* Co-authors */}

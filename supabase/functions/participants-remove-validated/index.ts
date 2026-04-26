@@ -30,8 +30,8 @@ Deno.serve(async (req) => {
   if (!isCreator && !isSelf)
     return errorResponse('FORBIDDEN', 'Seul le créateur ou le participant lui-même peut le retirer')
 
-  if (!['open', 'preparing'].includes(participant.animation?.status ?? ''))
-    return errorResponse('CONFLICT', "L'animation doit être ouverte ou en débrief")
+  if (!['open', 'preparing', 'running'].includes(participant.animation?.status ?? ''))
+    return errorResponse('CONFLICT', "L'animation doit être ouverte, en débrief ou en cours")
   if (participant.status !== 'validated')
     return errorResponse('CONFLICT', 'Seul un participant validé peut être retiré ici')
 

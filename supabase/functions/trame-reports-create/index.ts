@@ -8,6 +8,8 @@ interface Body {
   title: string
   documentUrl: string
   coAuthorIds?: string[]
+  writingTimeMin?: number
+  validatedBy?: string
 }
 
 Deno.serve(async (req) => {
@@ -18,7 +20,7 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body: Body = await req.json().catch(() => ({}))
-  const { title, documentUrl, coAuthorIds = [] } = body
+  const { title, documentUrl, coAuthorIds = [], writingTimeMin, validatedBy } = body
 
   if (!title || typeof title !== 'string' || title.trim().length < 3)
     return errorResponse('VALIDATION_ERROR', 'Titre requis (min 3 caractères)')
@@ -26,6 +28,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Titre trop long (max 120 caractères)')
   if (!documentUrl || typeof documentUrl !== 'string')
     return errorResponse('VALIDATION_ERROR', 'Lien du document requis')
+  if (writingTimeMin != null && (!Number.isInteger(writingTimeMin) || writingTimeMin < 1 || writingTimeMin > 10_080))
+    return errorResponse('VALIDATION_ERROR', "Temps d'écriture invalide")
 
   // Vérification basique URL
   try { new URL(documentUrl) } catch {
@@ -39,10 +43,18 @@ Deno.serve(async (req) => {
 
   const db = getServiceClient()
 
+  const validatedByTrimmed = validatedBy && typeof validatedBy === 'string' ? validatedBy.trim() || null : null
+
   const { data: report, error: reportError } = await db
     .from('trame_reports')
-    .insert({ title: title.trim(), document_url: documentUrl, author_id: profile.id })
-    .select('id, title, document_url, author_id, created_at')
+    .insert({
+      title: title.trim(),
+      document_url: documentUrl,
+      author_id: profile.id,
+      writing_time_min: writingTimeMin ?? null,
+      validated_by: validatedByTrimmed,
+    })
+    .select('id, title, document_url, author_id, created_at, writing_time_min, validated_by')
     .single()
 
   if (reportError || !report)
@@ -58,7 +70,7 @@ Deno.serve(async (req) => {
   const { data: full } = await db
     .from('trame_reports')
     .select(`
-      id, title, document_url, author_id, created_at,
+      id, title, document_url, author_id, created_at, writing_time_min, validated_by,
       author:profiles!author_id(id, username, avatar_url),
       co_authors:trame_report_co_authors(
         user:profiles(id, username, avatar_url)
@@ -79,6 +91,8 @@ function shapeReport(r: Record<string, unknown>) {
     document_url: r.document_url,
     author_id: r.author_id,
     created_at: r.created_at,
+    writing_time_min: r.writing_time_min ?? null,
+    validated_by: r.validated_by ?? null,
     author: r.author,
     co_authors: ((r.co_authors as { user: unknown }[]) ?? []).map((c) => c.user),
   }

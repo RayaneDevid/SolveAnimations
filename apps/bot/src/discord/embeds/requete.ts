@@ -7,6 +7,7 @@ export const SUBJECT_LABELS: Record<string, string> = {
   setmodel_tenue: 'Autorisation setmodel / port de tenue "sous autorisation"',
   reservation_secteur: "Demande de réservation d'un secteur event",
   situation_problematique: 'Situation problématique avec un joueur',
+  autres: 'Autres',
 };
 
 export const DESTINATION_LABELS: Record<string, string> = {

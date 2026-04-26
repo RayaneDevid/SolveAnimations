@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
+import { formatDuration } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 import type { StaffRoleKey } from '@/lib/config/discord'
@@ -679,6 +680,11 @@ function TrameReportsSection({ userId }: { userId: string }) {
                     <span className="text-xs text-white/25">
                       {new Date(trame.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
+                    {trame.writing_time_min != null && (
+                      <span className="text-xs text-white/25">
+                        {formatDuration(trame.writing_time_min)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <ExternalLink className="h-3.5 w-3.5 text-white/20 mt-0.5 shrink-0 group-hover:text-violet-400 transition-colors" />

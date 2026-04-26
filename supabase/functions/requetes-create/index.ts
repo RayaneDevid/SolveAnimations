@@ -13,6 +13,7 @@ const VALID_SUBJECTS = [
   'setmodel_tenue',
   'reservation_secteur',
   'situation_problematique',
+  'autres',
 ]
 
 const VALID_DESTINATIONS = ['ra', 'rmj']

@@ -34,6 +34,7 @@ const SUBJECTS: Record<RequeteSubject, string> = {
   setmodel_tenue: 'Autorisation setmodel / port de tenue "sous autorisation"',
   reservation_secteur: "Demande de réservation d'un secteur event",
   situation_problematique: 'Situation problématique avec un joueur',
+  autres: 'Autres',
 }
 
 const DESTINATIONS: Record<RequeteDestination, { label: string; color: string; bg: string; border: string }> = {
@@ -59,7 +60,7 @@ const DECIDER_ROLES = ['responsable', 'responsable_mj', 'direction', 'gerance']
 const createRequeteSchema = z.object({
   subject: z.enum([
     'grade_superieur_tkj', 'demande_give', 'setmodel_tenue',
-    'reservation_secteur', 'situation_problematique',
+    'reservation_secteur', 'situation_problematique', 'autres',
   ]),
   destination: z.enum(['ra', 'rmj']),
   description: z.string().trim().min(10, 'Décrivez votre demande (min 10 caractères)').max(2000),

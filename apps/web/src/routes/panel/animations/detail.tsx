@@ -570,7 +570,7 @@ export default function AnimationDetail() {
                 {validated.map((p) => {
                   const isSelf = p.user_id === user.id
                   const canRemove =
-                    ['open', 'preparing'].includes(animation.status) && (isCreator || isSelf)
+                    ['open', 'preparing', 'running'].includes(animation.status) && (isCreator || isSelf)
                   return (
                     <ParticipantRow
                       key={p.id}

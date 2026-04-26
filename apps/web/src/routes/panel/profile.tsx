@@ -18,22 +18,19 @@ export default function ProfilePage() {
 
   const [steamId, setSteamId] = useState(user.steam_id ?? '')
   const [arrivalDate, setArrivalDate] = useState(user.arrival_date ?? '')
-  const [contactEmail, setContactEmail] = useState(user.contact_email ?? '')
   const [gender, setGender] = useState<'homme' | 'femme' | null>(user.gender ?? null)
 
   useEffect(() => {
     setSteamId(user.steam_id ?? '')
     setArrivalDate(user.arrival_date ?? '')
-    setContactEmail(user.contact_email ?? '')
     setGender(user.gender ?? null)
-  }, [user.steam_id, user.arrival_date, user.contact_email, user.gender])
+  }, [user.steam_id, user.arrival_date, user.gender])
 
   const handleSave = async () => {
     try {
       await mutateAsync({
         steam_id: steamId.trim() || null,
         arrival_date: arrivalDate || null,
-        contact_email: contactEmail.trim() || null,
         gender: gender ?? null,
       })
       toast.success('Profil mis à jour')
@@ -124,18 +121,6 @@ export default function ProfilePage() {
             type="date"
             value={arrivalDate}
             onChange={(e) => setArrivalDate(e.target.value)}
-            className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-white/70">Adresse mail de contact</Label>
-          <Input
-            type="email"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="exemple@gmail.com"
-            maxLength={255}
             className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-cyan-500/50"
           />
         </div>

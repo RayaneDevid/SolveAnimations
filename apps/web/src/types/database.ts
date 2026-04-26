@@ -201,6 +201,7 @@ export type RequeteSubject =
   | 'setmodel_tenue'
   | 'reservation_secteur'
   | 'situation_problematique'
+  | 'autres'
 
 export type RequeteDestination = 'ra' | 'rmj'
 export type RequeteStatus = 'pending' | 'accepted' | 'refused'
@@ -231,6 +232,8 @@ export interface TrameReport {
   document_url: string
   author_id: string
   created_at: string
+  writing_time_min: number | null
+  validated_by: string | null
   author?: { id: string; username: string; avatar_url: string | null }
   co_authors?: Array<{ id: string; username: string; avatar_url: string | null }>
 }

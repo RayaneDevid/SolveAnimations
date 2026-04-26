@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   const { data: asAuthor, error: e1 } = await db
     .from('trame_reports')
     .select(`
-      id, title, document_url, author_id, created_at,
+      id, title, document_url, author_id, created_at, writing_time_min, validated_by,
       author:profiles!author_id(id, username, avatar_url),
       co_authors:trame_report_co_authors(
         user:profiles(id, username, avatar_url)
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const { data, error: e3 } = await db
       .from('trame_reports')
       .select(`
-        id, title, document_url, author_id, created_at,
+        id, title, document_url, author_id, created_at, writing_time_min, validated_by,
         author:profiles!author_id(id, username, avatar_url),
         co_authors:trame_report_co_authors(
           user:profiles(id, username, avatar_url)
@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
     document_url: r.document_url,
     author_id: r.author_id,
     created_at: r.created_at,
+    writing_time_min: r.writing_time_min ?? null,
+    validated_by: r.validated_by ?? null,
     author: r.author,
     co_authors: (r.co_authors as { user: unknown }[]).map((c) => c.user),
   }))

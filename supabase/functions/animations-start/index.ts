@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 
@@ -24,8 +25,10 @@ Deno.serve(async (req) => {
     .single()
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
-  if (anim.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut démarrer')
+  if (anim.creator_id !== profile.id) {
+    const guard = requireRole(profile, 'senior')
+    if (guard) return guard
+  }
   if (!['open', 'preparing'].includes(anim.status))
     return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
 

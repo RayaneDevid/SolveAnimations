@@ -396,6 +396,7 @@ export default function AnimationDetail() {
   const { animation, participants, deletionRequest } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasRole(role, 'responsable')
+  const canControlTimers = isCreator || hasRole(role, 'senior')
   const canCorrectFinished = hasRole(role, 'senior')
   const isParticipant = participants.some(
     (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
@@ -656,7 +657,7 @@ export default function AnimationDetail() {
 
         {/* Controls */}
         <div className="space-y-4">
-          {(isCreator || isResponsable) && (
+          {(canControlTimers || isResponsable) && (
             <GlassCard className="p-5">
               <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
                 Contrôle
@@ -664,7 +665,7 @@ export default function AnimationDetail() {
               <div className="space-y-4">
 
                 {/* ── Débrief (indépendant) ── */}
-                {isCreator && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
+                {canControlTimers && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
                   <div className="space-y-2">
                     <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Débrief</p>
                     {!animation.prep_started_at && (
@@ -686,12 +687,12 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Animation (indépendant) ── */}
-                {(isCreator || isResponsable) && (
+                {canControlTimers && (
                   <div className="space-y-2">
-                    {isCreator && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
+                    {animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
                       <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Animation</p>
                     )}
-                    {isCreator && ['open', 'preparing'].includes(animation.status) && (
+                    {['open', 'preparing'].includes(animation.status) && (
                       <Button onClick={handleStart} disabled={starting} className="w-full gap-2">
                         <Play className="h-4 w-4" />
                         Démarrer l'animation

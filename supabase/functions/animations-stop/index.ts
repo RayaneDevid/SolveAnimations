@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 
@@ -26,9 +27,10 @@ Deno.serve(async (req) => {
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
 
   const isCreator = anim.creator_id === profile.id
-  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
-  if (!isCreator && !isResponsable)
-    return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut terminer')
+  if (!isCreator) {
+    const guard = requireRole(profile, 'senior')
+    if (guard) return guard
+  }
   if (anim.status !== 'running')
     return errorResponse('CONFLICT', "L'animation doit être en cours pour être terminée")
 
@@ -61,17 +63,23 @@ Deno.serve(async (req) => {
 
   const reports = []
 
+  const { data: creatorProfile } = await db
+    .from('profiles')
+    .select('role')
+    .eq('id', anim.creator_id)
+    .single()
+
   // Creator report
   reports.push({
     animation_id: id,
-    user_id: profile.id,
-    pole: profile.role === 'mj' ? 'mj' : 'animateur',
+    user_id: anim.creator_id,
+    pole: ['mj', 'mj_senior', 'responsable_mj'].includes(creatorProfile?.role ?? '') ? 'mj' : 'animateur',
     character_name: null,
   })
 
   // Participant reports
   for (const p of validatedParticipants ?? []) {
-    if (p.user_id === profile.id) continue
+    if (p.user_id === anim.creator_id) continue
     const { data: pProfile } = await db
       .from('profiles')
       .select('role')

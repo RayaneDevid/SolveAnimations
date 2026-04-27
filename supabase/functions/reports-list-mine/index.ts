@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     .select(`
       *,
       animation:animations!animation_reports_animation_id_fkey(
-        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, status
+        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, status
       )
     `)
     .eq('user_id', profile.id)

@@ -6,13 +6,13 @@ import { toast } from 'sonner'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ScrollText, Plus, ExternalLink, User, Users, Search, Check,
-  X, AlertTriangle, ChevronDown, ShieldCheck, Clock,
+  X, AlertTriangle, ChevronDown, ShieldCheck, Clock, Trash2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useTrameReports } from '@/hooks/queries/useAnimations'
 import { useMembers } from '@/hooks/queries/useAnimations'
-import { useCreateTrameReport } from '@/hooks/mutations/useAnimationMutations'
+import { useCreateTrameReport, useDeleteTrameReport } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import { formatDuration } from '@/lib/utils/format'
+import { hasRole } from '@/lib/config/discord'
 import type { TrameReport } from '@/types/database'
 
 const createTrameSchema = z.object({
@@ -39,7 +40,15 @@ type CreateTrameFormValues = z.infer<typeof createTrameSchema>
 
 // ─── Trame card ───────────────────────────────────────────────────────────────
 
-function TrameCard({ report }: { report: TrameReport }) {
+function TrameCard({
+  report,
+  canDelete,
+  onDelete,
+}: {
+  report: TrameReport
+  canDelete: boolean
+  onDelete: (report: TrameReport) => void
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -103,15 +112,27 @@ function TrameCard({ report }: { report: TrameReport }) {
             </div>
           </div>
 
-          <a
-            href={report.document_url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-cyan-400 border border-cyan-400/20 hover:bg-cyan-400/10 transition-colors shrink-0"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Document
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={report.document_url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-cyan-400 border border-cyan-400/20 hover:bg-cyan-400/10 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Document
+            </a>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(report)}
+                className="h-8 w-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center"
+                title="Supprimer le document"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </GlassCard>
     </motion.div>
@@ -361,8 +382,21 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Trames() {
+  const { user, role } = useRequiredAuth()
   const { data: reports, isLoading, error } = useTrameReports()
+  const { mutateAsync: deleteTrame, isPending: deleting } = useDeleteTrameReport()
   const [createOpen, setCreateOpen] = useState(false)
+
+  const handleDelete = async (report: TrameReport) => {
+    if (deleting) return
+    if (!confirm(`Supprimer définitivement "${report.title}" ?`)) return
+    try {
+      await deleteTrame(report.id)
+      toast.success('Document de trame supprimé')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto w-full">
@@ -410,7 +444,12 @@ export default function Trames() {
         <div className="space-y-3">
           <AnimatePresence mode="popLayout">
             {reports.map((report) => (
-              <TrameCard key={report.id} report={report} />
+              <TrameCard
+                key={report.id}
+                report={report}
+                canDelete={report.author_id === user.id || hasRole(role, 'responsable')}
+                onDelete={handleDelete}
+              />
             ))}
           </AnimatePresence>
         </div>

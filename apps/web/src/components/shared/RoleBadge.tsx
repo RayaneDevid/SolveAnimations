@@ -3,7 +3,7 @@ import { getRoleLabel, type StaffRoleKey } from '@/lib/config/discord'
 
 interface RoleBadgeProps {
   role: StaffRoleKey
-  gender?: 'homme' | 'femme' | null
+  gender?: 'homme' | 'femme' | 'autre' | null
   className?: string
   size?: 'sm' | 'md'
 }

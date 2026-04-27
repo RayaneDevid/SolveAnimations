@@ -25,7 +25,7 @@ export interface Profile {
   is_active: boolean
   steam_id: string | null
   arrival_date: string | null
-  gender: 'homme' | 'femme' | null
+  gender: 'homme' | 'femme' | 'autre' | null
 }
 
 export interface Animation {
@@ -162,7 +162,7 @@ export interface MemberEntry {
   isAbsent: boolean
   steamId: string | null
   arrivalDate: string | null
-  gender: 'homme' | 'femme' | null
+  gender: 'homme' | 'femme' | 'autre' | null
   weeklyStats: {
     animationsCreated: number
     hoursAnimated: number

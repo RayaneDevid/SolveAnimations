@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
     const { data, error } = await db
       .from('requetes')
       .select(SELECT)
+      .eq('status', 'pending')
       .order('status', { ascending: true }) // pending en premier
       .order('created_at', { ascending: true })
 
@@ -47,6 +48,7 @@ Deno.serve(async (req) => {
       .from('requetes')
       .select(SELECT)
       .eq('destination', 'ra')
+      .eq('status', 'pending')
       .order('status', { ascending: true })
       .order('created_at', { ascending: true })
 
@@ -57,6 +59,7 @@ Deno.serve(async (req) => {
       .from('requetes')
       .select(SELECT)
       .eq('destination', 'rmj')
+      .eq('status', 'pending')
       .order('status', { ascending: true })
       .order('created_at', { ascending: true })
 

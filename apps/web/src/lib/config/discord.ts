@@ -55,7 +55,7 @@ const ROLE_LABELS_FEMME: Partial<Record<StaffRoleKey, string>> = {
   senior: 'Animatrice Senior',
 }
 
-export function getRoleLabel(role: StaffRoleKey, gender?: 'homme' | 'femme' | null): string {
+export function getRoleLabel(role: StaffRoleKey, gender?: 'homme' | 'femme' | 'autre' | null): string {
   if (gender === 'femme' && ROLE_LABELS_FEMME[role]) return ROLE_LABELS_FEMME[role]!
   return ROLE_LABELS[role]
 }

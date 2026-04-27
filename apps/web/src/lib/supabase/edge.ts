@@ -55,6 +55,7 @@ export type EdgeFunctionName =
   | 'trame-reports-list'
   | 'trame-reports-user'
   | 'trame-reports-create'
+  | 'trame-reports-delete'
   | 'requetes-list'
   | 'requetes-create'
   | 'requetes-decide'

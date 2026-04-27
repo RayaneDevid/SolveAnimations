@@ -8,7 +8,7 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 const bodySchema = z.object({
   steam_id: z.string().trim().regex(/^\d{17}$/, 'Steam ID doit contenir 17 chiffres').nullable().optional(),
   arrival_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  gender: z.enum(['homme', 'femme']).nullable().optional(),
+  gender: z.enum(['homme', 'femme', 'autre']).nullable().optional(),
 })
 
 Deno.serve(async (req) => {

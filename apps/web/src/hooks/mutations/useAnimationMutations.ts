@@ -312,7 +312,7 @@ export function useUpdateMemberPerms() {
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | null }) =>
+    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null }) =>
       invokeEdge<object>('profile-update', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.auth.me })
@@ -399,6 +399,16 @@ export function useCreateTrameReport() {
   return useMutation({
     mutationFn: (body: { title: string; documentUrl: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
       invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-create', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trame-reports'] })
+    },
+  })
+}
+
+export function useDeleteTrameReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ success: boolean }>('trame-reports-delete', { id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trame-reports'] })
     },

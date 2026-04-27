@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils/cn'
 
 interface GenderIconProps {
-  gender: 'homme' | 'femme' | null | undefined
+  gender: 'homme' | 'femme' | 'autre' | null | undefined
   className?: string
 }
 
@@ -28,6 +28,7 @@ function VenusIcon() {
 
 export function GenderIcon({ gender, className }: GenderIconProps) {
   if (!gender) return null
+  if (gender === 'autre') return null
   return (
     <span
       className={cn(

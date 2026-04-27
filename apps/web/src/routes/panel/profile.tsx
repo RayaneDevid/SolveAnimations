@@ -12,13 +12,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+type PreferredRole = 'homme' | 'femme' | 'autre'
+
 export default function ProfilePage() {
   const { user, role } = useRequiredAuth()
   const { mutateAsync, isPending } = useUpdateProfile()
 
   const [steamId, setSteamId] = useState(user.steam_id ?? '')
   const [arrivalDate, setArrivalDate] = useState(user.arrival_date ?? '')
-  const [gender, setGender] = useState<'homme' | 'femme' | null>(user.gender ?? null)
+  const [gender, setGender] = useState<PreferredRole | null>(user.gender ?? null)
 
   useEffect(() => {
     setSteamId(user.steam_id ?? '')
@@ -82,7 +84,11 @@ export default function ProfilePage() {
         <div className="space-y-2">
           <Label className="text-white/70">Rôle préférenciel</Label>
           <div className="flex gap-2">
-            {([['homme', '♂ Masculin'], ['femme', '♀ Féminin']] as const).map(([v, label]) => (
+            {([
+              ['homme', '♂ Masculin'],
+              ['femme', '♀ Féminin'],
+              ['autre', 'Autre'],
+            ] as const).map(([v, label]) => (
               <button
                 key={v}
                 type="button"
@@ -91,7 +97,9 @@ export default function ProfilePage() {
                   gender === v
                     ? v === 'homme'
                       ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                      : 'bg-pink-500/10 border-pink-500/30 text-pink-400'
+                      : v === 'femme'
+                        ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
+                        : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
                     : 'bg-white/[0.03] border-white/[0.08] text-white/50 hover:text-white/70'
                 }`}
               >

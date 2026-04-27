@@ -69,8 +69,8 @@ function ReportModal({ report, onClose }: { report: AnimationReport; onClose: ()
             {[
               { icon: Calendar, label: 'Date', value: anim ? formatDateTime(anim.scheduled_at) : '—' },
               { icon: Sword, label: 'Pôle', value: report.pole === 'mj' ? 'Maître du Jeu' : 'Animateur' },
-              { icon: Clock, label: 'Durée prévue', value: anim ? formatDuration(anim.planned_duration_min) : '—' },
-              { icon: Clock, label: 'Durée réelle', value: anim?.actual_duration_min ? formatDuration(anim.actual_duration_min) : '—' },
+              { icon: Clock, label: 'Durée animation', value: anim ? formatDuration(anim.actual_duration_min ?? anim.planned_duration_min) : '—' },
+              { icon: Clock, label: 'Débrief / préparation', value: anim ? formatDuration(anim.actual_prep_time_min ?? anim.prep_time_min) : '—' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                 <div className="flex items-center gap-1.5 mb-1">

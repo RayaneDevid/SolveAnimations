@@ -43,6 +43,9 @@ verify_jwt = false
 [functions.animations-list]
 verify_jwt = false
 
+[functions.trame-reports-delete]
+verify_jwt = false
+
 [functions.animations-get]
 verify_jwt = false
 

@@ -17,6 +17,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/utils/format'
 import type { UserAbsence } from '@/types/database'
 
+type SummaryMember = {
+  username: string
+  avatar_url: string | null
+}
+
 function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id: string) => void }) {
   const isPast = isAfter(new Date(), parseISO(absence.to_date))
   return (
@@ -124,6 +129,55 @@ function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => v
   )
 }
 
+function MemberPill({ member }: { member: SummaryMember }) {
+  return (
+    <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.07] rounded-full px-2.5 py-1">
+      {member.avatar_url ? (
+        <img src={member.avatar_url} alt={member.username} className="h-4 w-4 rounded-full object-cover" />
+      ) : (
+        <div className="h-4 w-4 rounded-full bg-white/10" />
+      )}
+      <span className="text-xs text-white/70">{member.username}</span>
+    </div>
+  )
+}
+
+function PoleAbsencesCard({
+  title,
+  absent,
+  total,
+  tone,
+}: {
+  title: string
+  absent: SummaryMember[]
+  total: number
+  tone: 'cyan' | 'violet'
+}) {
+  const toneClass = tone === 'cyan'
+    ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+    : 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">{title}</p>
+        <span className={`text-xs font-medium rounded-full border px-2 py-0.5 ${toneClass}`}>
+          {absent.length} / {total}
+        </span>
+      </div>
+      {absent.length === 0 ? (
+        <p className="text-xs text-white/25">Aucun absent cette semaine</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {absent.map((member) => (
+            <MemberPill key={member.username} member={member} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Absences() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: absences, isLoading } = useAbsences()
@@ -172,20 +226,20 @@ export default function Absences() {
               <p className="text-xs text-white/30 mt-0.5">absences déclarées sur la semaine en cours</p>
             </div>
           </div>
-          {summary.absentMembers.length > 0 && (
-            <div className="flex flex-wrap gap-2 pl-12">
-              {summary.absentMembers.map((m) => (
-                <div key={m.username} className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.07] rounded-full px-2.5 py-1">
-                  {m.avatar_url ? (
-                    <img src={m.avatar_url} alt={m.username} className="h-4 w-4 rounded-full object-cover" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full bg-white/10" />
-                  )}
-                  <span className="text-xs text-white/70">{m.username}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-0 sm:pl-12">
+            <PoleAbsencesCard
+              title="Pôle Animation"
+              absent={summary.absentByPole?.animation ?? []}
+              total={summary.totalByPole?.animation ?? 0}
+              tone="cyan"
+            />
+            <PoleAbsencesCard
+              title="Pôle MJ"
+              absent={summary.absentByPole?.mj ?? []}
+              total={summary.totalByPole?.mj ?? 0}
+              tone="violet"
+            />
+          </div>
         </GlassCard>
       )}
 

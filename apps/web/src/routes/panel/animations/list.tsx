@@ -28,9 +28,9 @@ const ACTIVE_STATUSES: AnimationStatus[] = ['open', 'preparing', 'running']
 const TABS: Array<{ value: TabValue; label: string }> = [
   { value: 'active',   label: 'Ouvertes & en cours' },
   { value: 'proposed', label: 'Proposées' },
-  { value: 'all',      label: 'Toutes' },
   { value: 'finished', label: 'Terminées' },
   { value: 'rejected', label: 'Refusées' },
+  { value: 'all',      label: 'Toutes' },
 ]
 
 function AnimationCard({ anim }: { anim: Animation }) {

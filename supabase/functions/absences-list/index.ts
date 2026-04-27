@@ -26,20 +26,38 @@ Deno.serve(async (req) => {
 
     const { data: absences } = await db
       .from('user_absences')
-      .select('user_id, profiles(username, avatar_url)')
+      .select('user_id, profiles(username, avatar_url, role)')
       .lte('from_date', wEndDate)
       .gte('to_date', wStartDate)
 
-    const seen = new Map<string, { username: string; avatar_url: string | null }>()
+    const seen = new Map<string, { username: string; avatar_url: string | null; role: string | null }>()
     for (const a of absences ?? []) {
       if (!seen.has(a.user_id)) {
-        const p = a.profiles as { username: string; avatar_url: string | null } | null
-        seen.set(a.user_id, { username: p?.username ?? 'Inconnu', avatar_url: p?.avatar_url ?? null })
+        const p = a.profiles as { username: string; avatar_url: string | null; role: string | null } | null
+        seen.set(a.user_id, { username: p?.username ?? 'Inconnu', avatar_url: p?.avatar_url ?? null, role: p?.role ?? null })
       }
     }
     const absentMembers = Array.from(seen.values())
-    const { count: totalStaff } = await db.from('profiles').select('*', { count: 'exact', head: true })
-    return jsonResponse({ absentCount: absentMembers.length, totalStaff: totalStaff ?? 0, absentMembers })
+    const { data: profiles } = await db.from('profiles').select('role')
+    const totalStaff = profiles?.length ?? 0
+    const isAnimationRole = (role: string | null) => ['direction', 'gerance', 'responsable', 'senior', 'animateur'].includes(role ?? '')
+    const isMjRole = (role: string | null) => ['responsable_mj', 'mj_senior', 'mj'].includes(role ?? '')
+    const absentByPole = {
+      animation: absentMembers.filter((member) => isAnimationRole(member.role)),
+      mj: absentMembers.filter((member) => isMjRole(member.role)),
+    }
+    const totalByPole = {
+      animation: (profiles ?? []).filter((profile) => isAnimationRole(profile.role)).length,
+      mj: (profiles ?? []).filter((profile) => isMjRole(profile.role)).length,
+    }
+
+    return jsonResponse({
+      absentCount: absentMembers.length,
+      totalStaff,
+      absentMembers,
+      absentByPole,
+      totalByPole,
+    })
   }
 
   // Only responsable can query other users' absences

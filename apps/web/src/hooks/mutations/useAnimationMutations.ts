@@ -259,7 +259,18 @@ export function useUpdateAnimation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Partial<import('@/lib/schemas/animation').CreateAnimationInput>) =>
-      invokeEdge<{ animation: Animation }>('animations-update', { id, ...body }),
+      invokeEdge<{ animation: Animation }>('animations-update', {
+        id,
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.scheduledAt !== undefined ? { scheduled_at: body.scheduledAt.toISOString() } : {}),
+        ...(body.plannedDurationMin !== undefined ? { planned_duration_min: body.plannedDurationMin } : {}),
+        ...(body.requiredParticipants !== undefined ? { required_participants: body.requiredParticipants } : {}),
+        ...(body.server !== undefined ? { server: body.server } : {}),
+        ...(body.type !== undefined ? { type: body.type } : {}),
+        ...(body.prepTimeMin !== undefined ? { prep_time_min: body.prepTimeMin } : {}),
+        ...(body.village !== undefined ? { village: body.village } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+      }),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.animations.all })
       qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })

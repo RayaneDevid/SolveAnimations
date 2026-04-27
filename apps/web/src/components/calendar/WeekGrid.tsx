@@ -125,6 +125,7 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
     })
 
   const now = new Date()
+  const nowRpDay = rpDayFromDate(now)
   const nowParis = toZonedTime(now, TZ)
   const nowMins = nowParis.getHours() * 60 + nowParis.getMinutes()
   const isSessionTime = nowMins >= SESSION_START * 60 || nowMins <= 4 * 60
@@ -164,7 +165,7 @@ export function WeekGrid({ weekStart, animations, day }: WeekGridProps) {
         const colHeight = columnHeightMin(endHour) * pxPerMin
         const dateKey = format(date, 'yyyy-MM-dd')
         const dayAnims = byDay[dateKey] ?? []
-        const isToday = isSameDay(date, nowParis)
+        const isToday = isSameDay(date, nowRpDay)
 
         return (
           <div key={dateKey} className={cn('flex-1', day ? 'min-w-[720px]' : 'min-w-[90px]')}>

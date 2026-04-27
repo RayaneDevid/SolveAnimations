@@ -265,6 +265,16 @@ function ParticipantRow({
           {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
         </button>
       )}
+      {canRemove && p.status === 'pending' && (
+        <button
+          onClick={handleRemove}
+          disabled={removing}
+          title="Retirer cette demande"
+          className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
+        >
+          <UserMinus className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }
@@ -572,7 +582,7 @@ export default function AnimationDetail() {
                 {validated.map((p) => {
                   const isSelf = p.user_id === user.id
                   const canRemove =
-                    ['open', 'preparing', 'running'].includes(animation.status) && (isCreator || isSelf)
+                    isResponsable || (['open', 'preparing', 'running'].includes(animation.status) && (isCreator || isSelf))
                   return (
                     <ParticipantRow
                       key={p.id}
@@ -601,7 +611,7 @@ export default function AnimationDetail() {
                     key={p.id}
                     p={p}
                     canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
-                    canRemove={false}
+                    canRemove={isResponsable}
                     isSelf={p.user_id === user.id}
                     animationId={animation.id}
                   />

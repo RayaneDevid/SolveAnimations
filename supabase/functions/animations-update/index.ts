@@ -4,7 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-import { notifyBot } from '../_shared/bot.ts'
+import { syncEmbed } from '../_shared/syncEmbed.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
   const allowed = [
     'title', 'scheduled_at', 'planned_duration_min', 'required_participants',
-    'server', 'type', 'prep_time_min', 'village', 'document_url', 'creator_character_name',
+    'server', 'type', 'prep_time_min', 'village', 'description', 'document_url', 'creator_character_name',
   ]
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {
@@ -90,11 +90,7 @@ Deno.serve(async (req) => {
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
   if (anim.discord_message_id) {
-    await notifyBot('animation-updated', {
-      animationId: id,
-      publicMessageId: anim.discord_message_id,
-      ...patch,
-    })
+    await syncEmbed(db, id)
   }
 
   return jsonResponse({ animation: updated })

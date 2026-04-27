@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 import { useUpdateAnimation } from '@/hooks/mutations/useAnimationMutations'
+import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,6 @@ import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
-import { format } from 'date-fns'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
@@ -23,14 +23,6 @@ const TYPE_DESCRIPTIONS = {
   moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
-
-function toDatetimeLocal(isoString: string): string {
-  try {
-    return format(new Date(isoString), "yyyy-MM-dd'T'HH:mm")
-  } catch {
-    return ''
-  }
-}
 
 export default function EditAnimation() {
   const { id } = useParams<{ id: string }>()
@@ -57,7 +49,7 @@ export default function EditAnimation() {
     const a = data.animation
     reset({
       title: a.title,
-      scheduledAt: toDatetimeLocal(a.scheduled_at) as unknown as Date,
+      scheduledAt: new Date(a.scheduled_at),
       plannedDurationMin: a.planned_duration_min,
       requiredParticipants: a.required_participants,
       server: a.server,
@@ -113,16 +105,18 @@ export default function EditAnimation() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="scheduledAt">Date et heure</Label>
-            <Input
-              id="scheduledAt"
-              type="datetime-local"
-              {...register('scheduledAt')}
-              className="[color-scheme:dark]"
+            <Label>Date et heure de session</Label>
+            <Controller
+              name="scheduledAt"
+              control={control}
+              render={({ field }) => (
+                <RpDateTimePicker
+                  value={field.value instanceof Date ? field.value : undefined}
+                  onChange={field.onChange}
+                  error={errors.scheduledAt?.message}
+                />
+              )}
             />
-            {errors.scheduledAt && (
-              <p className="text-xs text-red-400">{errors.scheduledAt.message}</p>
-            )}
           </div>
 
           <div className="space-y-1.5">

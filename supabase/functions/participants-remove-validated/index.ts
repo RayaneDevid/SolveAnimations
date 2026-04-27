@@ -27,13 +27,14 @@ Deno.serve(async (req) => {
 
   const isCreator = participant.animation?.creator_id === profile.id
   const isSelf = participant.user_id === profile.id
-  if (!isCreator && !isSelf)
-    return errorResponse('FORBIDDEN', 'Seul le créateur ou le participant lui-même peut le retirer')
+  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
+  if (!isCreator && !isSelf && !isResponsable)
+    return errorResponse('FORBIDDEN', 'Seul le créateur, le participant lui-même ou un responsable peut le retirer')
 
-  if (!['open', 'preparing', 'running'].includes(participant.animation?.status ?? ''))
+  if (!isResponsable && !['open', 'preparing', 'running'].includes(participant.animation?.status ?? ''))
     return errorResponse('CONFLICT', "L'animation doit être ouverte, en débrief ou en cours")
-  if (participant.status !== 'validated')
-    return errorResponse('CONFLICT', 'Seul un participant validé peut être retiré ici')
+  if (!['pending', 'validated'].includes(participant.status))
+    return errorResponse('CONFLICT', 'Ce participant ne peut pas être retiré')
 
   const { data: updated, error } = await db
     .from('animation_participants')

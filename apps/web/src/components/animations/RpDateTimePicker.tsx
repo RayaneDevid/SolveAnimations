@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { addDays, format } from 'date-fns'
+import { addDays, format, subDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { cn } from '@/lib/utils/cn'
 
@@ -88,6 +88,11 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
 
   const isAfterMidnight = (t: string) => parseInt(t.split(':')[0]) < 18
 
+  const shiftSessionToPreviousDay = () => {
+    if (!sessionDate) return
+    setDateStr(toDateInputValue(subDays(sessionDate, 1)))
+  }
+
   const dayLabel = sessionDate
     ? format(sessionDate, 'EEEE d MMMM', { locale: fr })
     : null
@@ -100,7 +105,8 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
     <div className="space-y-2">
       <div className="flex gap-2">
         {/* Date picker */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative space-y-1">
+          <p className="text-[10px] text-white/35 uppercase tracking-wide">Date de session RP</p>
           <input
             type="date"
             value={dateStr}
@@ -113,35 +119,54 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
         </div>
 
         {/* Time picker */}
-        <select
-          value={effectiveTime}
-          onChange={(e) => {
-            setTime(e.target.value)
-            emit(sessionDate, e.target.value)
-          }}
-          className="w-28 px-3 py-2 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white/90 focus:outline-none focus:border-cyan-500/50 [color-scheme:dark] cursor-pointer"
-        >
-          <optgroup label="Soirée" className="bg-[#0A0B0F]">
-            {slots.filter((s) => !isAfterMidnight(s)).map((s) => (
-              <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
-            ))}
-          </optgroup>
-          <optgroup label="Nuit" className="bg-[#0A0B0F]">
-            {slots.filter((s) => isAfterMidnight(s)).map((s) => (
-              <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
-            ))}
-          </optgroup>
-        </select>
+        <div className="w-36 space-y-1">
+          <p className="text-[10px] text-white/35 uppercase tracking-wide">Heure RP</p>
+          <select
+            value={effectiveTime}
+            onChange={(e) => {
+              setTime(e.target.value)
+              emit(sessionDate, e.target.value)
+            }}
+            className="w-full px-3 py-2 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white/90 focus:outline-none focus:border-cyan-500/50 [color-scheme:dark] cursor-pointer"
+          >
+            <optgroup label="Soirée" className="bg-[#0A0B0F]">
+              {slots.filter((s) => !isAfterMidnight(s)).map((s) => (
+                <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Nuit (+1 civil)" className="bg-[#0A0B0F]">
+              {slots.filter((s) => isAfterMidnight(s)).map((s) => (
+                <option key={s} value={s} className="bg-[#1a1b1f]">{s} (+1)</option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
       </div>
 
       {/* Info line */}
       {sessionDate && (
-        <p className="text-xs text-white/30 capitalize">
-          {isAfterMidnight(effectiveTime)
-            ? <>Session du {dayLabel} · débute le {actualDay} à {effectiveTime}</>
-            : <>Session du {dayLabel} · fin de session à {maxH === 4 ? '04:00' : '03:00'}</>
-          }
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-white/30 capitalize">
+            {isAfterMidnight(effectiveTime)
+              ? <>Session du {dayLabel} · heure civile : {actualDay} à {effectiveTime}</>
+              : <>Session du {dayLabel} · fin de session à {maxH === 4 ? '04:00' : '03:00'}</>
+            }
+          </p>
+          {isAfterMidnight(effectiveTime) && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+              <p className="text-xs text-amber-300/80">
+                Pour une anim de la nuit du jour affiché, garde la date du début de session.
+              </p>
+              <button
+                type="button"
+                onClick={shiftSessionToPreviousDay}
+                className="shrink-0 text-xs font-medium text-amber-200 hover:text-white"
+              >
+                Session veille
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {error && <p className="text-xs text-red-400">{error}</p>}

@@ -51,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/panel/calendar',   label: 'Calendrier',         icon: CalendarDays },
       { to: '/panel/reports',    label: 'Mes rapports',       icon: FileText },
       { to: '/panel/absences',   label: 'Absences',           icon: CalendarOff },
+      { to: '/panel/leaderboard',label: 'Classement',         icon: Trophy },
       { to: '/panel/trames',     label: 'Documents Trames',    icon: ScrollText },
       { to: '/panel/requetes',   label: 'Requêtes',           icon: Ticket },
       { to: '/panel/villages',   label: 'Statistiques', icon: PieChart },
@@ -71,7 +72,6 @@ const NAV_SECTIONS: NavSection[] = [
     minRole: 'responsable',
     items: [
       { to: '/panel/validation', label: 'Validation',          icon: CheckSquare },
-      { to: '/panel/leaderboard',label: 'Classement',          icon: Trophy },
       { to: '/panel/members',    label: 'Membres',             icon: Users },
       { to: '/panel/casiers',    label: 'Casiers',             icon: FolderOpen },
       { to: '/panel/paies',      label: 'Paies',               icon: Banknote },

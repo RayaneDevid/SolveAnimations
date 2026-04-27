@@ -57,14 +57,7 @@ export default function App() {
               </RoleGate>
             }
           />
-          <Route
-            path="leaderboard"
-            element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
-                <Leaderboard />
-              </RoleGate>
-            }
-          />
+          <Route path="leaderboard" element={<Leaderboard />} />
           <Route
             path="members"
             element={

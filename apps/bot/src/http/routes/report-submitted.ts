@@ -5,8 +5,6 @@ import { verifyBotSecret } from '../auth.js';
 import client from '../../discord/client.js';
 import { env } from '../../config/env.js';
 
-const REPORT_CHANNEL_ID = '1498315296191283251';
-
 const bodySchema = z.object({
   reportId: z.string().uuid(),
   animationId: z.string().uuid(),
@@ -31,7 +29,7 @@ export async function registerReportSubmitted(app: FastifyInstance): Promise<voi
       const payload = parsed.data;
 
       try {
-        const channel = await client.channels.fetch(REPORT_CHANNEL_ID);
+        const channel = await client.channels.fetch(env.DISCORD_REPORTS_CHANNEL_ID);
         if (channel?.isTextBased()) {
           const panelUrl = `${env.APP_PUBLIC_URL}/panel/animations/${payload.animationId}`;
           const embed = new EmbedBuilder()

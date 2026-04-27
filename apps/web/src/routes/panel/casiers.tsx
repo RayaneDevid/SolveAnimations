@@ -617,6 +617,11 @@ function ReportsSection({ userId, onClose }: { userId: string; onClose: () => vo
                     <span className={cn('text-[10px] rounded-full px-2 py-0.5', submitted ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10')}>
                       {submitted ? 'Soumis' : 'En attente'}
                     </span>
+                    {submitted && report.character_name && (
+                      <span className="text-xs text-white/45 truncate max-w-[180px]">
+                        Perso : {report.character_name}
+                      </span>
+                    )}
                   </div>
                   {submitted && report.comments && (
                     <p className="text-xs text-white/30 mt-1 truncate italic">"{report.comments}"</p>

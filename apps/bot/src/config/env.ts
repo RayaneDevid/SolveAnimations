@@ -5,6 +5,7 @@ const envSchema = z.object({
   DISCORD_GUILD_ID: z.string().min(1),
   DISCORD_ANNOUNCE_CHANNEL_ID: z.string().min(1),
   DISCORD_VALIDATION_CHANNEL_ID: z.string().min(1),
+  DISCORD_REPORTS_CHANNEL_ID: z.string().min(1),
   BOT_WEBHOOK_SECRET: z.string().min(1),
   BOT_PORT: z.coerce.number().int().positive().default(4001),
   APP_PUBLIC_URL: z.string().url(),

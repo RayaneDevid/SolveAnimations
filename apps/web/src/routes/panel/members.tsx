@@ -22,6 +22,8 @@ import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 const ANIM_ROLE_ORDER = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
 const MJ_ROLE_ORDER   = ['direction', 'gerance', 'responsable_mj', 'mj_senior', 'mj']
 
+type MemberSortMode = 'role' | 'quota' | 'name'
+
 function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
   return [...members].sort((a, b) => {
     const ia = order.indexOf(a.role)
@@ -29,6 +31,31 @@ function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
     if (ia !== ib) return ia - ib
     return a.username.localeCompare(b.username)
   })
+}
+
+function quotaRatio(member: MemberEntry): number {
+  const quotaMax = member.weeklyStats.quotaMax
+  if (quotaMax === null) return Number.POSITIVE_INFINITY
+  const quota = member.weeklyStats.animationsCreated + member.weeklyStats.participationsValidated
+  return quotaMax > 0 ? quota / quotaMax : 0
+}
+
+function sortMembers(members: MemberEntry[], mode: MemberSortMode, roleOrder: string[]): MemberEntry[] {
+  if (mode === 'name') {
+    return [...members].sort((a, b) => a.username.localeCompare(b.username))
+  }
+  if (mode === 'quota') {
+    return [...members].sort((a, b) => {
+      const ratioDiff = quotaRatio(b) - quotaRatio(a)
+      if (ratioDiff !== 0) return ratioDiff
+      const quotaDiff =
+        (b.weeklyStats.animationsCreated + b.weeklyStats.participationsValidated) -
+        (a.weeklyStats.animationsCreated + a.weeklyStats.participationsValidated)
+      if (quotaDiff !== 0) return quotaDiff
+      return a.username.localeCompare(b.username)
+    })
+  }
+  return sortByRole(members, roleOrder)
 }
 
 // ─── Remove confirm modal ─────────────────────────────────────────────────────
@@ -184,7 +211,7 @@ function MemberTable({
       <tbody>
         {members.map((m, i) => {
           const quotaMax = m.weeklyStats.quotaMax
-          const quota = m.weeklyStats.animationsCreated
+          const quota = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
           const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
           return (
             <motion.tr
@@ -393,9 +420,10 @@ export default function Members() {
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
+  const [sortMode, setSortMode] = useState<MemberSortMode>('role')
 
-  const poleAnimMembers = sortByRole(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), ANIM_ROLE_ORDER)
-  const poleMjMembers   = sortByRole(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)),   MJ_ROLE_ORDER)
+  const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
+  const poleMjMembers   = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
 
   const stats = {
     total: members.length,
@@ -435,14 +463,37 @@ export default function Members() {
         </div>
       ) : (
         <Tabs defaultValue="animation">
-          <TabsList>
-            <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
-            <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
-            <TabsTrigger value="former" className="flex items-center gap-1.5">
-              <History className="h-3.5 w-3.5" />
-              Anciens membres {former.length > 0 && `(${former.length})`}
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <TabsList>
+              <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
+              <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
+              <TabsTrigger value="former" className="flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Anciens membres {former.length > 0 && `(${former.length})`}
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1 w-fit">
+              {([
+                ['role', 'Rôle'],
+                ['quota', 'Quota rempli'],
+                ['name', 'Nom'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSortMode(mode)}
+                  className={`h-8 rounded-lg px-3 text-xs font-medium transition-colors ${
+                    sortMode === mode
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/25'
+                      : 'text-white/45 hover:text-white/75'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <TabsContent value="animation">
             <GlassCard className="overflow-hidden">

@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   // Weekly finished animations per creator
   const { data: weeklyAnims } = await db
     .from('animations')
-    .select('creator_id, actual_duration_min')
+    .select('creator_id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
     .gte('ended_at', weekStart.toISOString())
     .lt('ended_at', weekEnd.toISOString())
@@ -43,14 +43,14 @@ Deno.serve(async (req) => {
   // Total finished animations per creator (all time)
   const { data: totalAnims } = await db
     .from('animations')
-    .select('creator_id, actual_duration_min')
+    .select('creator_id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
     .in('creator_id', profileIds)
 
   // Weekly validated participations
   const { data: weeklyParts } = await db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at, status)')
+    .select('user_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
     .gte('animations.ended_at' as never, weekStart.toISOString())
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   for (const a of weeklyAnims ?? []) {
     const existing = weeklyAnimMap.get(a.creator_id) ?? { count: 0, minutes: 0 }
     existing.count++
-    existing.minutes += a.actual_duration_min ?? 0
+    existing.minutes += (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0)
     weeklyAnimMap.set(a.creator_id, existing)
   }
 
@@ -80,13 +80,17 @@ Deno.serve(async (req) => {
   for (const a of totalAnims ?? []) {
     const existing = totalAnimMap.get(a.creator_id) ?? { count: 0, minutes: 0 }
     existing.count++
-    existing.minutes += a.actual_duration_min ?? 0
+    existing.minutes += (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0)
     totalAnimMap.set(a.creator_id, existing)
   }
 
-  const weeklyPartMap = new Map<string, number>()
+  const weeklyPartMap = new Map<string, { count: number; minutes: number }>()
   for (const p of weeklyParts ?? []) {
-    weeklyPartMap.set(p.user_id, (weeklyPartMap.get(p.user_id) ?? 0) + 1)
+    const existing = weeklyPartMap.get(p.user_id) ?? { count: 0, minutes: 0 }
+    const anim = (p as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+    existing.count++
+    existing.minutes += (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+    weeklyPartMap.set(p.user_id, existing)
   }
 
   const QUOTA_MAX: Record<string, number | null> = {
@@ -95,12 +99,14 @@ Deno.serve(async (req) => {
     responsable: null,
     responsable_mj: null,
     senior: 5,
+    mj_senior: 3,
     animateur: 5,
     mj: 3,
   }
 
   const members = (profiles ?? []).map((p) => {
     const weekly = weeklyAnimMap.get(p.id) ?? { count: 0, minutes: 0 }
+    const weeklyParticipations = weeklyPartMap.get(p.id) ?? { count: 0, minutes: 0 }
     return {
       id: p.id,
       discordId: p.discord_id,
@@ -115,8 +121,8 @@ Deno.serve(async (req) => {
       gender: p.gender ?? null,
       weeklyStats: {
         animationsCreated: weekly.count,
-        hoursAnimated: weekly.minutes,
-        participationsValidated: weeklyPartMap.get(p.id) ?? 0,
+        hoursAnimated: weekly.minutes + weeklyParticipations.minutes,
+        participationsValidated: weeklyParticipations.count,
         quotaMax: QUOTA_MAX[p.role] ?? null,
       },
       totalStats: {

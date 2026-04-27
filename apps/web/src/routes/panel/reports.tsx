@@ -1,14 +1,17 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router'
 import {
   FileText, CheckCircle2, AlertCircle, ChevronRight,
-  Calendar, Clock, Sword, Edit2,
+  Calendar, Clock, Sword, Edit2, Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useMyReports } from '@/hooks/queries/useAnimations'
+import { useMyReports, usePendingReports } from '@/hooks/queries/useAnimations'
 import { useSubmitReport } from '@/hooks/mutations/useAnimationMutations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDate, formatDateTime, formatDuration, formatWeekLabel } from '@/lib/utils/format'
 import { getWeekBoundsFor } from '@/lib/utils/week'
 import { cn } from '@/lib/utils/cn'
+import { hasRole } from '@/lib/config/discord'
 import type { AnimationReport } from '@/types/database'
 
 // ─── Report detail modal ──────────────────────────────────────────────────────
@@ -240,11 +244,76 @@ function WeekSection({ group, onSelect }: { group: WeekGroup; onSelect: (r: Anim
   )
 }
 
+// ─── Responsable visibility ───────────────────────────────────────────────────
+
+function PendingTeamReports({ enabled }: { enabled: boolean }) {
+  const { data: reports, isLoading } = usePendingReports(enabled)
+
+  if (!enabled) return null
+
+  const pending = reports ?? []
+
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+          <Users className="h-4 w-4 text-amber-400" />
+          Rapports équipe en attente
+        </h2>
+        <span className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+          {pending.length}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+        </div>
+      ) : pending.length === 0 ? (
+        <p className="text-sm text-white/30 text-center py-4">Aucun rapport en attente côté équipe.</p>
+      ) : (
+        <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+          {pending.map((report) => (
+            <Link
+              key={report.id}
+              to={`/panel/animations/${report.animation_id}`}
+              className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors"
+            >
+              <UserAvatar avatarUrl={report.user?.avatar_url ?? null} username={report.user?.username ?? 'Membre'} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="text-sm font-medium text-white/85 truncate">{report.user?.username ?? 'Membre inconnu'}</p>
+                  <span className="text-[10px] text-white/30 shrink-0">
+                    {report.pole === 'mj' ? 'MJ' : 'Anim.'}
+                  </span>
+                </div>
+                <p className="text-xs text-white/50 truncate mt-0.5">
+                  {report.animation?.title ?? 'Animation'}
+                </p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {report.animation?.scheduled_at && (
+                    <span className="text-xs text-white/30">{formatDateTime(report.animation.scheduled_at)}</span>
+                  )}
+                  {report.animation?.server && <ServerBadge server={report.animation.server} />}
+                  {report.animation?.village && <VillageBadge village={report.animation.village} />}
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/20 mt-2 shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Reports() {
+  const { role } = useRequiredAuth()
   const { data: reports, isLoading } = useMyReports()
   const [selected, setSelected] = useState<AnimationReport | null>(null)
+  const canSeeTeamReports = hasRole(role, 'responsable')
 
   const pendingCount = reports?.filter((r) => !r.submitted_at).length ?? 0
 
@@ -283,7 +352,7 @@ export default function Reports() {
   }, [reports])
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/20">
@@ -300,6 +369,8 @@ export default function Reports() {
           </p>
         </div>
       </div>
+
+      <PendingTeamReports enabled={canSeeTeamReports} />
 
       {/* Content */}
       {isLoading ? (

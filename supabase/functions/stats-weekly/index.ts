@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   // Finished animations created by target this week
   const { data: finishedAnims } = await db
     .from('animations')
-    .select('id, actual_duration_min')
+    .select('id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('creator_id', targetId)
     .eq('status', 'finished')
     .gte('ended_at', weekStart)
@@ -59,14 +59,14 @@ Deno.serve(async (req) => {
 
   const animationsCreated = finishedAnims?.length ?? 0
   const hoursFromCreated = (finishedAnims ?? []).reduce(
-    (sum, a) => sum + (a.actual_duration_min ?? 0),
+    (sum, a) => sum + (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0),
     0,
   )
 
   // Participations validated on finished animations this week
   const { data: participationRows } = await db
     .from('animation_participants')
-    .select('animation_id, animations!inner(ended_at, status, actual_duration_min)')
+    .select('animation_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
@@ -75,7 +75,10 @@ Deno.serve(async (req) => {
 
   const participationsValidated = participationRows?.length ?? 0
   const hoursFromParticipations = (participationRows ?? []).reduce(
-    (sum, p) => sum + ((p as unknown as { animations: { actual_duration_min: number | null } }).animations?.actual_duration_min ?? 0),
+    (sum, p) => {
+      const anim = (p as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+      return sum + (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+    },
     0,
   )
 

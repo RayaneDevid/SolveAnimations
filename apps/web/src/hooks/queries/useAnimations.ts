@@ -62,6 +62,14 @@ export function useMyReports() {
   })
 }
 
+export function usePendingReports(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.reports.pending,
+    queryFn: () => invokeEdge<import('@/types/database').AnimationReport[]>('reports-list-pending'),
+    enabled,
+  })
+}
+
 export function useAbsences(userId?: string) {
   return useQuery({
     queryKey: queryKeys.absences.list(userId),

@@ -13,6 +13,7 @@ export const queryKeys = {
   },
   reports: {
     mine: ['reports', 'mine'] as const,
+    pending: ['reports', 'pending'] as const,
   },
   absences: {
     list: (userId?: string) => ['absences', userId ?? 'self'] as const,
@@ -55,7 +56,7 @@ export const invalidationGroups = {
     queryKeys.participants.forAnimation(animationId),
     queryKeys.animations.detail(animationId),
   ],
-  afterReportMutation: () => [queryKeys.reports.mine],
+  afterReportMutation: () => [queryKeys.reports.mine, queryKeys.reports.pending],
   afterAbsenceMutation: () => [queryKeys.absences.list()],
   afterMemberMutation: () => [queryKeys.members.list],
 }

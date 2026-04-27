@@ -39,6 +39,11 @@ export async function registerAnimationEmbedRefresh(app: FastifyInstance): Promi
         const channel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
         if (channel?.isTextBased()) {
           const msg = await (channel as import('discord.js').TextChannel).messages.fetch(payload.publicMessageId);
+          if (['finished', 'cancelled'].includes(payload.status)) {
+            await msg.delete();
+            return reply.send({ success: true, data: {} });
+          }
+
           const embed = buildAnimationEmbed(payload);
           const components = ['open', 'preparing', 'running'].includes(payload.status)
             ? [buildJoinRow(payload.animationId)]

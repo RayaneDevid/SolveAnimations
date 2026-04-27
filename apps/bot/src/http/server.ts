@@ -12,6 +12,7 @@ import { registerMemberRemoveRoles } from './routes/member-remove-roles.js';
 import { registerMemberRestoreRoles } from './routes/member-restore-roles.js';
 import { registerAnimationDeletionRequested } from './routes/animation-deletion-requested.js';
 import { registerRequeteCreated } from './routes/requete-created.js';
+import { registerReportSubmitted } from './routes/report-submitted.js';
 
 export async function createFastifyServer(): Promise<FastifyInstance> {
   const isDev = process.env['NODE_ENV'] !== 'production';
@@ -48,6 +49,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
   await registerMemberRestoreRoles(app);
   await registerAnimationDeletionRequested(app);
   await registerRequeteCreated(app);
+  await registerReportSubmitted(app);
 
   // Global error handler
   app.setErrorHandler((error, _request, reply) => {

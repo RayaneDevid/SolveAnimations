@@ -225,6 +225,7 @@ export function useSubmitReport() {
       invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.reports.mine })
+      qc.invalidateQueries({ queryKey: queryKeys.reports.pending })
     },
   })
 }

@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   // Fetch all finished animations with creator info
   let animQuery = db
     .from('animations')
-    .select('id, creator_id, actual_duration_min, ended_at, profiles!creator_id(id, username, avatar_url, role)')
+    .select('id, creator_id, actual_duration_min, prep_time_min, actual_prep_time_min, ended_at, profiles!creator_id(id, username, avatar_url, role)')
     .eq('status', 'finished')
 
   if (fromDate) {
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   // Fetch all validated participations on finished animations in the period
   let partQuery = db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at, status, actual_duration_min)')
+    .select('user_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
 
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     if (!creator) continue
     const existing = userMap.get(creator.id)
     if (existing) {
-      existing.hoursAnimated += anim.actual_duration_min ?? 0
+      existing.hoursAnimated += (anim.actual_duration_min ?? 0) + (anim.actual_prep_time_min ?? anim.prep_time_min ?? 0)
       existing.animationsCreated++
     }
   }
@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
     const existing = userMap.get(p.user_id)
     if (existing) {
       existing.participationsValidated++
-      const anim = (p as unknown as { animations: { actual_duration_min: number | null } }).animations
-      existing.hoursAnimated += anim?.actual_duration_min ?? 0
+      const anim = (p as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+      existing.hoursAnimated += (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
     }
   }
 

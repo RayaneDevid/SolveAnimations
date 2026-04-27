@@ -28,6 +28,7 @@ export type EdgeFunctionName =
   | 'participants-promote-pending'
   | 'reports-list-mine'
   | 'reports-list-user'
+  | 'reports-list-pending'
   | 'reports-submit'
   | 'absences-list'
   | 'absences-create'

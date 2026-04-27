@@ -51,6 +51,7 @@ export default function NewAnimation() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateAnimationInput>({
     resolver: zodResolver(createAnimationSchema),
@@ -60,11 +61,13 @@ export default function NewAnimation() {
       plannedDurationMin: 60,
       requestValidation: false,
       pingRoles: false,
+      spontaneous: false,
     },
   })
 
   const scheduledAt = watch('scheduledAt')
-  const isPast = scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+  const spontaneous = watch('spontaneous')
+  const isPast = !spontaneous && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
@@ -103,28 +106,66 @@ export default function NewAnimation() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Date et heure de session</Label>
             <Controller
-              name="scheduledAt"
+              name="spontaneous"
               control={control}
               render={({ field }) => (
-                <RpDateTimePicker
-                  value={field.value instanceof Date ? field.value : undefined}
-                  onChange={field.onChange}
-                  error={errors.scheduledAt?.message}
-                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    field.onChange(!field.value)
+                    if (!field.value) setValue('scheduledAt', undefined)
+                  }}
+                  className="flex items-start gap-3 w-full p-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-white/20 transition-colors text-left"
+                >
+                  <span className={cn(
+                    'mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border transition-all',
+                    field.value
+                      ? 'bg-cyan-500/20 border-cyan-500/50'
+                      : 'bg-white/[0.04] border-white/[0.15]',
+                  )}>
+                    {field.value && (
+                      <svg className="h-3 w-3 text-cyan-400" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-white/80">Animation spontanée</span>
+                    <span className="block text-xs text-white/40 mt-0.5">
+                      La date et l'heure seront celles de la création.
+                    </span>
+                  </span>
+                </button>
               )}
             />
-            {isPast && (
-              <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-300/80">
-                  Date dans le passé — l'animation sera créée directement comme <strong className="text-amber-300">terminée</strong>.
-                  La durée réelle sera calculée selon le type : Petite 15 min · Moyenne 30 min · Grande 60 min.
-                </p>
-              </div>
-            )}
           </div>
+
+          {!spontaneous && (
+            <div className="space-y-1.5">
+              <Label>Date et heure de session</Label>
+              <Controller
+                name="scheduledAt"
+                control={control}
+                render={({ field }) => (
+                  <RpDateTimePicker
+                    value={field.value instanceof Date ? field.value : undefined}
+                    onChange={field.onChange}
+                    error={errors.scheduledAt?.message}
+                  />
+                )}
+              />
+              {isPast && (
+                <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-300/80">
+                    Date dans le passé — l'animation sera créée directement comme <strong className="text-amber-300">terminée</strong>.
+                    La durée réelle sera calculée selon le type : Petite 15 min · Moyenne 30 min · Grande 60 min.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="description">Description de l'animation</Label>
@@ -411,7 +452,7 @@ export default function NewAnimation() {
             Annuler
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : "Créer l'animation"}
+            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : spontaneous ? 'Créer maintenant' : "Créer l'animation"}
           </Button>
         </div>
       </form>

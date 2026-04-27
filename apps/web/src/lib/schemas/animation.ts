@@ -18,33 +18,44 @@ export type AnimationType = (typeof TYPES)[number]
 export type AnimationPole = (typeof POLES)[number]
 export type Village = (typeof VILLAGES)[number]
 
-export const createAnimationSchema = z.object({
-  title: z.string().trim().min(3, 'Minimum 3 caractères').max(120, 'Maximum 120 caractères'),
-  scheduledAt: z.coerce.date(),
-  plannedDurationMin: z
-    .number({ required_error: 'Durée requise' })
-    .int()
-    .min(15, 'Minimum 15 minutes')
-    .max(720, 'Maximum 720 minutes'),
-  requiredParticipants: z
-    .number({ required_error: 'Requis' })
-    .int()
-    .min(0, 'Minimum 0')
-    .max(100, 'Maximum 100'),
-  server: z.enum(SERVERS, { required_error: 'Serveur requis' }),
-  type: z.enum(TYPES, { required_error: 'Type requis' }),
-  pole: z.enum(POLES, { required_error: 'Pôle requis' }),
-  prepTimeMin: z
-    .number()
-    .int()
-    .min(0)
-    .max(600)
-    .default(0),
-  village: z.enum(VILLAGES, { required_error: 'Village requis' }),
-  description: z.string().trim().max(2000).optional(),
-  requestValidation: z.boolean().default(true),
-  pingRoles: z.boolean().default(true),
-})
+export const createAnimationSchema = z
+  .object({
+    title: z.string().trim().min(3, 'Minimum 3 caractères').max(120, 'Maximum 120 caractères'),
+    spontaneous: z.boolean().default(false),
+    scheduledAt: z.coerce.date().optional(),
+    plannedDurationMin: z
+      .number({ required_error: 'Durée requise' })
+      .int()
+      .min(15, 'Minimum 15 minutes')
+      .max(720, 'Maximum 720 minutes'),
+    requiredParticipants: z
+      .number({ required_error: 'Requis' })
+      .int()
+      .min(0, 'Minimum 0')
+      .max(100, 'Maximum 100'),
+    server: z.enum(SERVERS, { required_error: 'Serveur requis' }),
+    type: z.enum(TYPES, { required_error: 'Type requis' }),
+    pole: z.enum(POLES, { required_error: 'Pôle requis' }),
+    prepTimeMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(600)
+      .default(0),
+    village: z.enum(VILLAGES, { required_error: 'Village requis' }),
+    description: z.string().trim().max(2000).optional(),
+    requestValidation: z.boolean().default(true),
+    pingRoles: z.boolean().default(true),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.spontaneous && !value.scheduledAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Date requise',
+        path: ['scheduledAt'],
+      })
+    }
+  })
 
 export type CreateAnimationInput = z.infer<typeof createAnimationSchema>
 

@@ -23,13 +23,14 @@ Deno.serve(async (req) => {
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
-    requestValidation = true, pingRoles = true,
+    requestValidation = true, pingRoles = true, spontaneous = false,
   } = body
+  const resolvedScheduledAt = spontaneous ? new Date().toISOString() : scheduledAt
 
   // Basic validation
   if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 120)
     return errorResponse('VALIDATION_ERROR', 'Titre invalide (3–120 caractères)')
-  if (!scheduledAt || isNaN(new Date(scheduledAt).getTime()))
+  if (!resolvedScheduledAt || isNaN(new Date(resolvedScheduledAt).getTime()))
     return errorResponse('VALIDATION_ERROR', 'Date invalide')
   if (!plannedDurationMin || plannedDurationMin < 15 || plannedDurationMin > 720)
     return errorResponse('VALIDATION_ERROR', 'Durée invalide (15–720 min)')
@@ -46,8 +47,8 @@ Deno.serve(async (req) => {
 
   const db = getServiceClient()
   const now = new Date().toISOString()
-  const scheduledDate = new Date(scheduledAt)
-  const isPast = scheduledDate.getTime() < Date.now()
+  const scheduledDate = new Date(resolvedScheduledAt)
+  const isPast = !spontaneous && scheduledDate.getTime() < Date.now()
 
   if (isPast) {
     // Antedated animation → insert directly as finished
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
       .from('animations')
       .insert({
         title: title.trim(),
-        scheduled_at: scheduledAt,
+        scheduled_at: resolvedScheduledAt,
         planned_duration_min: plannedDurationMin,
         required_participants: requiredParticipants,
         server,
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
     .from('animations')
     .insert({
       title: title.trim(),
-      scheduled_at: scheduledAt,
+      scheduled_at: resolvedScheduledAt,
       planned_duration_min: plannedDurationMin,
       required_participants: requiredParticipants,
       server,

@@ -11,6 +11,7 @@ interface RpDateTimePickerProps {
 
 // Fri (5), Sat (6), Sun (0) → session ends at 04:00 the next morning
 const EXTENDED_NIGHTS = new Set([0, 5, 6])
+const SESSION_START_HOUR = 18
 
 function maxHourForDate(date: Date): number {
   return EXTENDED_NIGHTS.has(date.getDay()) ? 4 : 3
@@ -30,6 +31,43 @@ function generateTimeSlots(maxH: number): string[] {
     }
   }
   return slots
+}
+
+function toTimeString(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function roundUpToTenMinutes(date: Date): Date {
+  const result = new Date(date)
+  result.setSeconds(0, 0)
+  const nextMinute = Math.ceil(result.getMinutes() / 10) * 10
+  if (nextMinute >= 60) {
+    result.setHours(result.getHours() + 1, 0, 0, 0)
+  } else {
+    result.setMinutes(nextMinute)
+  }
+  return result
+}
+
+function sessionDateFromDate(date: Date): Date {
+  const sessionDate = date.getHours() < SESSION_START_HOUR ? subDays(date, 1) : new Date(date)
+  sessionDate.setHours(0, 0, 0, 0)
+  return sessionDate
+}
+
+function defaultSelection(): { sessionDate: Date; time: string } {
+  const candidate = roundUpToTenMinutes(new Date(Date.now() + 10 * 60_000))
+  const candidateTime = toTimeString(candidate)
+  const sessionDate = sessionDateFromDate(candidate)
+  const slots = generateTimeSlots(maxHourForDate(sessionDate))
+
+  if (slots.includes(candidateTime)) {
+    return { sessionDate, time: candidateTime }
+  }
+
+  const nextSessionDate = new Date(candidate)
+  nextSessionDate.setHours(0, 0, 0, 0)
+  return { sessionDate: nextSessionDate, time: '18:00' }
 }
 
 // Times before 18:00 are "next day" (00:00–04:00 belong to the following calendar day)
@@ -57,12 +95,12 @@ function toDateInputValue(d: Date): string {
 }
 
 export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerProps) {
-  const initial = value ? decompose(value) : null
+  const initial = value ? decompose(value) : defaultSelection()
 
   const [dateStr, setDateStr] = useState<string>(
-    initial ? toDateInputValue(initial.sessionDate) : '',
+    toDateInputValue(initial.sessionDate),
   )
-  const [time, setTime] = useState<string>(initial?.time ?? '21:00')
+  const [time, setTime] = useState<string>(initial.time)
 
   const sessionDate = dateStr ? new Date(dateStr + 'T12:00:00') : undefined
   const maxH = sessionDate ? maxHourForDate(sessionDate) : 3
@@ -88,18 +126,9 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
 
   const isAfterMidnight = (t: string) => parseInt(t.split(':')[0]) < 18
 
-  const shiftSessionToPreviousDay = () => {
-    if (!sessionDate) return
-    setDateStr(toDateInputValue(subDays(sessionDate, 1)))
-  }
-
   const dayLabel = sessionDate
     ? format(sessionDate, 'EEEE d MMMM', { locale: fr })
     : null
-
-  const actualDay = sessionDate && isAfterMidnight(effectiveTime)
-    ? format(addDays(sessionDate, 1), 'EEEE d MMMM', { locale: fr })
-    : dayLabel
 
   return (
     <div className="space-y-2">
@@ -134,9 +163,9 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
                 <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
               ))}
             </optgroup>
-            <optgroup label="Nuit (+1 civil)" className="bg-[#0A0B0F]">
+            <optgroup label="Nuit" className="bg-[#0A0B0F]">
               {slots.filter((s) => isAfterMidnight(s)).map((s) => (
-                <option key={s} value={s} className="bg-[#1a1b1f]">{s} (+1)</option>
+                <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
               ))}
             </optgroup>
           </select>
@@ -145,28 +174,9 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
 
       {/* Info line */}
       {sessionDate && (
-        <div className="space-y-1">
-          <p className="text-xs text-white/30 capitalize">
-            {isAfterMidnight(effectiveTime)
-              ? <>Session du {dayLabel} · heure civile : {actualDay} à {effectiveTime}</>
-              : <>Session du {dayLabel} · fin de session à {maxH === 4 ? '04:00' : '03:00'}</>
-            }
-          </p>
-          {isAfterMidnight(effectiveTime) && (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
-              <p className="text-xs text-amber-300/80">
-                Pour une anim de la nuit du jour affiché, garde la date du début de session.
-              </p>
-              <button
-                type="button"
-                onClick={shiftSessionToPreviousDay}
-                className="shrink-0 text-xs font-medium text-amber-200 hover:text-white"
-              >
-                Session veille
-              </button>
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-white/30 capitalize">
+          Session du {dayLabel} · fin de session à {maxH === 4 ? '04:00' : '03:00'}
+        </p>
       )}
 
       {error && <p className="text-xs text-red-400">{error}</p>}

@@ -123,3 +123,15 @@ verify_jwt = false
 
 [functions.members-remove-access]
 verify_jwt = false
+
+[functions.members-reactivate]
+verify_jwt = false
+
+[functions.members-update-perms]
+verify_jwt = false
+
+[functions.warnings-list]
+verify_jwt = false
+
+[functions.warnings-create]
+verify_jwt = false

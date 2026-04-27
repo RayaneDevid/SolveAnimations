@@ -310,6 +310,22 @@ export function useUpdateMemberPerms() {
   })
 }
 
+export function useCreateWarning() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { userId: string; warningDate: string; reason: string }) =>
+      invokeEdge<{ warning: import('@/types/database').UserWarning }>('warnings-create', {
+        user_id: body.userId,
+        warning_date: body.warningDate,
+        reason: body.reason,
+      }),
+    onSuccess: (_, { userId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.warnings.user(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.members.list })
+    },
+  })
+}
+
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({

@@ -151,6 +151,14 @@ export function useUserReports(userId: string) {
   })
 }
 
+export function useUserWarnings(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.warnings.user(userId),
+    queryFn: () => invokeEdge<import('@/types/database').UserWarning[]>('warnings-list', { user_id: userId }),
+    enabled: !!userId,
+  })
+}
+
 export interface WeeklyEvolutionPoint {
   weekStart: string
   label: string

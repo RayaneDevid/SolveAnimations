@@ -15,25 +15,23 @@ Deno.serve(async (req) => {
   const guard = requireResponsable(profile)
   if (guard) return guard
 
-  const body = await req.json().catch(() => ({}))
-  const { user_id } = body
-  if (!user_id) return errorResponse('VALIDATION_ERROR', 'user_id requis')
+  const { user_id } = await req.json().catch(() => ({}))
+  if (!user_id || typeof user_id !== 'string') {
+    return errorResponse('VALIDATION_ERROR', 'user_id requis')
+  }
 
   const db = getServiceClient()
-
-  const { data: reports, error } = await db
-    .from('animation_reports')
+  const { data, error } = await db
+    .from('user_warnings')
     .select(`
-      *,
-      user:profiles!animation_reports_user_id_fkey(id, username, avatar_url, role),
-      animation:animations!animation_reports_animation_id_fkey(
-        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, status, server, type
-      )
+      id, user_id, created_by, warning_date, reason, created_at,
+      creator:profiles!user_warnings_created_by_fkey(id, username, avatar_url)
     `)
     .eq('user_id', user_id)
+    .order('warning_date', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
-  return jsonResponse(reports ?? [])
+  return jsonResponse(data ?? [])
 })

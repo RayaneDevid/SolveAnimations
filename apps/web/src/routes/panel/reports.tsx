@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react'
-import { Link } from 'react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import {
   FileText, CheckCircle2, AlertCircle, ChevronRight,
-  Calendar, Clock, Sword, Edit2, Users,
+  Calendar, Clock, Sword, Edit2, Users, ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useMyReports, usePendingReports } from '@/hooks/queries/useAnimations'
+import { useMyReports, usePendingReports, useUserReports } from '@/hooks/queries/useAnimations'
 import { useSubmitReport } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -25,14 +25,23 @@ import type { AnimationReport } from '@/types/database'
 
 // ─── Report detail modal ──────────────────────────────────────────────────────
 
-function ReportModal({ report, onClose }: { report: AnimationReport; onClose: () => void }) {
+function ReportModal({
+  report,
+  onClose,
+  readOnly = false,
+}: {
+  report: AnimationReport
+  onClose: () => void
+  readOnly?: boolean
+}) {
   const [characterName, setCharacterName] = useState(report.character_name ?? '')
   const [comments, setComments] = useState(report.comments ?? '')
-  const [editing, setEditing] = useState(!report.submitted_at)
+  const [editing, setEditing] = useState(!readOnly && !report.submitted_at)
   const { mutateAsync, isPending } = useSubmitReport()
 
   const isSubmitted = !!report.submitted_at
   const anim = report.animation
+  const showReadOnly = readOnly || (isSubmitted && !editing)
 
   const handleSubmit = async () => {
     if (!characterName.trim()) {
@@ -55,6 +64,11 @@ function ReportModal({ report, onClose }: { report: AnimationReport; onClose: ()
           <div className="flex items-start justify-between gap-3">
             <DialogTitle className="text-base font-semibold text-white leading-snug pr-6">
               {anim?.title ?? 'Animation'}
+              {report.user?.username && (
+                <span className="block text-xs font-normal text-white/35 mt-1">
+                  Rapport de {report.user.username}
+                </span>
+              )}
             </DialogTitle>
             <span className={cn(
               'shrink-0 text-[10px] rounded-full px-2.5 py-1 font-medium',
@@ -88,16 +102,24 @@ function ReportModal({ report, onClose }: { report: AnimationReport; onClose: ()
 
           {/* Badges */}
           {anim && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <ServerBadge server={anim.server} />
-              <VillageBadge village={anim.village} />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <ServerBadge server={anim.server} />
+                <VillageBadge village={anim.village} />
+              </div>
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link to={`/panel/animations/${report.animation_id}`}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Voir l'animation
+                </Link>
+              </Button>
             </div>
           )}
 
           <div className="border-t border-white/[0.06]" />
 
           {/* Editable section */}
-          {isSubmitted && !editing ? (
+          {showReadOnly ? (
             <div className="space-y-4">
               <div>
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Personnage joué</p>
@@ -113,12 +135,14 @@ function ReportModal({ report, onClose }: { report: AnimationReport; onClose: ()
               </div>
               <div className="flex justify-between items-center pt-1">
                 <p className="text-xs text-white/25">
-                  Soumis le {formatDate(report.submitted_at!)}
+                  {isSubmitted ? `Soumis le ${formatDate(report.submitted_at!)}` : 'Rapport pas encore soumis'}
                 </p>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs">
-                  <Edit2 className="h-3.5 w-3.5" />
-                  Modifier
-                </Button>
+                {!readOnly && isSubmitted && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs">
+                    <Edit2 className="h-3.5 w-3.5" />
+                    Modifier
+                  </Button>
+                )}
               </div>
             </div>
           ) : (
@@ -276,7 +300,7 @@ function PendingTeamReports({ enabled }: { enabled: boolean }) {
           {pending.map((report) => (
             <Link
               key={report.id}
-              to={`/panel/animations/${report.animation_id}`}
+              to={`/panel/reports?user_id=${report.user_id}&report_id=${report.id}`}
               className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors"
             >
               <UserAvatar avatarUrl={report.user?.avatar_url ?? null} username={report.user?.username ?? 'Membre'} size="sm" />
@@ -310,12 +334,41 @@ function PendingTeamReports({ enabled }: { enabled: boolean }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Reports() {
-  const { role } = useRequiredAuth()
-  const { data: reports, isLoading } = useMyReports()
-  const [selected, setSelected] = useState<AnimationReport | null>(null)
+  const { user, role } = useRequiredAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const inspectedUserId = searchParams.get('user_id')
+  const selectedReportId = searchParams.get('report_id')
+  const { data: myReports, isLoading: myReportsLoading } = useMyReports()
   const canSeeTeamReports = hasRole(role, 'responsable')
+  const isInspectingUser = !!inspectedUserId && canSeeTeamReports
+  const { data: inspectedReports, isLoading: inspectedReportsLoading } = useUserReports(isInspectingUser ? inspectedUserId : '')
+  const [selected, setSelected] = useState<AnimationReport | null>(null)
 
+  const reports = isInspectingUser ? inspectedReports : myReports
+  const isLoading = isInspectingUser ? inspectedReportsLoading : myReportsLoading
+  const inspectedUsername = inspectedReports?.find((r) => r.user?.username)?.user?.username
   const pendingCount = reports?.filter((r) => !r.submitted_at).length ?? 0
+
+  useEffect(() => {
+    if (!selectedReportId || !reports) return
+    const match = reports.find((report) => report.id === selectedReportId)
+    if (match) setSelected(match)
+  }, [reports, selectedReportId])
+
+  const handleSelectReport = (report: AnimationReport) => {
+    setSelected(report)
+    const next = new URLSearchParams(searchParams)
+    next.set('report_id', report.id)
+    if (isInspectingUser) next.set('user_id', report.user_id)
+    setSearchParams(next, { replace: true })
+  }
+
+  const handleCloseModal = () => {
+    setSelected(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('report_id')
+    setSearchParams(next, { replace: true })
+  }
 
   const grouped = useMemo<WeekGroup[]>(() => {
     if (!reports) return []
@@ -359,7 +412,9 @@ export default function Reports() {
           <FileText className="h-4 w-4 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white">Mes rapports</h1>
+          <h1 className="text-xl font-bold text-white">
+            {isInspectingUser ? `Rapports de ${inspectedUsername ?? 'ce membre'}` : 'Mes rapports'}
+          </h1>
           <p className="text-xs text-white/40 mt-0.5">
             {pendingCount > 0
               ? `${pendingCount} rapport${pendingCount > 1 ? 's' : ''} en attente`
@@ -370,7 +425,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <PendingTeamReports enabled={canSeeTeamReports} />
+      <PendingTeamReports enabled={canSeeTeamReports && !isInspectingUser} />
 
       {/* Content */}
       {isLoading ? (
@@ -397,7 +452,7 @@ export default function Reports() {
             <WeekSection
               key={g.weekStart.toISOString()}
               group={g}
-              onSelect={setSelected}
+              onSelect={handleSelectReport}
             />
           ))}
         </div>
@@ -405,7 +460,11 @@ export default function Reports() {
 
       {/* Modal */}
       {selected && (
-        <ReportModal report={selected} onClose={() => setSelected(null)} />
+        <ReportModal
+          report={selected}
+          readOnly={selected.user_id !== user.id}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   )

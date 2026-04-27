@@ -27,6 +27,9 @@ export const queryKeys = {
     list: ['members'] as const,
     former: ['members', 'former'] as const,
   },
+  warnings: {
+    user: (userId: string) => ['warnings', userId] as const,
+  },
   calendar: {
     week: (weekStart: string) => ['calendar', weekStart] as const,
   },

@@ -110,6 +110,16 @@ export interface UserAbsence {
   created_at: string
 }
 
+export interface UserWarning {
+  id: string
+  user_id: string
+  created_by: string | null
+  warning_date: string
+  reason: string
+  created_at: string
+  creator?: { id: string; username: string; avatar_url: string | null } | null
+}
+
 export interface WeeklyStats {
   animationsCreated: number
   hoursAnimated: number
@@ -160,6 +170,7 @@ export interface MemberEntry {
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean
+  warningCount: number
   steamId: string | null
   arrivalDate: string | null
   gender: 'homme' | 'femme' | 'autre' | null

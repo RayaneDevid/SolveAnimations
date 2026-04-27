@@ -4,7 +4,7 @@ import {
   FolderOpen, Search, X, CalendarOff, Clock, Sword,
   Users, Target, Calendar, ChevronRight, ExternalLink,
   FileText, CheckCircle2, AlertCircle, History, UserX, RotateCcw,
-  UserPlus, GraduationCap, ScrollText,
+  UserPlus, GraduationCap, ScrollText, AlertTriangle,
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -13,8 +13,10 @@ import { fr } from 'date-fns/locale'
 import {
   useMembers, useWeeklyStats, useAnimations, useAbsences,
   useUserReports, useFormerMembers, useProfileHistory, useUserTrameReports,
+  useUserWarnings,
 } from '@/hooks/queries/useAnimations'
-import { useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
+import { useCreateWarning, useReactivateMember } from '@/hooks/mutations/useAnimationMutations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -24,10 +26,13 @@ import { VillageBadge } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import { formatDuration } from '@/lib/utils/format'
+import { hasRole } from '@/lib/config/discord'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 import type { StaffRoleKey } from '@/lib/config/discord'
@@ -54,6 +59,26 @@ const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) =>
   { key: 'mj',          label: 'MJ',             matches: (r) => r === 'mj' },
 ]
 
+function WarningIndicator({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null
+
+  const high = count >= 2
+  return (
+    <span
+      title={`${count} avertissement${count > 1 ? 's' : ''}`}
+      className={cn(
+        'inline-flex items-center justify-center rounded-full border bg-[#0D0E14]',
+        high
+          ? 'text-red-400 border-red-500/35'
+          : 'text-amber-400 border-amber-500/35',
+        className,
+      )}
+    >
+      <AlertTriangle className="h-3.5 w-3.5" />
+    </span>
+  )
+}
+
 // ─── Active member card ───────────────────────────────────────────────────────
 
 function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => void }) {
@@ -79,6 +104,7 @@ function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => v
                 <CalendarOff className="h-3 w-3 text-orange-400" />
               </span>
             )}
+            <WarningIndicator count={member.warningCount} className="absolute -top-1 -right-1 h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -86,6 +112,7 @@ function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => v
                 {member.username}
               </p>
               <GenderIcon gender={member.gender} />
+              <WarningIndicator count={member.warningCount} className="h-5 w-5 shrink-0" />
               <ChevronRight className="h-3.5 w-3.5 text-white/20 group-hover:text-cyan-400 shrink-0 transition-colors" />
             </div>
             <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
@@ -193,7 +220,15 @@ function FormerMemberCard({ member, onClick }: { member: FormerMemberEntry; onCl
 
 // ─── Active member detail panel ───────────────────────────────────────────────
 
-function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () => void }) {
+function MemberDetail({
+  member,
+  canManageWarnings,
+  onClose,
+}: {
+  member: MemberEntry
+  canManageWarnings: boolean
+  onClose: () => void
+}) {
   const { data: stats, isLoading: statsLoading } = useWeeklyStats(member.id)
   const { data: animsResult, isLoading: animsLoading } = useAnimations({ creator_id: member.id, pageSize: 5 })
   const { data: absences, isLoading: absencesLoading } = useAbsences(member.id)
@@ -232,6 +267,7 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-white truncate">{member.username}</h2>
               <GenderIcon gender={member.gender} className="text-sm shrink-0" />
+              <WarningIndicator count={member.warningCount} className="h-5 w-5 shrink-0" />
             </div>
             <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
             <p className="text-xs text-white/30 mt-2">
@@ -321,6 +357,8 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
             )}
           </section>
 
+          <WarningsSection userId={member.id} canCreate={canManageWarnings} />
+
           <ReportsSection userId={member.id} onClose={onClose} />
 
           <TrameReportsSection userId={member.id} />
@@ -354,6 +392,107 @@ function MemberDetail({ member, onClose }: { member: MemberEntry; onClose: () =>
         </div>
       </motion.div>
     </>
+  )
+}
+
+// ─── Warnings section ─────────────────────────────────────────────────────────
+
+function WarningsSection({ userId, canCreate }: { userId: string; canCreate: boolean }) {
+  const { data: warnings, isLoading } = useUserWarnings(userId)
+  const { mutateAsync: createWarning, isPending } = useCreateWarning()
+  const [warningDate, setWarningDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [reason, setReason] = useState('')
+
+  const handleCreate = async () => {
+    if (reason.trim().length < 3) {
+      toast.error('La raison doit faire au moins 3 caractères')
+      return
+    }
+
+    try {
+      await createWarning({ userId, warningDate, reason: reason.trim() })
+      setReason('')
+      setWarningDate(format(new Date(), 'yyyy-MM-dd'))
+      toast.success('Avertissement ajouté')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l’ajout')
+    }
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Avertissements</h3>
+        {warnings && warnings.length > 0 && (
+          <span className={cn(
+            'text-[10px] rounded-full px-2 py-0.5 border',
+            warnings.length >= 2
+              ? 'text-red-400 bg-red-500/10 border-red-500/20'
+              : 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+          )}>
+            {warnings.length}
+          </span>
+        )}
+      </div>
+
+      {canCreate && (
+        <div className="mb-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+          <Input
+            type="date"
+            value={warningDate}
+            onChange={(e) => setWarningDate(e.target.value)}
+            className="h-9"
+          />
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Raison de l'avertissement..."
+            rows={3}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCreate}
+            disabled={isPending || reason.trim().length < 3}
+            className="w-full text-amber-300 border-amber-500/25 hover:bg-amber-500/10"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {isPending ? 'Ajout...' : 'Ajouter un avertissement'}
+          </Button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
+        </div>
+      ) : !warnings || warnings.length === 0 ? (
+        <p className="text-sm text-white/25 text-center py-4">Aucun avertissement</p>
+      ) : (
+        <div className="space-y-2">
+          {warnings.map((warning) => (
+            <div
+              key={warning.id}
+              className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15"
+            >
+              <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-white/80">
+                    {format(new Date(`${warning.warning_date}T00:00:00`), 'd MMM yyyy', { locale: fr })}
+                  </p>
+                  {warning.creator?.username && (
+                    <span className="text-[10px] text-white/30 truncate">par {warning.creator.username}</span>
+                  )}
+                </div>
+                <p className="text-xs text-white/55 whitespace-pre-wrap mt-1">{warning.reason}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -591,7 +730,7 @@ function ReportsSection({ userId, onClose }: { userId: string; onClose: () => vo
           {reports.slice(0, 8).map((report) => {
             const submitted = !!report.submitted_at
             return (
-              <Link key={report.id} to={`/panel/animations/${report.animation_id}`} onClick={onClose}
+              <Link key={report.id} to={`/panel/reports?user_id=${userId}&report_id=${report.id}`} onClick={onClose}
                 className={cn(
                   'flex items-start gap-3 p-3 rounded-xl border transition-all group',
                   submitted
@@ -706,12 +845,14 @@ function TrameReportsSection({ userId }: { userId: string }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Casiers() {
+  const { role } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [selectedActive, setSelectedActive] = useState<MemberEntry | null>(null)
   const [selectedFormer, setSelectedFormer] = useState<FormerMemberEntry | null>(null)
+  const canManageWarnings = hasRole(role, 'responsable')
 
   const filtered = useMemo(() => {
     const filterDef = ROLE_FILTERS.find((f) => f.key === roleFilter)
@@ -825,7 +966,12 @@ export default function Casiers() {
       {/* Detail panels */}
       <AnimatePresence>
         {selectedActive && (
-          <MemberDetail key={selectedActive.id} member={selectedActive} onClose={() => setSelectedActive(null)} />
+          <MemberDetail
+            key={selectedActive.id}
+            member={selectedActive}
+            canManageWarnings={canManageWarnings}
+            onClose={() => setSelectedActive(null)}
+          />
         )}
         {selectedFormer && (
           <FormerMemberDetail key={selectedFormer.id} member={selectedFormer} onClose={() => setSelectedFormer(null)} />

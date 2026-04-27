@@ -67,6 +67,16 @@ Deno.serve(async (req) => {
 
   const absentIds = new Set((absences ?? []).map((a) => a.user_id))
 
+  const { data: warnings } = await db
+    .from('user_warnings')
+    .select('user_id')
+    .in('user_id', profileIds)
+
+  const warningCountMap = new Map<string, number>()
+  for (const warning of warnings ?? []) {
+    warningCountMap.set(warning.user_id, (warningCountMap.get(warning.user_id) ?? 0) + 1)
+  }
+
   // Build per-user aggregates
   const weeklyAnimMap = new Map<string, { count: number; minutes: number }>()
   for (const a of weeklyAnims ?? []) {
@@ -116,6 +126,7 @@ Deno.serve(async (req) => {
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),
+      warningCount: warningCountMap.get(p.id) ?? 0,
       steamId: p.steam_id ?? null,
       arrivalDate: p.arrival_date ?? null,
       gender: p.gender ?? null,

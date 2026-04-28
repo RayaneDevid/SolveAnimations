@@ -15,6 +15,8 @@ import { ReportModal } from './reports'
 
 type ReportPole = 'animation' | 'mj'
 
+const PAGE_SIZE = 6
+
 const POLE_CONFIG: Record<ReportPole, { title: string; tone: string; dot: string }> = {
   animation: {
     title: 'Pôle Animation',
@@ -79,20 +81,53 @@ function ReportSection({
   empty: string
   onSelect: (report: AnimationReport) => void
 }) {
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(reports.length / PAGE_SIZE))
+  const page = Math.min(currentPage, totalPages)
+  const pageReports = reports.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-white/45 uppercase tracking-wider">{title}</p>
-        <span className="text-[10px] text-white/30">{reports.length}</span>
+        <span className="text-[10px] text-white/30">
+          {reports.length > PAGE_SIZE ? `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, reports.length)} / ${reports.length}` : reports.length}
+        </span>
       </div>
       {reports.length === 0 ? (
         <p className="text-sm text-white/25 py-4 text-center rounded-xl border border-white/[0.05] bg-white/[0.02]">{empty}</p>
       ) : (
-        <div className="space-y-2">
-          {reports.map((report) => (
-            <TeamReportRow key={report.id} report={report} onClick={() => onSelect(report)} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {pageReports.map((report) => (
+              <TeamReportRow key={report.id} report={report} onClick={() => onSelect(report)} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-3 mt-3">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+                disabled={page <= 1}
+                className="h-8 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/55 transition-colors hover:text-white disabled:opacity-30 disabled:hover:text-white/55"
+              >
+                Précédent
+              </button>
+              <span className="text-xs text-white/35">
+                Page {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}
+                disabled={page >= totalPages}
+                className="h-8 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/55 transition-colors hover:text-white disabled:opacity-30 disabled:hover:text-white/55"
+              >
+                Suivant
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

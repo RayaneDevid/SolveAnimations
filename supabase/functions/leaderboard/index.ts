@@ -4,10 +4,6 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
-// Simple in-memory cache: { key -> { data, expiresAt } }
-const cache = new Map<string, { data: unknown; expiresAt: number }>()
-const CACHE_TTL_MS = 5 * 60 * 1000
-
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -20,12 +16,6 @@ Deno.serve(async (req) => {
 
   if (!['week', 'month', 'all'].includes(period))
     return errorResponse('VALIDATION_ERROR', 'period invalide')
-
-  const cacheKey = `leaderboard:${period}`
-  const cached = cache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return jsonResponse(cached.data)
-  }
 
   const db = getServiceClient()
 
@@ -119,7 +109,6 @@ Deno.serve(async (req) => {
   const byParticipations = [...entries].sort((a, b) => b.participationsValidated - a.participationsValidated).map((e, i) => ({ rank: i + 1, ...e }))
 
   const result = { byHours, byAnimations, byParticipations, period }
-  cache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS })
 
   return jsonResponse(result)
 })

@@ -1,8 +1,40 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
 import type { CreateAnimationInput } from '@/lib/schemas/animation'
 import type { Animation } from '@/types/database'
+
+const invalidateAnimationCaches = (qc: QueryClient, id?: string) => {
+  qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+  qc.invalidateQueries({ queryKey: ['animation'] })
+  if (id) qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+}
+
+const invalidateStatsCaches = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ['stats'] })
+  qc.invalidateQueries({ queryKey: ['leaderboard'] })
+  qc.invalidateQueries({ queryKey: ['paies'] })
+}
+
+const invalidateReportCaches = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ['reports'] })
+}
+
+const invalidateMemberCaches = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: queryKeys.members.list })
+  qc.invalidateQueries({ queryKey: queryKeys.members.former })
+}
+
+const invalidateAbsenceCaches = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: ['absences'] })
+  invalidateMemberCaches(qc)
+}
+
+const invalidateProfileCaches = (qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: queryKeys.auth.me })
+  qc.invalidateQueries({ queryKey: ['profile-history'] })
+  invalidateMemberCaches(qc)
+}
 
 export function useCreateAnimation() {
   const qc = useQueryClient()
@@ -10,8 +42,10 @@ export function useCreateAnimation() {
     mutationFn: (body: CreateAnimationInput) =>
       invokeEdge<{ animation: Animation }>('animations-create', body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
+      invalidateAnimationCaches(qc)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -21,8 +55,7 @@ export function useValidateAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-validate', { id }),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -33,8 +66,7 @@ export function useRejectAnimation() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       invokeEdge<{ animation: Animation }>('animations-reject', { id, reason }),
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -59,7 +91,7 @@ export function useStartAnimation() {
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start', { id }),
     onSuccess: (data, id) => {
       updateDetailCache(qc, id, data.animation)
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -70,7 +102,7 @@ export function useStartPrepAnimation() {
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-start-prep', { id }),
     onSuccess: (data, id) => {
       updateDetailCache(qc, id, data.animation)
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -81,7 +113,7 @@ export function useStopPrepAnimation() {
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop-prep', { id }),
     onSuccess: (data, id) => {
       updateDetailCache(qc, id, data.animation)
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -92,9 +124,10 @@ export function useStopAnimation() {
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-stop', { id }),
     onSuccess: (data, id) => {
       updateDetailCache(qc, id, data.animation)
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
-      qc.invalidateQueries({ queryKey: queryKeys.reports.mine })
+      invalidateAnimationCaches(qc, id)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -104,8 +137,7 @@ export function useCancelAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-cancel', { id }),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -115,8 +147,10 @@ export function useDeleteAnimation() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<{ success: boolean }>('animations-delete', { id }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
+      invalidateAnimationCaches(qc)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -127,7 +161,7 @@ export function useRequestDeletion() {
     mutationFn: (animationId: string) =>
       invokeEdge<{ request: { id: string } }>('animations-request-deletion', { animation_id: animationId }),
     onSuccess: (_, animationId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      invalidateAnimationCaches(qc, animationId)
       qc.invalidateQueries({ queryKey: ['deletion-requests'] })
     },
   })
@@ -139,7 +173,10 @@ export function useApproveDeletion() {
     mutationFn: (requestId: string) =>
       invokeEdge<{ success: boolean }>('animations-approve-deletion', { request_id: requestId }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
       qc.invalidateQueries({ queryKey: ['deletion-requests'] })
     },
   })
@@ -152,7 +189,7 @@ export function useDenyDeletion() {
       invokeEdge<{ success: boolean }>('animations-deny-deletion', { request_id: requestId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['deletion-requests'] })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc)
     },
   })
 }
@@ -166,8 +203,7 @@ export function usePostponeAnimation() {
         new_scheduled_at: newScheduledAt.toISOString(),
       }),
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+      invalidateAnimationCaches(qc, id)
     },
   })
 }
@@ -178,8 +214,7 @@ export function useApplyParticipant() {
     mutationFn: ({ animationId }: { animationId: string }) =>
       invokeEdge<object>('participants-apply', { animation_id: animationId }),
     onSuccess: (_, { animationId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, animationId)
     },
   })
 }
@@ -190,8 +225,10 @@ export function useRemoveParticipant() {
     mutationFn: ({ participantId }: { participantId: string; animationId: string }) =>
       invokeEdge<object>('participants-remove-validated', { participant_id: participantId }),
     onSuccess: (_, { animationId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, animationId)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -212,8 +249,7 @@ export function useDecideParticipant() {
         decision,
       }),
     onSuccess: (_, { animationId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
+      invalidateAnimationCaches(qc, animationId)
     },
   })
 }
@@ -224,8 +260,7 @@ export function useSubmitReport() {
     mutationFn: ({ reportId, characterName, comments }: { reportId: string; characterName: string; comments: string }) =>
       invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.reports.mine })
-      qc.invalidateQueries({ queryKey: queryKeys.reports.pending })
+      invalidateReportCaches(qc)
     },
   })
 }
@@ -240,8 +275,7 @@ export function useCreateAbsence() {
         reason: body.reason,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.absences.list() })
-      qc.invalidateQueries({ queryKey: ['absences', 'week-summary'] })
+      invalidateAbsenceCaches(qc)
     },
   })
 }
@@ -251,8 +285,7 @@ export function useDeleteAbsence() {
   return useMutation({
     mutationFn: (id: string) => invokeEdge<object>('absences-delete', { id }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.absences.list() })
-      qc.invalidateQueries({ queryKey: ['absences', 'week-summary'] })
+      invalidateAbsenceCaches(qc)
     },
   })
 }
@@ -274,8 +307,9 @@ export function useUpdateAnimation() {
         ...(body.description !== undefined ? { description: body.description } : {}),
       }),
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(id) })
+      invalidateAnimationCaches(qc, id)
+      invalidateStatsCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -294,8 +328,9 @@ export function useCorrectFinishedAnimation() {
     }) => invokeEdge<{ animation: Animation }>('animations-update', body),
     onSuccess: (data, { id }) => {
       updateDetailCache(qc, id, data.animation)
-      qc.invalidateQueries({ queryKey: queryKeys.animations.all })
-      qc.invalidateQueries({ queryKey: queryKeys.stats.weekly() })
+      invalidateAnimationCaches(qc, id)
+      invalidateStatsCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -306,8 +341,9 @@ export function useReactivateMember() {
     mutationFn: (userId: string) =>
       invokeEdge<object>('members-reactivate', { user_id: userId }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.members.list })
-      qc.invalidateQueries({ queryKey: queryKeys.members.former })
+      invalidateMemberCaches(qc)
+      invalidateStatsCaches(qc)
+      qc.invalidateQueries({ queryKey: ['seniors'] })
     },
   })
 }
@@ -318,7 +354,7 @@ export function useUpdateMemberPerms() {
     mutationFn: ({ userId, field, value }: { userId: string; field: 'ig_perms_removed' | 'discord_perms_removed'; value: boolean }) =>
       invokeEdge<object>('members-update-perms', { user_id: userId, field, value }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.members.former })
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -334,7 +370,8 @@ export function useCreateWarning() {
       }),
     onSuccess: (_, { userId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.warnings.user(userId) })
-      qc.invalidateQueries({ queryKey: queryKeys.members.list })
+      qc.invalidateQueries({ queryKey: ['warnings'] })
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -345,7 +382,7 @@ export function useUpdateProfile() {
     mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null }) =>
       invokeEdge<object>('profile-update', body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.auth.me })
+      invalidateProfileCaches(qc)
     },
   })
 }
@@ -356,8 +393,9 @@ export function useRemoveMemberAccess() {
     mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
       invokeEdge<object>('members-remove-access', { user_id: userId, reason }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.members.list })
-      qc.invalidateQueries({ queryKey: queryKeys.members.former })
+      invalidateMemberCaches(qc)
+      invalidateStatsCaches(qc)
+      qc.invalidateQueries({ queryKey: ['seniors'] })
     },
   })
 }
@@ -431,6 +469,7 @@ export function useCreateTrameReport() {
       invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-create', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trame-reports'] })
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -441,6 +480,7 @@ export function useDeleteTrameReport() {
     mutationFn: (id: string) => invokeEdge<{ success: boolean }>('trame-reports-delete', { id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trame-reports'] })
+      invalidateMemberCaches(qc)
     },
   })
 }
@@ -451,7 +491,10 @@ export function useAddParticipantToFinished() {
     mutationFn: ({ animationId, userIds }: { animationId: string; userIds: string[] }) =>
       invokeEdge<{ success: boolean; added: number }>('participants-add-to-finished', { animationId, userIds }),
     onSuccess: (_data, { animationId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.animations.detail(animationId) })
+      invalidateAnimationCaches(qc, animationId)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
     },
   })
 }

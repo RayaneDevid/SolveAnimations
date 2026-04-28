@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const emptyToUndefined = (value: unknown) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
 const envSchema = z.object({
   DISCORD_BOT_TOKEN: z.string().min(1),
   DISCORD_GUILD_ID: z.string().min(1),
@@ -15,12 +18,12 @@ const envSchema = z.object({
   ROLE_GERANCE: z.string().optional(),
   ROLE_RESPONSABLE: z.string().optional(),
   ROLE_RESPONSABLE_MJ: z.string().optional(),
-  ROLE_RESPONSABLE_BDM: z.string().optional().default('1498316267411738735'),
+  ROLE_RESPONSABLE_BDM: z.preprocess(emptyToUndefined, z.string().optional().default('1498316267411738735')),
   ROLE_SENIOR: z.string().optional(),
   ROLE_MJ_SENIOR: z.string().optional(),
   ROLE_ANIMATEUR: z.string().optional(),
   ROLE_MJ: z.string().optional(),
-  ROLE_BDM: z.string().optional().default('1498316348735099010'),
+  ROLE_BDM: z.preprocess(emptyToUndefined, z.string().optional().default('1498316348735099010')),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,17 +1,22 @@
 const DISCORD_API = 'https://discord.com/api/v10'
 const GUILD_ID = Deno.env.get('DISCORD_GUILD_ID')!
 
+function roleId(name: string, fallback?: string): string {
+  const value = Deno.env.get(name)?.trim()
+  return value || fallback || ''
+}
+
 const ROLE_IDS = {
-  direction:      Deno.env.get('DISCORD_ROLE_DIRECTION')!,
-  gerance:        Deno.env.get('DISCORD_ROLE_GERANCE')!,
-  responsable:    Deno.env.get('DISCORD_ROLE_RESPONSABLE')!,
-  responsable_mj: Deno.env.get('DISCORD_ROLE_RESPONSABLE_MJ')!,
-  responsable_bdm: Deno.env.get('DISCORD_ROLE_RESPONSABLE_BDM') ?? '1498316267411738735',
-  senior:         Deno.env.get('DISCORD_ROLE_SENIOR')!,
-  mj_senior:      Deno.env.get('DISCORD_ROLE_MJ_SENIOR')!,
-  animateur:      Deno.env.get('DISCORD_ROLE_ANIMATEUR')!,
-  mj:             Deno.env.get('DISCORD_ROLE_MJ')!,
-  bdm:            Deno.env.get('DISCORD_ROLE_BDM') ?? '1498316348735099010',
+  direction:       roleId('DISCORD_ROLE_DIRECTION'),
+  gerance:         roleId('DISCORD_ROLE_GERANCE'),
+  responsable:     roleId('DISCORD_ROLE_RESPONSABLE'),
+  responsable_mj:  roleId('DISCORD_ROLE_RESPONSABLE_MJ'),
+  responsable_bdm: roleId('DISCORD_ROLE_RESPONSABLE_BDM', '1498316267411738735'),
+  senior:          roleId('DISCORD_ROLE_SENIOR'),
+  mj_senior:       roleId('DISCORD_ROLE_MJ_SENIOR'),
+  animateur:       roleId('DISCORD_ROLE_ANIMATEUR'),
+  mj:              roleId('DISCORD_ROLE_MJ'),
+  bdm:             roleId('DISCORD_ROLE_BDM', '1498316348735099010'),
 }
 
 const ROLE_HIERARCHY: Record<string, number> = {

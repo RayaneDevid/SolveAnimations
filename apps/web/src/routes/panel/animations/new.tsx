@@ -114,7 +114,7 @@ export default function NewAnimation() {
         requiredParticipants: instantMission ? 0 : data.requiredParticipants,
         type: instantMission ? 'petite' : data.type,
         pole: instantMission ? 'animation' : data.pole,
-        description: instantMission ? undefined : data.description,
+        description: data.description,
         requestValidation: instantMission ? false : data.requestValidation,
         pingRoles: instantMission ? false : data.pingRoles,
       })
@@ -212,20 +212,18 @@ export default function NewAnimation() {
             </div>
           )}
 
-          {!isInstantMission && (
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Description de l'animation</Label>
-              <Textarea
-                id="description"
-                placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
-                rows={4}
-                {...register('description')}
-              />
-              {errors.description && (
-                <p className="text-xs text-red-400">{errors.description.message}</p>
-              )}
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description de l'animation</Label>
+            <Textarea
+              id="description"
+              placeholder={isInstantMission ? 'Décris rapidement la mission spontanée / BDM...' : 'Décris le contexte, les objectifs, le déroulement prévu...'}
+              rows={4}
+              {...register('description')}
+            />
+            {errors.description && (
+              <p className="text-xs text-red-400">{errors.description.message}</p>
+            )}
+          </div>
         </GlassCard>
 
         {/* Details */}

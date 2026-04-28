@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
 import { useAnimation } from '@/hooks/queries/useAnimations'
 import { useUpdateAnimation } from '@/hooks/mutations/useAnimationMutations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
+import { hasRole } from '@/lib/config/discord'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
@@ -27,6 +29,7 @@ const TYPE_DESCRIPTIONS = {
 export default function EditAnimation() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user, role } = useRequiredAuth()
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync, isPending } = useUpdateAnimation()
 
@@ -43,6 +46,10 @@ export default function EditAnimation() {
   })
 
   const requiredParticipants = watch('requiredParticipants')
+  const animation = data?.animation
+  const isCreator = animation?.creator_id === user.id
+  const isResponsable = hasRole(role, 'responsable')
+  const scheduleOnly = !!animation && !isCreator && isResponsable && animation.status === 'open'
 
   useEffect(() => {
     if (!data?.animation) return
@@ -62,7 +69,9 @@ export default function EditAnimation() {
 
   const onSubmit = async (formData: CreateAnimationInput) => {
     try {
-      await mutateAsync({ id: id!, ...formData })
+      await mutateAsync(scheduleOnly
+        ? { id: id!, scheduledAt: formData.scheduledAt }
+        : { id: id!, ...formData })
       toast.success('Animation mise à jour !')
       navigate(`/panel/animations/${id}`)
     } catch (err) {
@@ -81,6 +90,15 @@ export default function EditAnimation() {
   }
 
   if (!data) return null
+  if (!isCreator && !scheduleOnly) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <GlassCard className="p-8 text-center">
+          <p className="text-sm text-white/50">Cette animation ne peut pas être modifiée dans son état actuel.</p>
+        </GlassCard>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -98,11 +116,13 @@ export default function EditAnimation() {
         {/* Général */}
         <GlassCard className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Général</h2>
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Titre</Label>
-            <Input id="title" placeholder="Titre de l'animation" {...register('title')} />
-            {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
-          </div>
+          {!scheduleOnly && (
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Titre</Label>
+              <Input id="title" placeholder="Titre de l'animation" {...register('title')} />
+              {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Date et heure de session</Label>
@@ -119,22 +139,24 @@ export default function EditAnimation() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Description de l'animation</Label>
-            <Textarea
-              id="description"
-              placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
-              rows={4}
-              {...register('description')}
-            />
-            {errors.description && (
-              <p className="text-xs text-red-400">{errors.description.message}</p>
-            )}
-          </div>
+          {!scheduleOnly && (
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description de l'animation</Label>
+              <Textarea
+                id="description"
+                placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
+                rows={4}
+                {...register('description')}
+              />
+              {errors.description && (
+                <p className="text-xs text-red-400">{errors.description.message}</p>
+              )}
+            </div>
+          )}
         </GlassCard>
 
         {/* Détails */}
-        <GlassCard className="p-5 space-y-4">
+        {!scheduleOnly && <GlassCard className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Détails</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -183,10 +205,10 @@ export default function EditAnimation() {
               </button>
             </div>
           </div>
-        </GlassCard>
+        </GlassCard>}
 
         {/* Serveur */}
-        <GlassCard className="p-5 space-y-3">
+        {!scheduleOnly && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Serveur</h2>
           <Controller
             name="server"
@@ -212,10 +234,10 @@ export default function EditAnimation() {
             )}
           />
           {errors.server && <p className="text-xs text-red-400">{errors.server.message}</p>}
-        </GlassCard>
+        </GlassCard>}
 
         {/* Village */}
-        <GlassCard className="p-5 space-y-3">
+        {!scheduleOnly && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Village</h2>
           <Controller
             name="village"
@@ -241,10 +263,10 @@ export default function EditAnimation() {
             )}
           />
           {errors.village && <p className="text-xs text-red-400">{errors.village.message}</p>}
-        </GlassCard>
+        </GlassCard>}
 
         {/* Type */}
-        <GlassCard className="p-5 space-y-3">
+        {!scheduleOnly && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Type</h2>
           <Controller
             name="type"
@@ -271,7 +293,7 @@ export default function EditAnimation() {
             )}
           />
           {errors.type && <p className="text-xs text-red-400">{errors.type.message}</p>}
-        </GlassCard>
+        </GlassCard>}
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>

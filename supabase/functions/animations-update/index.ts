@@ -61,9 +61,33 @@ Deno.serve(async (req) => {
     return jsonResponse({ animation: updated })
   }
 
+  // ── Responsable editing the schedule of an open animation ────────────────
+  const isCreator = anim.creator_id === profile.id
+  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
+
+  if (!isCreator && isResponsable && anim.status === 'open') {
+    if (!('scheduled_at' in updates))
+      return errorResponse('VALIDATION_ERROR', 'Date et heure requises')
+
+    const { data: updated, error } = await db
+      .from('animations')
+      .update({ scheduled_at: updates.scheduled_at, reminder_15min_sent_at: null })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return errorResponse('INTERNAL_ERROR', error.message)
+
+    if (anim.discord_message_id) {
+      await syncEmbed(db, id)
+    }
+
+    return jsonResponse({ animation: updated })
+  }
+
   // ── Creator editing a pending/open animation ─────────────────────────────
-  if (anim.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut modifier')
+  if (!isCreator)
+    return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut modifier')
   if (!['pending_validation', 'open'].includes(anim.status))
     return errorResponse('CONFLICT', 'Impossible de modifier cette animation dans son état actuel')
 

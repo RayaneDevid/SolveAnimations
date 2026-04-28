@@ -732,11 +732,11 @@ export default function AnimationDetail() {
                       <Ban className="h-4 w-4" />
                       Annuler
                     </Button>
-                    {animation.status === 'open' && isCreator && (
+                    {animation.status === 'open' && (isCreator || isResponsable) && (
                       <Link to={`/panel/animations/${animation.id}/edit`} className="block mt-2">
                         <Button variant="outline" className="w-full gap-2">
                           <Pencil className="h-4 w-4" />
-                          Modifier
+                          {isCreator ? 'Modifier' : 'Modifier date/heure'}
                         </Button>
                       </Link>
                     )}

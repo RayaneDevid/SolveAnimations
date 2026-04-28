@@ -137,10 +137,22 @@ export interface VillageStats {
     byVillage: Record<string, number>
     counts: Record<string, number>
   }
+  quotaCompletion: {
+    animation: QuotaCompletion
+    mj: QuotaCompletion
+  }
   lastFourWeeks: Array<{
     weekStart: string
     byVillage: Record<string, number>
   }>
+}
+
+export interface QuotaCompletion {
+  filled: number
+  missing: number
+  total: number
+  filledPercent: number
+  missingPercent: number
 }
 
 export interface LeaderboardEntry {

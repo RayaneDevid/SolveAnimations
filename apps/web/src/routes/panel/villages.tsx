@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VILLAGE_LABELS } from '@/components/shared/VillageBadge'
 import type { Village } from '@/lib/schemas/animation'
+import type { QuotaCompletion } from '@/types/database'
 
 const VILLAGE_CHART_COLORS: Record<string, string> = {
   konoha: '#22c55e',
@@ -25,6 +26,11 @@ const CUSTOM_TOOLTIP_STYLE = {
   borderRadius: '12px',
   color: 'rgba(255,255,255,0.8)',
   fontSize: '12px',
+}
+
+const QUOTA_COLORS = {
+  filled: '#22c55e',
+  missing: '#f97316',
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
@@ -54,6 +60,79 @@ function EvolutionTooltip({ active, payload, label }: { active?: boolean; payloa
   )
 }
 
+function QuotaTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { count: number } }> }) {
+  if (!active || !payload?.length) return null
+  const item = payload[0]
+  return (
+    <div style={CUSTOM_TOOLTIP_STYLE} className="p-3">
+      <p className="text-sm text-white/80">
+        {item.name}: <strong>{item.value.toFixed(1)}%</strong>
+      </p>
+      <p className="text-xs text-white/40 mt-0.5">{item.payload.count} personne{item.payload.count > 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
+function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion }) {
+  const chartData = [
+    { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: QUOTA_COLORS.filled },
+    { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: QUOTA_COLORS.missing },
+  ].filter((entry) => entry.count > 0)
+
+  return (
+    <GlassCard className="p-5">
+      <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">{title}</h3>
+      {data.total === 0 ? (
+        <p className="text-center text-white/30 text-sm py-12">Aucun membre avec quota</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-4 items-center">
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={46}
+                outerRadius={76}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {chartData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} opacity={0.9} />
+                ))}
+              </Pie>
+              <Tooltip content={<QuotaTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-3xl font-bold text-white">{data.filledPercent.toFixed(1)}%</p>
+              <p className="text-xs text-white/35 mt-0.5">des personnes ont rempli leur quota</p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-white/60">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+                  Rempli
+                </span>
+                <span className="font-medium text-white/80">{data.filled}/{data.total}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-white/60">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-orange-500" />
+                  Non rempli
+                </span>
+                <span className="font-medium text-white/80">{data.missing}/{data.total}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 export default function Villages() {
   const [selectedUser, setSelectedUser] = useState<string>('all')
   const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>('anim')
@@ -78,7 +157,7 @@ export default function Villages() {
 
   if (!data) return null
 
-  const { currentWeek, lastFourWeeks } = data
+  const { currentWeek, lastFourWeeks, quotaCompletion } = data
 
   // Build pie data
   const pieData = Object.entries(currentWeek.byVillage)
@@ -211,6 +290,16 @@ export default function Villages() {
             </BarChart>
           </ResponsiveContainer>
         </GlassCard>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+          Quotas mission de la semaine
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <QuotaPieCard title="Pôle Animation" data={quotaCompletion.animation} />
+          <QuotaPieCard title="Pôle MJ" data={quotaCompletion.mj} />
+        </div>
       </div>
 
       {/* Weekly evolution line chart */}

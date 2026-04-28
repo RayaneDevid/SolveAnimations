@@ -4,6 +4,14 @@ import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const
+const ANIM_QUOTA: Record<string, number> = {
+  senior: 5,
+  animateur: 5,
+}
+const MJ_QUOTA: Record<string, number> = {
+  mj_senior: 3,
+  mj: 3,
+}
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -29,6 +37,7 @@ Deno.serve(async (req) => {
   const currentCounts = buildCounts(currentAnims ?? [])
   const currentTotal = Object.values(currentCounts).reduce((s, v) => s + v, 0)
   const currentByVillage = buildPercentages(currentCounts, currentTotal)
+  const quotaCompletion = await buildQuotaCompletion(db, weekStart, weekEnd)
 
   // Last 4 weeks (not including current)
   const lastFourWeeks = []
@@ -59,6 +68,7 @@ Deno.serve(async (req) => {
       byVillage: currentByVillage,
       counts: currentCounts,
     },
+    quotaCompletion,
     lastFourWeeks,
   })
 })
@@ -78,6 +88,82 @@ function buildPercentages(counts: Record<string, number>, total: number): Record
     pct[k] = total > 0 ? Math.round((v / total) * 1000) / 10 : 0
   }
   return pct
+}
+
+// deno-lint-ignore no-explicit-any
+async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
+  const { data: profiles } = await db
+    .from('profiles')
+    .select('id, role')
+    .eq('is_active', true)
+    .in('role', [...Object.keys(ANIM_QUOTA), ...Object.keys(MJ_QUOTA)])
+
+  const profileIds = (profiles ?? []).map((p: { id: string }) => p.id)
+  if (profileIds.length === 0) {
+    return {
+      animation: buildQuotaSummary(0, 0),
+      mj: buildQuotaSummary(0, 0),
+    }
+  }
+
+  const { data: finishedAnims } = await db
+    .from('animations')
+    .select('id, creator_id')
+    .eq('status', 'finished')
+    .gte('ended_at', weekStart.toISOString())
+    .lt('ended_at', weekEnd.toISOString())
+
+  const animIds = (finishedAnims ?? []).map((a: { id: string }) => a.id)
+  const { data: participations } = animIds.length > 0
+    ? await db
+        .from('animation_participants')
+        .select('user_id')
+        .eq('status', 'validated')
+        .in('animation_id', animIds)
+        .in('user_id', profileIds)
+    : { data: [] }
+
+  const missionCount = new Map<string, number>()
+  for (const anim of finishedAnims ?? []) {
+    if (!profileIds.includes(anim.creator_id)) continue
+    missionCount.set(anim.creator_id, (missionCount.get(anim.creator_id) ?? 0) + 1)
+  }
+  for (const participation of participations ?? []) {
+    missionCount.set(participation.user_id, (missionCount.get(participation.user_id) ?? 0) + 1)
+  }
+
+  let animTotal = 0
+  let animFilled = 0
+  let mjTotal = 0
+  let mjFilled = 0
+
+  for (const profile of profiles ?? []) {
+    const role = profile.role as string
+    const count = missionCount.get(profile.id) ?? 0
+    if (role in ANIM_QUOTA) {
+      animTotal++
+      if (count >= ANIM_QUOTA[role]) animFilled++
+    } else if (role in MJ_QUOTA) {
+      mjTotal++
+      if (count >= MJ_QUOTA[role]) mjFilled++
+    }
+  }
+
+  return {
+    animation: buildQuotaSummary(animFilled, animTotal),
+    mj: buildQuotaSummary(mjFilled, mjTotal),
+  }
+}
+
+function buildQuotaSummary(filled: number, total: number) {
+  const missing = Math.max(total - filled, 0)
+  return {
+    filled,
+    missing,
+    total,
+    filledPercent: total > 0 ? Math.round((filled / total) * 1000) / 10 : 0,
+    missingPercent: total > 0 ? Math.round((missing / total) * 1000) / 10 : 0,
+  }
 }
 
 function computeWeekStart(now: Date): Date {

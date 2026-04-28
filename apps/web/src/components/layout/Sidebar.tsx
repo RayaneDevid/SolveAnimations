@@ -64,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/panel/recrutement', label: 'Recrutement', icon: UserPlus },
       { to: '/panel/formation',   label: 'Formation',   icon: GraduationCap },
+      { to: '/panel/team-reports', label: 'Rapports équipe', icon: FileText },
     ],
   },
   {

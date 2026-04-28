@@ -97,6 +97,9 @@ verify_jwt = false
 [functions.reports-list-pending]
 verify_jwt = false
 
+[functions.reports-list-team]
+verify_jwt = false
+
 [functions.reports-submit]
 verify_jwt = false
 

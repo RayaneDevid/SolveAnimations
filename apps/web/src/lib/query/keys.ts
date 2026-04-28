@@ -14,6 +14,7 @@ export const queryKeys = {
   reports: {
     mine: ['reports', 'mine'] as const,
     pending: ['reports', 'pending'] as const,
+    team: (from: string, to: string) => ['reports', 'team', from, to] as const,
   },
   absences: {
     list: (userId?: string) => ['absences', userId ?? 'self'] as const,

@@ -29,6 +29,7 @@ export type EdgeFunctionName =
   | 'reports-list-mine'
   | 'reports-list-user'
   | 'reports-list-pending'
+  | 'reports-list-team'
   | 'reports-submit'
   | 'absences-list'
   | 'absences-create'

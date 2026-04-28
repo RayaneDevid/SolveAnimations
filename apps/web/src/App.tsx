@@ -13,6 +13,7 @@ import AnimationDetail from '@/routes/panel/animations/detail'
 import EditAnimation from '@/routes/panel/animations/edit'
 import CalendarPage from '@/routes/panel/calendar'
 import Reports from '@/routes/panel/reports'
+import TeamReports from '@/routes/panel/team-reports'
 import Absences from '@/routes/panel/absences'
 import Validation from '@/routes/panel/validation'
 import Leaderboard from '@/routes/panel/leaderboard'
@@ -48,6 +49,14 @@ export default function App() {
           <Route path="animations/:id/edit" element={<EditAnimation />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="reports" element={<Reports />} />
+          <Route
+            path="team-reports"
+            element={
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+                <TeamReports />
+              </RoleGate>
+            }
+          />
           <Route path="absences" element={<Absences />} />
           <Route
             path="validation"

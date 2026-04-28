@@ -70,6 +70,19 @@ export function usePendingReports(enabled = true) {
   })
 }
 
+export function useTeamReports(bounds: { start: Date; end: Date }) {
+  const from = bounds.start.toISOString()
+  const to = bounds.end.toISOString()
+  return useQuery({
+    queryKey: queryKeys.reports.team(from, to),
+    queryFn: () =>
+      invokeEdge<import('@/types/database').AnimationReport[]>('reports-list-team', {
+        from,
+        to,
+      }),
+  })
+}
+
 export function useAbsences(userId?: string) {
   return useQuery({
     queryKey: queryKeys.absences.list(userId),

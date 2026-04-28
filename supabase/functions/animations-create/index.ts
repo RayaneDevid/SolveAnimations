@@ -23,24 +23,30 @@ Deno.serve(async (req) => {
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
-    requestValidation = true, pingRoles = true, spontaneous = false,
+    requestValidation = true, pingRoles = true, spontaneous = false, missionKind = 'classique',
   } = body
-  const resolvedScheduledAt = spontaneous ? new Date().toISOString() : scheduledAt
+  const isInstantMission = spontaneous === true || missionKind === 'spontanee_bdm'
+  const resolvedScheduledAt = isInstantMission ? new Date().toISOString() : scheduledAt
+  const resolvedPlannedDurationMin = isInstantMission ? 15 : plannedDurationMin
+  const resolvedRequiredParticipants = isInstantMission ? 0 : requiredParticipants
+  const resolvedType = isInstantMission ? 'petite' : type
+  const resolvedPole = isInstantMission ? 'animation' : pole
+  const shouldPingRoles = isInstantMission ? false : pingRoles
 
   // Basic validation
   if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 120)
     return errorResponse('VALIDATION_ERROR', 'Titre invalide (3–120 caractères)')
   if (!resolvedScheduledAt || isNaN(new Date(resolvedScheduledAt).getTime()))
     return errorResponse('VALIDATION_ERROR', 'Date invalide')
-  if (!plannedDurationMin || plannedDurationMin < 15 || plannedDurationMin > 720)
+  if (!resolvedPlannedDurationMin || resolvedPlannedDurationMin < 15 || resolvedPlannedDurationMin > 720)
     return errorResponse('VALIDATION_ERROR', 'Durée invalide (15–720 min)')
-  if (requiredParticipants == null || requiredParticipants < 0 || requiredParticipants > 100)
+  if (resolvedRequiredParticipants == null || resolvedRequiredParticipants < 0 || resolvedRequiredParticipants > 100)
     return errorResponse('VALIDATION_ERROR', 'Participants invalide (0–100)')
   if (!SERVERS.includes(server))
     return errorResponse('VALIDATION_ERROR', 'Serveur invalide')
-  if (!TYPES.includes(type))
+  if (!TYPES.includes(resolvedType))
     return errorResponse('VALIDATION_ERROR', 'Type invalide')
-  if (!POLES.includes(pole))
+  if (!POLES.includes(resolvedPole))
     return errorResponse('VALIDATION_ERROR', 'Pôle invalide')
   if (!VILLAGES.includes(village))
     return errorResponse('VALIDATION_ERROR', 'Village invalide')
@@ -48,11 +54,11 @@ Deno.serve(async (req) => {
   const db = getServiceClient()
   const now = new Date().toISOString()
   const scheduledDate = new Date(resolvedScheduledAt)
-  const isPast = !spontaneous && scheduledDate.getTime() < Date.now()
+  const isPast = !isInstantMission && scheduledDate.getTime() < Date.now()
 
   if (isPast) {
     // Antedated animation → insert directly as finished
-    const actualDurationMin = PAST_DURATION[type] ?? 30
+    const actualDurationMin = PAST_DURATION[resolvedType] ?? 30
     const startedAt = scheduledDate.toISOString()
     const endedAt = new Date(scheduledDate.getTime() + actualDurationMin * 60_000).toISOString()
 
@@ -61,14 +67,14 @@ Deno.serve(async (req) => {
       .insert({
         title: title.trim(),
         scheduled_at: resolvedScheduledAt,
-        planned_duration_min: plannedDurationMin,
-        required_participants: requiredParticipants,
+        planned_duration_min: resolvedPlannedDurationMin,
+        required_participants: resolvedRequiredParticipants,
         server,
-        type,
-        pole,
-        prep_time_min: prepTimeMin,
+        type: resolvedType,
+        pole: resolvedPole,
+        prep_time_min: isInstantMission ? 0 : prepTimeMin,
         village,
-        description: description?.trim() || null,
+        description: isInstantMission ? null : description?.trim() || null,
         creator_id: profile.id,
         status: 'finished',
         validated_by: profile.id,
@@ -89,7 +95,7 @@ Deno.serve(async (req) => {
     await db.from('animation_reports').insert({
       animation_id: animation.id,
       user_id: profile.id,
-      pole: pole === 'mj' ? 'mj' : 'animateur',
+      pole: resolvedPole === 'mj' ? 'mj' : 'animateur',
       character_name: '—',
       comments: null,
       submitted_at: null,
@@ -99,21 +105,21 @@ Deno.serve(async (req) => {
   }
 
   // Future animation — normal flow
-  const autoValidate = requestValidation === false
+  const autoValidate = isInstantMission || requestValidation === false
 
   const { data: animation, error } = await db
     .from('animations')
     .insert({
       title: title.trim(),
       scheduled_at: resolvedScheduledAt,
-      planned_duration_min: plannedDurationMin,
-      required_participants: requiredParticipants,
+      planned_duration_min: resolvedPlannedDurationMin,
+      required_participants: resolvedRequiredParticipants,
       server,
-      type,
-      pole,
-      prep_time_min: prepTimeMin,
+      type: resolvedType,
+      pole: resolvedPole,
+      prep_time_min: isInstantMission ? 0 : prepTimeMin,
       village,
-      description: description?.trim() || null,
+      description: isInstantMission ? null : description?.trim() || null,
       creator_id: profile.id,
       status: autoValidate ? 'open' : 'pending_validation',
       ...(autoValidate ? { validated_by: profile.id, validated_at: now } : {}),
@@ -139,7 +145,7 @@ Deno.serve(async (req) => {
       village: animation.village,
       type: animation.type,
       pole: animation.pole,
-      pingRoles,
+      pingRoles: shouldPingRoles,
       documentUrl: animation.document_url ?? undefined,
       creatorUsername: profile.username,
     })

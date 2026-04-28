@@ -115,7 +115,11 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
 
   const validated = animation.validated_participants_count ?? 0
   const required = animation.required_participants
-  const isFull = validated >= required
+  const hasParticipantLimit = required > 0
+  const isFull = hasParticipantLimit && validated >= required
+  const participantsLabel = hasParticipantLimit
+    ? (isFull ? 'Complet' : `${validated}/${required} joueurs`)
+    : `${validated} inscrit${validated > 1 ? 's' : ''}`
 
   const durationLabel = isFinished
     ? formatDurationShort(animation.actual_duration_min ?? animation.planned_duration_min)
@@ -165,7 +169,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
         )}
         {animHeight >= 56 && (
           <p className={cn('text-[9px] leading-tight truncate', isFull ? 'opacity-90 font-semibold' : 'opacity-60')}>
-            {VILLAGE_LABELS[animation.village]} · {isFull ? 'Complet' : `${validated}/${required} joueurs`}
+            {VILLAGE_LABELS[animation.village]} · {participantsLabel}
           </p>
         )}
       </div>

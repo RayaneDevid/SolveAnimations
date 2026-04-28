@@ -54,9 +54,7 @@ async function fetchAnimation(animationId: string) {
   return data;
 }
 
-function buildParticipantPingContent(pole: string | undefined, requiredParticipants: number): { content: string; allowedMentions: { roles: string[] } } | null {
-  if (requiredParticipants <= 0) return null;
-
+function buildParticipantPingContent(pole: string | undefined): { content: string; allowedMentions: { roles: string[] } } | null {
   const roleIds: string[] = [];
   if (!pole || pole === 'animation' || pole === 'les_deux') {
     if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
@@ -88,9 +86,12 @@ async function refreshAnimationParticipantCount(animationId: string, messageId: 
   const existingEmbed = msg.embeds[0];
   if (!existingEmbed) return;
 
+  const participantsLine = requiredParticipants > 0
+    ? `👥  Participants : ${count ?? 0} / ${requiredParticipants}`
+    : `👥  Participants : ${count ?? 0} · ouvert à tous`;
   const updatedDesc = (existingEmbed.description ?? '').replace(
-    /👥  Participants : \d+ \/ \d+/,
-    `👥  Participants : ${count ?? 0} / ${requiredParticipants}`,
+    /👥  Participants : \d+(?: \/ \d+| · ouvert à tous)/,
+    participantsLine,
   );
   const { EmbedBuilder } = await import('discord.js');
   const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(updatedDesc);
@@ -154,7 +155,7 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
     status: 'open',
   });
 
-  const ping = buildParticipantPingContent(anim.pole ?? undefined, anim.required_participants);
+  const ping = buildParticipantPingContent(anim.pole ?? undefined);
 
   let publicMessageId = '';
   try {

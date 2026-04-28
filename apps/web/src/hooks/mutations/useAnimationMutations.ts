@@ -241,6 +241,7 @@ export function useCreateAbsence() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.absences.list() })
+      qc.invalidateQueries({ queryKey: ['absences', 'week-summary'] })
     },
   })
 }
@@ -251,6 +252,7 @@ export function useDeleteAbsence() {
     mutationFn: (id: string) => invokeEdge<object>('absences-delete', { id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.absences.list() })
+      qc.invalidateQueries({ queryKey: ['absences', 'week-summary'] })
     },
   })
 }

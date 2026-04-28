@@ -414,7 +414,10 @@ export default function AnimationDetail() {
 
   const validated = participants.filter((p) => p.status === 'validated')
   const pending = participants.filter((p) => p.status === 'pending')
-  const participantProgress = Math.min(100, (validated.length / animation.required_participants) * 100)
+  const hasParticipantLimit = animation.required_participants > 0
+  const participantProgress = hasParticipantLimit
+    ? Math.min(100, (validated.length / animation.required_participants) * 100)
+    : 100
 
   const handleStartPrep = async () => {
     try {
@@ -557,7 +560,9 @@ export default function AnimationDetail() {
           <VillageBadge village={animation.village} />
           <div className="flex items-center gap-2 text-sm text-white/60">
             <Users className="h-4 w-4 text-emerald-400" />
-            {validated.length}/{animation.required_participants}
+            {hasParticipantLimit
+              ? `${validated.length}/${animation.required_participants}`
+              : `${validated.length} inscrit${validated.length > 1 ? 's' : ''} · ouvert à tous`}
           </div>
           {animation.description && (
             <p className="text-sm text-white/60 line-clamp-2">{animation.description}</p>

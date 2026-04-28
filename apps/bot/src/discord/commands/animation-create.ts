@@ -69,8 +69,8 @@ function parseParisDate(input: string): Date | null {
   return new Date(naiveUTC + (naiveDate.getTime() - parisAsLocal.getTime()));
 }
 
-function buildParticipantPingContent(pole: string, requiredParticipants: number, pingRoles: boolean): { content: string; allowedMentions: { roles: string[] } } | null {
-  if (!pingRoles || requiredParticipants <= 0) return null;
+function buildParticipantPingContent(pole: string, pingRoles: boolean): { content: string; allowedMentions: { roles: string[] } } | null {
+  if (!pingRoles) return null;
 
   const roleIds: string[] = [];
   if (pole === 'animation' || pole === 'les_deux') {
@@ -531,7 +531,7 @@ export async function handleModal3Submit(interaction: ModalSubmitInteraction): P
     try {
       const ch = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
       if (ch?.isTextBased()) {
-        const ping = buildParticipantPingContent(pole, animation.required_participants, pingRoles);
+        const ping = buildParticipantPingContent(pole, pingRoles);
         const msg = await (ch as TextChannel).send({
           ...(ping ?? {}),
           embeds: [embed],

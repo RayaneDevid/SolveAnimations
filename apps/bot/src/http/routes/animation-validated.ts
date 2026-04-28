@@ -24,9 +24,7 @@ const bodySchema = z.object({
   adminMessageId: z.string().optional(),
 });
 
-function buildParticipantPing(pole: string | undefined, requiredParticipants: number): { content: string; allowedMentions: import('discord.js').MessageCreateOptions['allowedMentions'] } | null {
-  if (requiredParticipants <= 0) return null;
-
+function buildParticipantPing(pole: string | undefined): { content: string; allowedMentions: import('discord.js').MessageCreateOptions['allowedMentions'] } | null {
   const roleIds: string[] = [];
   if (pole === 'animation' || pole === 'les_deux') {
     if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
@@ -89,7 +87,7 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
           status: 'open',
         });
 
-        const ping = payload.pingRoles ? buildParticipantPing(payload.pole, payload.requiredParticipants) : null;
+        const ping = payload.pingRoles ? buildParticipantPing(payload.pole) : null;
         const message = await (announceChannel as import('discord.js').TextChannel).send({
           ...(ping ?? {}),
           embeds: [embed],

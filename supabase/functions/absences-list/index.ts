@@ -17,18 +17,13 @@ Deno.serve(async (req) => {
   const db = getServiceClient()
 
   if (week_summary) {
-    const { data: weekStartRow } = await db.rpc('week_start').single()
-    if (!weekStartRow) return errorResponse('INTERNAL_ERROR', 'Impossible de calculer week_start')
-    const weekStart = new Date(weekStartRow as string)
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const wStartDate = weekStart.toISOString().split('T')[0]
-    const wEndDate = new Date(weekEnd.getTime() - 1).toISOString().split('T')[0]
+    const today = parisDateString(new Date())
 
     const { data: absences } = await db
       .from('user_absences')
       .select('user_id, profiles(username, avatar_url, role)')
-      .lte('from_date', wEndDate)
-      .gte('to_date', wStartDate)
+      .lte('from_date', today)
+      .gte('to_date', today)
 
     const seen = new Map<string, { username: string; avatar_url: string | null; role: string | null }>()
     for (const a of absences ?? []) {
@@ -76,3 +71,16 @@ Deno.serve(async (req) => {
 
   return jsonResponse(data ?? [])
 })
+
+function parisDateString(date: Date): string {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return `${year}-${month}-${day}`
+}

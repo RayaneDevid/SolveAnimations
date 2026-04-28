@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
 export const TYPES = ['petite', 'moyenne', 'grande'] as const
 export const POLES = ['animation', 'mj', 'les_deux'] as const
+export const MISSION_KINDS = ['classique', 'spontanee_bdm'] as const
 export const VILLAGES = [
   'konoha',
   'suna',
@@ -16,11 +17,13 @@ export const VILLAGES = [
 export type AnimationServer = (typeof SERVERS)[number]
 export type AnimationType = (typeof TYPES)[number]
 export type AnimationPole = (typeof POLES)[number]
+export type MissionKind = (typeof MISSION_KINDS)[number]
 export type Village = (typeof VILLAGES)[number]
 
 export const createAnimationSchema = z
   .object({
     title: z.string().trim().min(3, 'Minimum 3 caractères').max(120, 'Maximum 120 caractères'),
+    missionKind: z.enum(MISSION_KINDS).default('classique'),
     spontaneous: z.boolean().default(false),
     scheduledAt: z.coerce.date().optional(),
     plannedDurationMin: z
@@ -48,7 +51,8 @@ export const createAnimationSchema = z
     pingRoles: z.boolean().default(true),
   })
   .superRefine((value, ctx) => {
-    if (!value.spontaneous && !value.scheduledAt) {
+    const isInstantMission = value.spontaneous || value.missionKind === 'spontanee_bdm'
+    if (!isInstantMission && !value.scheduledAt) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Date requise',

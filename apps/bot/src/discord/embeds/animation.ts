@@ -161,6 +161,9 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     status === 'finished' && actualDurationMin != null
       ? `⏱️  Durée réelle : ${formatDuration(actualDurationMin)}`
       : `⏱️  Durée prévue : ${formatDuration(plannedDurationMin)}${prepTimeMin > 0 ? ` · Prépa : ${formatDuration(prepTimeMin)}` : ''}`;
+  const participantsLine = requiredParticipants > 0
+    ? `👥  Participants : ${currentParticipants} / ${requiredParticipants}`
+    : `👥  Participants : ${currentParticipants} · ouvert à tous`;
 
   const embed = new EmbedBuilder()
     .setColor(color)
@@ -174,7 +177,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
         `🏯  Village : ${villageLabel}`,
         `🎯  Type : ${typeLabel}`,
         ...(poleLabel ? [`🎪  Pôle : ${poleLabel}`] : []),
-        `👥  Participants : ${currentParticipants} / ${requiredParticipants}`,
+        participantsLine,
         ...(documentUrl ? [`📄  [Voir le document](${documentUrl})`] : []),
         '',
         `Organisé par @${creatorUsername}`,

@@ -1,9 +1,10 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, type Village, type AnimationPole } from '@/lib/schemas/animation'
+import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, type Village, type AnimationPole, type MissionKind } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,17 @@ const TYPE_DESCRIPTIONS = {
   moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
+
+const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: string }> = {
+  classique: {
+    label: 'Mission classique',
+    description: 'Date, heure, validation et nombre de participants comme actuellement.',
+  },
+  spontanee_bdm: {
+    label: 'Mission spontanée / BDM',
+    description: 'Créée immédiatement, sans limite de participants.',
+  },
+}
 
 const POLE_CONFIG: Record<AnimationPole, { label: string; description: string; color: string; active: string }> = {
   animation: {
@@ -56,6 +68,7 @@ export default function NewAnimation() {
   } = useForm<CreateAnimationInput>({
     resolver: zodResolver(createAnimationSchema),
     defaultValues: {
+      missionKind: 'classique',
       prepTimeMin: 0,
       requiredParticipants: 4,
       plannedDurationMin: 60,
@@ -66,12 +79,45 @@ export default function NewAnimation() {
   })
 
   const scheduledAt = watch('scheduledAt')
-  const spontaneous = watch('spontaneous')
-  const isPast = !spontaneous && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+  const missionKind = watch('missionKind')
+  const isInstantMission = missionKind === 'spontanee_bdm'
+  const requiredParticipants = watch('requiredParticipants')
+  const isPast = !isInstantMission && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+
+  useEffect(() => {
+    if (isInstantMission) {
+      setValue('scheduledAt', undefined, { shouldValidate: true })
+      setValue('plannedDurationMin', 15, { shouldValidate: true })
+      setValue('prepTimeMin', 0, { shouldValidate: true })
+      setValue('requiredParticipants', 0, { shouldValidate: true })
+      setValue('type', 'petite', { shouldValidate: true })
+      setValue('pole', 'animation', { shouldValidate: true })
+      setValue('requestValidation', false)
+      setValue('pingRoles', false)
+      return
+    }
+
+    if (!requiredParticipants || requiredParticipants <= 0) {
+      setValue('requiredParticipants', 4, { shouldValidate: true })
+    }
+  }, [isInstantMission, requiredParticipants, setValue])
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
-      const result = await mutateAsync(data)
+      const instantMission = data.missionKind === 'spontanee_bdm'
+      const result = await mutateAsync({
+        ...data,
+        spontaneous: instantMission,
+        scheduledAt: instantMission ? undefined : data.scheduledAt,
+        plannedDurationMin: instantMission ? 15 : data.plannedDurationMin,
+        prepTimeMin: instantMission ? 0 : data.prepTimeMin,
+        requiredParticipants: instantMission ? 0 : data.requiredParticipants,
+        type: instantMission ? 'petite' : data.type,
+        pole: instantMission ? 'animation' : data.pole,
+        description: instantMission ? undefined : data.description,
+        requestValidation: instantMission ? false : data.requestValidation,
+        pingRoles: instantMission ? false : data.pingRoles,
+      })
       toast.success('Animation créée avec succès !')
       navigate(`/panel/animations/${result.animation.id}`)
     } catch (err) {
@@ -106,42 +152,41 @@ export default function NewAnimation() {
           </div>
 
           <div className="space-y-1.5">
+            <Label>Type de mission</Label>
             <Controller
-              name="spontaneous"
+              name="missionKind"
               control={control}
               render={({ field }) => (
-                <button
-                  type="button"
-                  onClick={() => {
-                    field.onChange(!field.value)
-                    if (!field.value) setValue('scheduledAt', undefined)
-                  }}
-                  className="flex items-start gap-3 w-full p-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-white/20 transition-colors text-left"
-                >
-                  <span className={cn(
-                    'mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border transition-all',
-                    field.value
-                      ? 'bg-cyan-500/20 border-cyan-500/50'
-                      : 'bg-white/[0.04] border-white/[0.15]',
-                  )}>
-                    {field.value && (
-                      <svg className="h-3 w-3 text-cyan-400" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-white/80">Animation spontanée</span>
-                    <span className="block text-xs text-white/40 mt-0.5">
-                      La date et l'heure seront celles de la création.
-                    </span>
-                  </span>
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {MISSION_KINDS.map((kind) => {
+                    const config = MISSION_KIND_CONFIG[kind]
+                    const selected = field.value === kind
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => field.onChange(kind)}
+                        className={cn(
+                          'p-4 rounded-xl border text-left transition-all',
+                          selected
+                            ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.1)]'
+                            : 'bg-white/[0.03] border-white/[0.08] hover:border-white/20',
+                        )}
+                      >
+                        <span className={cn('block text-sm font-bold', selected ? 'text-cyan-300' : 'text-white')}>
+                          {config.label}
+                        </span>
+                        <span className="block text-xs text-white/40 mt-1">{config.description}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               )}
             />
+            {errors.missionKind && <p className="text-xs text-red-400">{errors.missionKind.message}</p>}
           </div>
 
-          {!spontaneous && (
+          {!isInstantMission && (
             <div className="space-y-1.5">
               <Label>Date et heure de session</Label>
               <Controller
@@ -167,22 +212,24 @@ export default function NewAnimation() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Description de l'animation</Label>
-            <Textarea
-              id="description"
-              placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
-              rows={4}
-              {...register('description')}
-            />
-            {errors.description && (
-              <p className="text-xs text-red-400">{errors.description.message}</p>
-            )}
-          </div>
+          {!isInstantMission && (
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description de l'animation</Label>
+              <Textarea
+                id="description"
+                placeholder="Décris le contexte, les objectifs, le déroulement prévu..."
+                rows={4}
+                {...register('description')}
+              />
+              {errors.description && (
+                <p className="text-xs text-red-400">{errors.description.message}</p>
+              )}
+            </div>
+          )}
         </GlassCard>
 
         {/* Details */}
-        <GlassCard className="p-5 space-y-4">
+        {!isInstantMission && <GlassCard className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Détails</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -215,13 +262,12 @@ export default function NewAnimation() {
             </div>
           </div>
 
-          {/* Participants */}
           <div className="space-y-1.5">
             <Label htmlFor="requiredParticipants">Participants requis</Label>
             <Input
               id="requiredParticipants"
               type="number"
-              min={0}
+              min={1}
               max={100}
               placeholder="Ex: 4"
               {...register('requiredParticipants', { valueAsNumber: true })}
@@ -231,11 +277,13 @@ export default function NewAnimation() {
             )}
           </div>
 
-        </GlassCard>
+        </GlassCard>}
 
         {/* Server */}
         <GlassCard className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Serveur</h2>
+          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+            {isInstantMission ? 'Secteur' : 'Serveur'}
+          </h2>
           <Controller
             name="server"
             control={control}
@@ -292,7 +340,7 @@ export default function NewAnimation() {
         </GlassCard>
 
         {/* Type */}
-        <GlassCard className="p-5 space-y-3">
+        {!isInstantMission && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Type</h2>
           <Controller
             name="type"
@@ -319,10 +367,10 @@ export default function NewAnimation() {
             )}
           />
           {errors.type && <p className="text-xs text-red-400">{errors.type.message}</p>}
-        </GlassCard>
+        </GlassCard>}
 
         {/* Pole */}
-        <GlassCard className="p-5 space-y-3">
+        {!isInstantMission && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Pôle</h2>
           <Controller
             name="pole"
@@ -354,10 +402,10 @@ export default function NewAnimation() {
             )}
           />
           {errors.pole && <p className="text-xs text-red-400">{errors.pole.message}</p>}
-        </GlassCard>
+        </GlassCard>}
 
         {/* Validation — hidden for past dates */}
-        {!isPast && <GlassCard className="p-5">
+        {!isInstantMission && !isPast && <GlassCard className="p-5">
           <Controller
             name="requestValidation"
             control={control}
@@ -402,7 +450,7 @@ export default function NewAnimation() {
         </GlassCard>}
 
         {/* Ping roles — hidden for past dates */}
-        {!isPast && <GlassCard className="p-5">
+        {!isInstantMission && !isPast && <GlassCard className="p-5">
           <Controller
             name="pingRoles"
             control={control}
@@ -452,7 +500,7 @@ export default function NewAnimation() {
             Annuler
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : spontaneous ? 'Créer maintenant' : "Créer l'animation"}
+            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : isInstantMission ? 'Créer maintenant' : "Créer l'animation"}
           </Button>
         </div>
       </form>

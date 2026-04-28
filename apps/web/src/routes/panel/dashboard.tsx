@@ -321,7 +321,9 @@ export default function Dashboard() {
                       <VillageBadge village={anim.village} />
                       <span className="text-xs text-white/40 flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {anim.validated_participants_count ?? 0}/{anim.required_participants}
+                        {anim.required_participants > 0
+                          ? `${anim.validated_participants_count ?? 0}/${anim.required_participants}`
+                          : `${anim.validated_participants_count ?? 0} inscrit${(anim.validated_participants_count ?? 0) > 1 ? 's' : ''}`}
                       </span>
                     </div>
                   </div>

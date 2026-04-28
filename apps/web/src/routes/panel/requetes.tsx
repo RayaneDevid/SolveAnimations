@@ -52,7 +52,7 @@ const DESTINATIONS: Record<RequeteDestination, { label: string; color: string; b
   },
 }
 
-const CREATOR_ROLES = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'direction', 'gerance']
+const CREATOR_ROLES = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_bdm', 'bdm', 'direction', 'gerance']
 const DECIDER_ROLES = ['responsable', 'responsable_mj', 'direction', 'gerance']
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────

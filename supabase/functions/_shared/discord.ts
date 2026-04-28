@@ -6,10 +6,12 @@ const ROLE_IDS = {
   gerance:        Deno.env.get('DISCORD_ROLE_GERANCE')!,
   responsable:    Deno.env.get('DISCORD_ROLE_RESPONSABLE')!,
   responsable_mj: Deno.env.get('DISCORD_ROLE_RESPONSABLE_MJ')!,
+  responsable_bdm: Deno.env.get('DISCORD_ROLE_RESPONSABLE_BDM') ?? '1498316267411738735',
   senior:         Deno.env.get('DISCORD_ROLE_SENIOR')!,
   mj_senior:      Deno.env.get('DISCORD_ROLE_MJ_SENIOR')!,
   animateur:      Deno.env.get('DISCORD_ROLE_ANIMATEUR')!,
   mj:             Deno.env.get('DISCORD_ROLE_MJ')!,
+  bdm:            Deno.env.get('DISCORD_ROLE_BDM') ?? '1498316348735099010',
 }
 
 const ROLE_HIERARCHY: Record<string, number> = {
@@ -21,9 +23,11 @@ const ROLE_HIERARCHY: Record<string, number> = {
   mj_senior: 3,
   mj: 2,
   animateur: 1,
+  responsable_bdm: 0.2,
+  bdm: 0.1,
 }
 
-type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
+type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
 
 export type GuildMemberResult =
   | { ok: true; role: StaffRole; discordId: string; username: string; avatarUrl: string | null }

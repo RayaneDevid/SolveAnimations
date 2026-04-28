@@ -10,6 +10,8 @@ const ROLE_HIERARCHY: Record<string, number> = {
   mj_senior: 3,
   mj: 2,
   animateur: 1,
+  responsable_bdm: 0.2,
+  bdm: 0.1,
 }
 
 export function isResponsableRole(role: string): boolean {
@@ -18,7 +20,7 @@ export function isResponsableRole(role: string): boolean {
 
 export function requireRole(
   profile: Profile,
-  minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'mj' | 'animateur',
+  minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'mj' | 'animateur' | 'bdm',
 ): Response | null {
   if ((ROLE_HIERARCHY[profile.role] ?? 0) < ROLE_HIERARCHY[minRole]) {
     return errorResponse('FORBIDDEN', `Rôle requis : ${minRole}`)

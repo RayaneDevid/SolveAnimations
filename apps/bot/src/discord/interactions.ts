@@ -410,7 +410,7 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
     return;
   }
 
-  const staffRoles = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'direction', 'gerance'];
+  const staffRoles = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_bdm', 'bdm', 'direction', 'gerance'];
   if (!staffRoles.includes(profile.role)) {
     await interaction.editReply({ content: '❌ Tu n\'as pas accès au panel.' });
     return;

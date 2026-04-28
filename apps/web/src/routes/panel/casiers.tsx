@@ -48,7 +48,7 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj: 3,
 }
 
-type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj_senior' | 'mj'
+type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj_senior' | 'mj' | 'bdm'
 
 const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
   { key: 'all',         label: 'Tous',           matches: () => true },
@@ -57,6 +57,7 @@ const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) =>
   { key: 'animateur',   label: 'Animateurs',     matches: (r) => r === 'animateur' },
   { key: 'mj_senior',   label: 'MJ Senior',      matches: (r) => r === 'mj_senior' },
   { key: 'mj',          label: 'MJ',             matches: (r) => r === 'mj' },
+  { key: 'bdm',         label: 'BDM',            matches: (r) => ['responsable_bdm', 'bdm'].includes(r) },
 ]
 
 function WarningIndicator({ count, className }: { count: number; className?: string }) {

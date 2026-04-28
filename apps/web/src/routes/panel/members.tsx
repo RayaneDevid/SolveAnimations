@@ -21,6 +21,7 @@ import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
 const ANIM_ROLE_ORDER = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
 const MJ_ROLE_ORDER   = ['direction', 'gerance', 'responsable_mj', 'mj_senior', 'mj']
+const BDM_ROLE_ORDER  = ['responsable_bdm', 'bdm']
 
 type MemberSortMode = 'role' | 'quota' | 'name'
 
@@ -424,11 +425,13 @@ export default function Members() {
 
   const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
   const poleMjMembers   = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
+  const bdmMembers      = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
 
   const stats = {
     total: members.length,
     poleAnim: poleAnimMembers.length,
     poleMj: poleMjMembers.length,
+    bdm: bdmMembers.length,
     absent: members.filter((m) => m.isAbsent).length,
   }
 
@@ -443,11 +446,12 @@ export default function Members() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: 'Total actifs', value: stats.total, color: 'text-white' },
           { label: 'Pôle Animation', value: stats.poleAnim, color: 'text-violet-400' },
           { label: 'Pôle MJ', value: stats.poleMj, color: 'text-red-400' },
+          { label: 'BDM', value: stats.bdm, color: 'text-cyan-400' },
           { label: 'Absents', value: stats.absent, color: 'text-orange-400' },
         ].map(({ label, value, color }) => (
           <GlassCard key={label} className="p-3 text-center">
@@ -467,6 +471,7 @@ export default function Members() {
             <TabsList>
               <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
+              <TabsTrigger value="bdm">BDM ({bdmMembers.length})</TabsTrigger>
               <TabsTrigger value="former" className="flex items-center gap-1.5">
                 <History className="h-3.5 w-3.5" />
                 Anciens membres {former.length > 0 && `(${former.length})`}
@@ -504,6 +509,12 @@ export default function Members() {
           <TabsContent value="mj">
             <GlassCard className="overflow-hidden">
               <MemberTable members={poleMjMembers} onRemove={setRemovingMember} />
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="bdm">
+            <GlassCard className="overflow-hidden">
+              <MemberTable members={bdmMembers} onRemove={setRemovingMember} />
             </GlassCard>
           </TabsContent>
 

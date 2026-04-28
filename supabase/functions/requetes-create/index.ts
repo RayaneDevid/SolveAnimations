@@ -5,7 +5,18 @@ import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
-const CREATOR_ROLES = ['animateur', 'mj', 'senior', 'mj_senior']
+const CREATOR_ROLES = [
+  'animateur',
+  'mj',
+  'senior',
+  'mj_senior',
+  'responsable',
+  'responsable_mj',
+  'responsable_bdm',
+  'bdm',
+  'direction',
+  'gerance',
+]
 
 const VALID_SUBJECTS = [
   'grade_superieur_tkj',
@@ -32,7 +43,7 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   if (!CREATOR_ROLES.includes(profile.role))
-    return errorResponse('FORBIDDEN', 'Seuls les animateurs, MJ, seniors peuvent créer des requêtes')
+    return errorResponse('FORBIDDEN', 'Rôle insuffisant pour créer une requête')
 
   const body: Body = await req.json().catch(() => ({}))
   const { subject, destination, description } = body

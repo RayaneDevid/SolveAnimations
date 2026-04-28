@@ -7,7 +7,7 @@ export type Profile = {
   discord_id: string
   username: string
   avatar_url: string | null
-  role: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
+  role: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
   last_role_check_at: string
 }
 

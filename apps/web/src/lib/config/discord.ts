@@ -5,13 +5,15 @@ export const STAFF_ROLE_IDS = {
   gerance: import.meta.env.VITE_DISCORD_ROLE_GERANCE as string | undefined,
   responsable: import.meta.env.VITE_DISCORD_ROLE_RESPONSABLE as string | undefined,
   responsable_mj: import.meta.env.VITE_DISCORD_ROLE_RESPONSABLE_MJ as string | undefined,
+  responsable_bdm: import.meta.env.VITE_DISCORD_ROLE_RESPONSABLE_BDM as string | undefined,
   senior: import.meta.env.VITE_DISCORD_ROLE_SENIOR as string | undefined,
   mj_senior: import.meta.env.VITE_DISCORD_ROLE_MJ_SENIOR as string | undefined,
   animateur: import.meta.env.VITE_DISCORD_ROLE_ANIMATEUR as string | undefined,
   mj: import.meta.env.VITE_DISCORD_ROLE_MJ as string | undefined,
+  bdm: import.meta.env.VITE_DISCORD_ROLE_BDM as string | undefined,
 } as const
 
-export type StaffRoleKey = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'senior' | 'mj_senior' | 'animateur' | 'mj'
+export type StaffRoleKey = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
 
 export const ROLE_HIERARCHY: Record<StaffRoleKey, number> = {
   direction: 6,
@@ -22,6 +24,8 @@ export const ROLE_HIERARCHY: Record<StaffRoleKey, number> = {
   mj_senior: 3,
   mj: 2,
   animateur: 1,
+  responsable_bdm: 0.2,
+  bdm: 0.1,
 }
 
 export const ROLE_LABELS: Record<StaffRoleKey, string> = {
@@ -29,10 +33,12 @@ export const ROLE_LABELS: Record<StaffRoleKey, string> = {
   gerance: 'Gérance',
   responsable: 'Responsable Animation',
   responsable_mj: 'Responsable MJ',
+  responsable_bdm: 'Responsable BDM',
   senior: 'Animateur Senior',
   mj_senior: 'MJ Senior',
   animateur: 'Animateur',
   mj: 'MJ',
+  bdm: 'BDM',
 }
 
 export const ROLE_COLORS: Record<StaffRoleKey, string> = {
@@ -40,10 +46,12 @@ export const ROLE_COLORS: Record<StaffRoleKey, string> = {
   gerance: '#C084FC',
   responsable: '#F59E0B',
   responsable_mj: '#F59E0B',
+  responsable_bdm: '#06B6D4',
   senior: '#A855F7',
   mj_senior: '#F97316',
   animateur: '#3B82F6',
   mj: '#EF4444',
+  bdm: '#06B6D4',
 }
 
 export function hasRole(userRole: StaffRoleKey, required: StaffRoleKey): boolean {

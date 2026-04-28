@@ -134,7 +134,7 @@ export default function Calendar() {
           { label: 'Oto', color: 'bg-purple-800/40' },
           { label: 'Kiri', color: 'bg-teal-600/40' },
           { label: 'Temple', color: 'bg-pink-500/40' },
-          { label: 'Autre', color: 'bg-white/20' },
+          { label: 'Nukenin', color: 'bg-white/20' },
           { label: 'Tout le monde', color: 'bg-gradient-to-r from-cyan-500/40 to-violet-500/40' },
         ].map((l) => (
           <div key={l.label} className="flex items-center gap-1.5">

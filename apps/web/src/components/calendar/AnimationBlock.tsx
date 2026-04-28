@@ -24,7 +24,7 @@ const VILLAGE_LABELS: Record<string, string> = {
   oto: 'Oto',
   kiri: 'Kiri',
   temple_camelias: 'Temple',
-  autre: 'Autre',
+  autre: 'Nukenin',
   tout_le_monde: 'Tous',
 }
 

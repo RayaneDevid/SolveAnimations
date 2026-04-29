@@ -192,6 +192,10 @@ export interface MemberEntry {
     participationsValidated: number
     quotaMax: number | null
   }
+  weeklyTotals?: {
+    animationsCreated: number
+    hoursAnimated: number
+  }
   totalStats: {
     animationsCreated: number
     hoursAnimated: number

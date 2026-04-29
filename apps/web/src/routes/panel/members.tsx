@@ -19,8 +19,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
-const ANIM_ROLE_ORDER = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
-const MJ_ROLE_ORDER   = ['direction', 'gerance', 'responsable_mj', 'mj_senior', 'mj']
+const MANAGEMENT_ROLE_ORDER = ['direction', 'gerance']
+const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
+const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
 const BDM_ROLE_ORDER  = ['responsable_bdm', 'bdm']
 
 type MemberSortMode = 'role' | 'quota' | 'name'
@@ -202,7 +203,7 @@ function MemberTable({
     <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Rôle', 'Anim. (sem/tot)', 'Heures (sem/tot)', 'Quota', 'Absence', ''].map((h) => (
+          {['Membre', 'Rôle', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
             <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
               {h}
             </th>
@@ -236,11 +237,11 @@ function MemberTable({
               <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
               <td className="px-4 py-3 text-sm text-white/60">
                 <span className="text-white/90 font-medium">{m.weeklyStats.animationsCreated}</span>
-                <span className="text-white/30"> / {m.totalStats.animationsCreated}</span>
+                <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
               </td>
               <td className="px-4 py-3 text-sm text-white/60">
                 <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
-                <span className="text-white/30"> / {(m.totalStats.hoursAnimated / 60).toFixed(1)}h</span>
+                <span className="text-white/30"> / {((m.weeklyTotals?.hoursAnimated ?? 0) / 60).toFixed(1)}h</span>
               </td>
               <td className="px-4 py-3 w-32">
                 {quotaMax === null ? (
@@ -423,12 +424,14 @@ export default function Members() {
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
   const [sortMode, setSortMode] = useState<MemberSortMode>('role')
 
-  const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
-  const poleMjMembers   = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
-  const bdmMembers      = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
+  const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
+  const poleAnimMembers   = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
+  const poleMjMembers     = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
+  const bdmMembers        = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
 
   const stats = {
     total: members.length,
+    management: managementMembers.length,
     poleAnim: poleAnimMembers.length,
     poleMj: poleMjMembers.length,
     bdm: bdmMembers.length,
@@ -446,9 +449,10 @@ export default function Members() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
           { label: 'Total actifs', value: stats.total, color: 'text-white' },
+          { label: 'Direction/Gérance', value: stats.management, color: 'text-purple-400' },
           { label: 'Pôle Animation', value: stats.poleAnim, color: 'text-violet-400' },
           { label: 'Pôle MJ', value: stats.poleMj, color: 'text-red-400' },
           { label: 'BDM', value: stats.bdm, color: 'text-cyan-400' },
@@ -469,6 +473,7 @@ export default function Members() {
         <Tabs defaultValue="animation">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <TabsList>
+              <TabsTrigger value="management">Direction/Gérance ({managementMembers.length})</TabsTrigger>
               <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
               <TabsTrigger value="bdm">BDM ({bdmMembers.length})</TabsTrigger>
@@ -499,6 +504,12 @@ export default function Members() {
               ))}
             </div>
           </div>
+
+          <TabsContent value="management">
+            <GlassCard className="overflow-hidden">
+              <MemberTable members={managementMembers} onRemove={setRemovingMember} />
+            </GlassCard>
+          </TabsContent>
 
           <TabsContent value="animation">
             <GlassCard className="overflow-hidden">

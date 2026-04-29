@@ -79,10 +79,15 @@ Deno.serve(async (req) => {
 
   // Build per-user aggregates
   const weeklyAnimMap = new Map<string, { count: number; minutes: number }>()
+  let weeklyTotalAnimations = 0
+  let weeklyTotalMinutes = 0
   for (const a of weeklyAnims ?? []) {
     const existing = weeklyAnimMap.get(a.creator_id) ?? { count: 0, minutes: 0 }
+    const minutes = (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0)
     existing.count++
-    existing.minutes += (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0)
+    existing.minutes += minutes
+    weeklyTotalAnimations++
+    weeklyTotalMinutes += minutes
     weeklyAnimMap.set(a.creator_id, existing)
   }
 
@@ -135,6 +140,10 @@ Deno.serve(async (req) => {
         hoursAnimated: weekly.minutes + weeklyParticipations.minutes,
         participationsValidated: weeklyParticipations.count,
         quotaMax: QUOTA_MAX[p.role] ?? null,
+      },
+      weeklyTotals: {
+        animationsCreated: weeklyTotalAnimations,
+        hoursAnimated: weeklyTotalMinutes,
       },
       totalStats: {
         animationsCreated: totalAnimMap.get(p.id)?.count ?? 0,

@@ -471,11 +471,12 @@ function MemberTable({
   }
 
   return (
-    <table className="w-full">
+    <div className="overflow-x-auto">
+      <table className="min-w-[1120px] w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
           {['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
-            <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
+            <th key={h} className={`text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3 ${h ? 'text-left' : 'text-right'}`}>
               {h}
             </th>
           ))}
@@ -567,8 +568,8 @@ function MemberTable({
                   <span className="text-xs text-white/20">—</span>
                 )}
               </td>
-              <td className="px-4 py-3">
-                <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="text-xs gap-1.5 h-7">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
+                <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="text-xs gap-1.5 h-7 shrink-0">
                   <UserX className="h-3 w-3" />
                 </Button>
               </td>
@@ -576,7 +577,8 @@ function MemberTable({
           )
         })}
       </tbody>
-    </table>
+      </table>
+    </div>
   )
 }
 
@@ -635,11 +637,12 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
   }
 
   return (
-    <table className="w-full">
+    <div className="overflow-x-auto">
+      <table className="min-w-[1080px] w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
           {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.', 'Perms retirées', ''].map((h) => (
-            <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
+            <th key={h} className={`text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3 ${h ? 'text-left' : 'text-right'}`}>
               {h}
             </th>
           ))}
@@ -689,13 +692,13 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
                 />
               </div>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 text-right whitespace-nowrap">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleReactivate(m)}
                 disabled={reactivating}
-                className="text-xs gap-1.5 h-7 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                className="text-xs gap-1.5 h-7 shrink-0 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
               >
                 <RotateCcw className="h-3 w-3" />
                 Réactiver
@@ -704,7 +707,8 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
           </motion.tr>
         ))}
       </tbody>
-    </table>
+      </table>
+    </div>
   )
 }
 

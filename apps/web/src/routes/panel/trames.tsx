@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,11 +7,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   ScrollText, Plus, ExternalLink, User, Users, Search, Check,
   X, AlertTriangle, ChevronDown, ShieldCheck, Clock, Trash2,
+  Pencil,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useMemberDirectory, useTrameReports } from '@/hooks/queries/useAnimations'
-import { useCreateTrameReport, useDeleteTrameReport } from '@/hooks/mutations/useAnimationMutations'
+import { useCreateTrameReport, useDeleteTrameReport, useUpdateTrameReport } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -41,11 +42,15 @@ type CreateTrameFormValues = z.infer<typeof createTrameSchema>
 
 function TrameCard({
   report,
+  canEdit,
   canDelete,
+  onEdit,
   onDelete,
 }: {
   report: TrameReport
+  canEdit: boolean
   canDelete: boolean
+  onEdit: (report: TrameReport) => void
   onDelete: (report: TrameReport) => void
 }) {
   return (
@@ -121,6 +126,16 @@ function TrameCard({
               <ExternalLink className="h-3 w-3" />
               Document
             </a>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(report)}
+                className="h-8 w-8 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/45 hover:text-cyan-300 hover:border-cyan-400/25 hover:bg-cyan-400/10 transition-colors flex items-center justify-center"
+                title="Modifier le rapport"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
             {canDelete && (
               <button
                 type="button"
@@ -378,6 +393,253 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
   )
 }
 
+function EditTrameDialog({
+  report,
+  onClose,
+}: {
+  report: TrameReport | null
+  onClose: () => void
+}) {
+  const { data: members = [] } = useMemberDirectory()
+  const { mutateAsync, isPending } = useUpdateTrameReport()
+
+  const [coAuthorIds, setCoAuthorIds] = useState<string[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberListOpen, setMemberListOpen] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateTrameFormValues>({
+    resolver: zodResolver(createTrameSchema),
+  })
+
+  useEffect(() => {
+    if (!report) return
+    reset({
+      title: report.title,
+      documentUrl: report.document_url,
+      writingTimeMin: report.writing_time_min ?? 1,
+      validatedBy: report.validated_by ?? '',
+    })
+    setCoAuthorIds((report.co_authors ?? []).map((coAuthor) => coAuthor.id))
+    setMemberSearch('')
+    setMemberListOpen(false)
+  }, [report, reset])
+
+  const eligibleMembers = useMemo(() => {
+    if (!report) return []
+    const q = memberSearch.toLowerCase()
+    return members.filter(
+      (m) => m.id !== report.author_id && m.username.toLowerCase().includes(q),
+    )
+  }, [members, memberSearch, report])
+
+  const selectedMembers = useMemo(
+    () => members.filter((m) => coAuthorIds.includes(m.id)),
+    [members, coAuthorIds],
+  )
+
+  const toggleCoAuthor = (id: string) => {
+    setCoAuthorIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  const handleClose = () => {
+    setMemberSearch('')
+    setMemberListOpen(false)
+    onClose()
+  }
+
+  const onSubmit = async (data: CreateTrameFormValues) => {
+    if (!report) return
+    try {
+      await mutateAsync({
+        id: report.id,
+        title: data.title,
+        documentUrl: data.documentUrl,
+        writingTimeMin: data.writingTimeMin,
+        coAuthorIds,
+        validatedBy: data.validatedBy,
+      })
+      toast.success('Rapport de trame modifié')
+      handleClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la modification')
+    }
+  }
+
+  return (
+    <Dialog open={!!report} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-lg bg-[#0D0E14] border-white/[0.08]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Pencil className="h-4 w-4 text-cyan-400" />
+            Modifier le rapport de trame
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-title">Titre de la trame</Label>
+            <Input
+              id="edit-title"
+              placeholder="ex. La menace Akatsuki - Arc 1"
+              {...register('title')}
+            />
+            {errors.title && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.title.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-documentUrl">Lien du document</Label>
+            <Input
+              id="edit-documentUrl"
+              placeholder="https://docs.google.com/..."
+              {...register('documentUrl')}
+            />
+            {errors.documentUrl && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.documentUrl.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-writingTimeMin">Temps d'écriture <span className="text-red-400">*</span></Label>
+            <Input
+              id="edit-writingTimeMin"
+              type="number"
+              min={1}
+              max={10080}
+              placeholder="ex. 120"
+              {...register('writingTimeMin')}
+            />
+            {errors.writingTimeMin && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.writingTimeMin.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-validatedBy">Validé par <span className="text-red-400">*</span></Label>
+            <Input
+              id="edit-validatedBy"
+              placeholder="ex. Drackar"
+              {...register('validatedBy')}
+            />
+            {errors.validatedBy && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.validatedBy.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Co-auteurs</Label>
+            {selectedMembers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedMembers.map((m) => (
+                  <span
+                    key={m.id}
+                    className="inline-flex items-center gap-1.5 h-7 pl-1.5 pr-2 rounded-full text-xs bg-cyan-400/10 border border-cyan-400/20 text-cyan-300"
+                  >
+                    <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="xs" />
+                    {m.username}
+                    <button
+                      type="button"
+                      onClick={() => toggleCoAuthor(m.id)}
+                      className="ml-0.5 text-cyan-400/60 hover:text-cyan-400 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMemberListOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-3 h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white/40 hover:text-white/60 hover:border-white/[0.14] transition-colors"
+            >
+              <span>{selectedMembers.length === 0 ? 'Sélectionner des co-auteurs...' : `${selectedMembers.length} sélectionné${selectedMembers.length > 1 ? 's' : ''}`}</span>
+              <ChevronDown className={cn('h-4 w-4 transition-transform', memberListOpen && 'rotate-180')} />
+            </button>
+
+            {memberListOpen && (
+              <div className="border border-white/[0.08] rounded-lg bg-[#0D0E14] overflow-hidden">
+                <div className="p-2 border-b border-white/[0.06]">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher..."
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      className="w-full h-8 pl-8 pr-3 rounded-md bg-white/[0.04] border border-white/[0.06] text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-cyan-400/30"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {eligibleMembers.length === 0 ? (
+                    <p className="text-xs text-white/25 text-center py-6">Aucun membre trouvé</p>
+                  ) : (
+                    eligibleMembers.map((m) => {
+                      const checked = coAuthorIds.includes(m.id)
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => toggleCoAuthor(m.id)}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.04] transition-colors',
+                            checked && 'bg-cyan-400/5',
+                          )}
+                        >
+                          <div className={cn(
+                            'h-4 w-4 rounded border flex items-center justify-center shrink-0',
+                            checked ? 'bg-cyan-400 border-cyan-400' : 'border-white/[0.15] bg-transparent',
+                          )}>
+                            {checked && <Check className="h-3 w-3 text-[#0D0E14]" />}
+                          </div>
+                          <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="xs" />
+                          <span className="text-xs text-white/70">{m.username}</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" onClick={handleClose} disabled={isPending}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              <Check className="h-4 w-4" />
+              {isPending ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Trames() {
@@ -385,6 +647,7 @@ export default function Trames() {
   const { data: reports, isLoading, error } = useTrameReports()
   const { mutateAsync: deleteTrame, isPending: deleting } = useDeleteTrameReport()
   const [createOpen, setCreateOpen] = useState(false)
+  const [editingReport, setEditingReport] = useState<TrameReport | null>(null)
 
   const handleDelete = async (report: TrameReport) => {
     if (deleting) return
@@ -446,7 +709,9 @@ export default function Trames() {
               <TrameCard
                 key={report.id}
                 report={report}
+                canEdit={report.author_id === user.id || hasRole(role, 'responsable')}
                 canDelete={report.author_id === user.id || hasRole(role, 'responsable')}
+                onEdit={setEditingReport}
                 onDelete={handleDelete}
               />
             ))}
@@ -455,6 +720,7 @@ export default function Trames() {
       )}
 
       <CreateTrameDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditTrameDialog report={editingReport} onClose={() => setEditingReport(null)} />
     </div>
   )
 }

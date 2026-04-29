@@ -474,6 +474,18 @@ export function useCreateTrameReport() {
   })
 }
 
+export function useUpdateTrameReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { id: string; title: string; documentUrl: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
+      invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-update', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trame-reports'] })
+      invalidateMemberCaches(qc)
+    },
+  })
+}
+
 export function useDeleteTrameReport() {
   const qc = useQueryClient()
   return useMutation({

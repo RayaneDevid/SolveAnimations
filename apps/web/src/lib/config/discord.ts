@@ -31,7 +31,7 @@ export const ROLE_HIERARCHY: Record<StaffRoleKey, number> = {
 export const ROLE_LABELS: Record<StaffRoleKey, string> = {
   direction: 'Direction',
   gerance: 'Gérance',
-  responsable: 'Responsable Animation',
+  responsable: 'Responsable Anim.',
   responsable_mj: 'Responsable MJ',
   responsable_bdm: 'Responsable BDM',
   senior: 'Animateur Senior',

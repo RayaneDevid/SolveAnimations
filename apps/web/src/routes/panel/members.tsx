@@ -24,8 +24,8 @@ import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
 const MANAGEMENT_ROLE_ORDER = ['direction', 'gerance']
 const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
-const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
-const BDM_ROLE_ORDER  = ['responsable_bdm', 'bdm']
+const MJ_ROLE_ORDER = ['responsable_mj', 'mj_senior', 'mj']
+const BDM_ROLE_ORDER = ['responsable_bdm', 'bdm']
 
 type MemberSortMode = 'role' | 'quota' | 'name'
 type PayPole = 'animation' | 'mj'
@@ -195,11 +195,10 @@ function PrimaryRoleModal({
                 type="button"
                 onClick={() => handleSelect(availableRole)}
                 disabled={isPending || availableRole === member.role}
-                className={`rounded-full transition-all ${
-                  availableRole === member.role
+                className={`rounded-full transition-all ${availableRole === member.role
                     ? 'ring-2 ring-cyan-400/45 ring-offset-2 ring-offset-[#0d0f14]'
                     : 'opacity-70 hover:opacity-100'
-                } disabled:cursor-default`}
+                  } disabled:cursor-default`}
               >
                 <RoleBadge role={availableRole} gender={member.gender} size="md" />
               </button>
@@ -278,11 +277,10 @@ function PayPoleModal({
                   type="button"
                   onClick={() => handleSelect(option.value)}
                   disabled={isPending || active}
-                  className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                    active
+                  className={`rounded-xl border px-3 py-2 text-left transition-colors ${active
                       ? 'border-cyan-400/35 bg-cyan-400/10'
                       : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
-                  } disabled:cursor-default`}
+                    } disabled:cursor-default`}
                 >
                   <span className="block text-sm font-medium text-white/85">{option.label}</span>
                   <span className="block text-xs text-white/35">{option.helper}</span>
@@ -423,13 +421,12 @@ function PayPoleCell({
   const label = effectivePole === 'mj' ? 'MJ' : effectivePole === 'animation' ? 'Anim' : '—'
 
   const content = (
-    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${
-      effectivePole === 'mj'
+    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${effectivePole === 'mj'
         ? 'border-red-500/20 bg-red-500/10 text-red-300'
         : effectivePole === 'animation'
           ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
           : 'border-white/[0.08] bg-white/[0.03] text-white/30'
-    }`}>
+      }`}>
       {label}
     </span>
   )
@@ -551,8 +548,8 @@ function MemberTable({
                         quotaPct >= 100
                           ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
                           : quotaPct < 40
-                          ? 'bg-gradient-to-r from-red-400 to-orange-400'
-                          : undefined
+                            ? 'bg-gradient-to-r from-red-400 to-orange-400'
+                            : undefined
                       }
                     />
                   </div>
@@ -573,7 +570,6 @@ function MemberTable({
               <td className="px-4 py-3">
                 <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="text-xs gap-1.5 h-7">
                   <UserX className="h-3 w-3" />
-                  Retirer
                 </Button>
               </td>
             </motion.tr>
@@ -602,15 +598,13 @@ function PermCheckbox({
       onClick={() => onChange(!checked)}
       disabled={pending}
       title={label}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-50 ${
-        checked
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-50 ${checked
           ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
           : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:text-white/50 hover:border-white/20'
-      }`}
+        }`}
     >
-      <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${
-        checked ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'
-      }`}>
+      <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'
+        }`}>
         {checked && (
           <svg viewBox="0 0 10 8" className="h-2 w-2 text-white fill-current">
             <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -728,9 +722,9 @@ export default function Members() {
   const canManagePayPole = hasPermissionRole(permissionRoles, 'responsable')
 
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
-  const poleAnimMembers   = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
-  const poleMjMembers     = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
-  const bdmMembers        = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
+  const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
+  const poleMjMembers = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
+  const bdmMembers = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
 
   const stats = {
     total: members.length,
@@ -796,11 +790,10 @@ export default function Members() {
                   key={mode}
                   type="button"
                   onClick={() => setSortMode(mode)}
-                  className={`h-8 rounded-lg px-3 text-xs font-medium transition-colors ${
-                    sortMode === mode
+                  className={`h-8 rounded-lg px-3 text-xs font-medium transition-colors ${sortMode === mode
                       ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/25'
                       : 'text-white/45 hover:text-white/75'
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>

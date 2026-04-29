@@ -17,8 +17,8 @@ import { cn } from '@/lib/utils/cn'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
-  petite: 'Pour les animations spontanées',
-  moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
+  petite: 'Pour les animations courtes',
+  moyenne: 'Pour les tickets animations, les missions spontanées / BDM et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
 
@@ -90,7 +90,7 @@ export default function NewAnimation() {
       setValue('plannedDurationMin', 15, { shouldValidate: true })
       setValue('prepTimeMin', 0, { shouldValidate: true })
       setValue('requiredParticipants', 0, { shouldValidate: true })
-      setValue('type', 'petite', { shouldValidate: true })
+      setValue('type', 'moyenne', { shouldValidate: true })
       setValue('pole', 'animation', { shouldValidate: true })
       setValue('requestValidation', false)
       setValue('pingRoles', false)

@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   const resolvedScheduledAt = isInstantMission ? new Date().toISOString() : scheduledAt
   const resolvedPlannedDurationMin = isInstantMission ? 15 : plannedDurationMin
   const resolvedRequiredParticipants = isInstantMission ? 0 : requiredParticipants
-  const resolvedType = isInstantMission ? 'petite' : type
+  const resolvedType = isInstantMission ? 'moyenne' : type
   const resolvedPole = isInstantMission ? 'animation' : pole
   const shouldPingRoles = isInstantMission ? false : pingRoles
 

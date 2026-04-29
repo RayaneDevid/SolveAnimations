@@ -37,6 +37,8 @@ export const queryKeys = {
   },
   calendar: {
     week: (weekStart: string) => ['calendar', weekStart] as const,
+    availabilityAll: ['calendar', 'availability'] as const,
+    availability: (day?: string) => ['calendar', 'availability', day ?? 'current'] as const,
   },
   messages: {
     forAnimation: (animationId: string) => ['messages', animationId] as const,

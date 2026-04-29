@@ -34,6 +34,22 @@ export function useAnimations(filters: AnimationFilters = {}) {
   })
 }
 
+export interface CalendarAvailability {
+  day: string
+  occupiedCount: number
+  presentCount: number
+  absentCount: number
+  totalUsers: number
+  activeAnimationCount: number
+}
+
+export function useCalendarAvailability(params: { day: string; from: string; to: string }) {
+  return useQuery({
+    queryKey: queryKeys.calendar.availability(params.day),
+    queryFn: () => invokeEdge<CalendarAvailability>('calendar-availability', params),
+  })
+}
+
 export function useAnimation(id: string) {
   return useQuery({
     queryKey: queryKeys.animations.detail(id),

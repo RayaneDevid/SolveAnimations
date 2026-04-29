@@ -30,6 +30,7 @@ export function useRealtimeSync() {
         (payload) => {
           const record = (payload.new ?? payload.old) as { id?: string } | null
           invalidateAnimationCaches(qc, record?.id)
+          qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
           invalidateStatsCaches(qc)
         },
       )
@@ -41,6 +42,7 @@ export function useRealtimeSync() {
           if (record?.animation_id) {
             invalidateAnimationCaches(qc, record.animation_id)
           }
+          qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
           invalidateStatsCaches(qc)
         },
       )
@@ -58,6 +60,7 @@ export function useRealtimeSync() {
         () => {
           qc.invalidateQueries({ queryKey: ['absences'] })
           qc.invalidateQueries({ queryKey: queryKeys.members.list })
+          qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
         },
       )
       .on(
@@ -80,6 +83,7 @@ export function useRealtimeSync() {
           qc.invalidateQueries({ queryKey: queryKeys.members.directory })
           qc.invalidateQueries({ queryKey: queryKeys.members.former })
           qc.invalidateQueries({ queryKey: ['seniors'] })
+          qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
           invalidateStatsCaches(qc)
         },
       )

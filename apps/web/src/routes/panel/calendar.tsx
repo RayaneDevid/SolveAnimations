@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { CalendarCheck, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
 import { addDays, format, isSameDay } from 'date-fns'
-import { useAnimations } from '@/hooks/queries/useAnimations'
+import { fr } from 'date-fns/locale'
+import { useAnimations, useCalendarAvailability } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { WeekGrid } from '@/components/calendar/WeekGrid'
 import { WeekNavigator } from '@/components/calendar/WeekNavigator'
@@ -49,6 +50,18 @@ export default function Calendar() {
   const animations = data?.animations ?? []
   const todayRpDay = rpDayFromDate(new Date())
   const isSelectedToday = isSameDay(selectedDayDate, todayRpDay)
+  const availabilityDayDate = mode === 'day'
+    ? selectedDayDate
+    : isCurrentWeek()
+      ? todayRpDay
+      : rpDayFromDate(bounds.start)
+  const availabilityBounds = rpDayBounds(availabilityDayDate)
+  const availabilityDay = dateInputValue(availabilityDayDate)
+  const { data: availability, isLoading: availabilityLoading } = useCalendarAvailability({
+    day: availabilityDay,
+    from: availabilityBounds.start.toISOString(),
+    to: availabilityBounds.end.toISOString(),
+  })
 
   const goPrevDay = () => setSelectedDay(dateInputValue(addDays(selectedDayDate, -1)))
   const goNextDay = () => setSelectedDay(dateInputValue(addDays(selectedDayDate, 1)))
@@ -64,6 +77,21 @@ export default function Calendar() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div
+            className="h-9 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3"
+            title={`${availability?.activeAnimationCount ?? 0} animation(s) ouverte(s), en débrief ou en cours sur la session du ${format(availabilityDayDate, 'dd/MM/yyyy', { locale: fr })}`}
+          >
+            <Users className="h-4 w-4 text-cyan-400" />
+            <span className="text-sm font-semibold text-white/90">
+              {availabilityLoading
+                ? '...'
+                : `${availability?.occupiedCount ?? 0} / ${availability?.presentCount ?? 0}`}
+            </span>
+            <span className="text-xs text-white/45">
+              occupés
+            </span>
+          </div>
+
           <Tabs value={mode} onValueChange={(value) => setMode(value as CalendarMode)}>
             <TabsList>
               <TabsTrigger value="week">Semaine</TabsTrigger>

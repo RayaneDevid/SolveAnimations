@@ -5,6 +5,7 @@ export type EdgeFunctionName =
   | 'auth-me'
   | 'auth-validate-staff'
   | 'animations-list'
+  | 'calendar-availability'
   | 'animations-get'
   | 'animations-create'
   | 'animations-update'

@@ -112,7 +112,7 @@ export default function NewAnimation() {
         plannedDurationMin: instantMission ? 15 : data.plannedDurationMin,
         prepTimeMin: instantMission ? 0 : data.prepTimeMin,
         requiredParticipants: instantMission ? 0 : data.requiredParticipants,
-        type: instantMission ? 'petite' : data.type,
+        type: instantMission ? 'moyenne' : data.type,
         pole: instantMission ? 'animation' : data.pole,
         description: data.description,
         requestValidation: instantMission ? false : data.requestValidation,

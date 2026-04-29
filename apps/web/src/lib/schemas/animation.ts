@@ -93,6 +93,7 @@ export const absenceSchema = z
   .object({
     fromDate: z.coerce.date({ required_error: 'Date de début requise' }),
     toDate: z.coerce.date({ required_error: 'Date de fin requise' }),
+    userId: z.string().optional(),
     reason: z.string().trim().max(300).optional(),
   })
   .refine((v) => v.toDate >= v.fromDate, {

@@ -4,9 +4,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { isAfter, parseISO } from 'date-fns'
-import { useAbsences, useAbsencesSummary } from '@/hooks/queries/useAnimations'
+import { useAbsences, useAbsencesSummary, useMemberDirectory } from '@/hooks/queries/useAnimations'
 import { useCreateAbsence, useDeleteAbsence } from '@/hooks/mutations/useAnimationMutations'
 import { absenceSchema, type AbsenceInput } from '@/lib/schemas/animation'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/utils/format'
+import { hasRole } from '@/lib/config/discord'
 import type { UserAbsence } from '@/types/database'
 
 type SummaryMember = {
@@ -40,6 +42,9 @@ function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id
         {absence.reason && (
           <p className="text-xs text-white/40 mt-0.5 truncate">{absence.reason}</p>
         )}
+        <p className="text-[11px] text-white/25 mt-1">
+          Déclarée par {absence.declarer?.username ?? 'inconnu'}
+        </p>
       </div>
       {!isPast && (
         <button
@@ -54,7 +59,10 @@ function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id
 }
 
 function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, role } = useRequiredAuth()
   const { mutateAsync, isPending } = useCreateAbsence()
+  const canDeclareForOther = hasRole(role, 'senior')
+  const { data: members = [] } = useMemberDirectory()
   const {
     register,
     handleSubmit,
@@ -62,20 +70,23 @@ function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => v
     formState: { errors },
   } = useForm<AbsenceInput>({
     resolver: zodResolver(absenceSchema),
+    defaultValues: { userId: user.id },
   })
 
   const onSubmit = async (data: AbsenceInput) => {
     try {
+      const targetUserId = canDeclareForOther ? data.userId : undefined
       await mutateAsync({
         fromDate: data.fromDate.toISOString().split('T')[0],
         toDate: data.toDate.toISOString().split('T')[0],
         reason: data.reason,
+        userId: targetUserId && targetUserId !== user.id ? targetUserId : undefined,
       })
-      toast.success('Absence déclarée !')
-      reset()
+      toast.success(targetUserId && targetUserId !== user.id ? 'Absence déclarée pour le membre !' : 'Absence déclarée !')
+      reset({ userId: user.id })
       onClose()
     } catch (err) {
-      toast.error('Erreur lors de la création')
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création')
     }
   }
 
@@ -86,6 +97,26 @@ function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => v
           <DialogTitle>Déclarer une absence</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {canDeclareForOther && (
+            <div className="space-y-1.5">
+              <Label htmlFor="userId">Membre</Label>
+              <select
+                id="userId"
+                {...register('userId')}
+                className="w-full h-10 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-white/90 focus:outline-none focus:border-cyan-500/50 [color-scheme:dark]"
+              >
+                <option value={user.id} className="bg-[#1a1b1f]">Moi-même</option>
+                {members
+                  .filter((member) => member.id !== user.id)
+                  .map((member) => (
+                    <option key={member.id} value={member.id} className="bg-[#1a1b1f]">
+                      {member.username}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="fromDate">Du</Label>

@@ -104,10 +104,12 @@ export interface AnimationReport {
 export interface UserAbsence {
   id: string
   user_id: string
+  declared_by: string | null
   from_date: string
   to_date: string
   reason: string | null
   created_at: string
+  declarer?: { id: string; username: string; avatar_url: string | null } | null
 }
 
 export interface UserWarning {
@@ -183,6 +185,7 @@ export interface MemberEntry {
   lastRoleCheckAt: string
   isAbsent: boolean
   absenceReason: string | null
+  absenceDeclaredBy: string | null
   warningCount: number
   steamId: string | null
   arrivalDate: string | null

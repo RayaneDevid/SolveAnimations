@@ -63,7 +63,10 @@ Deno.serve(async (req) => {
 
   const { data, error } = await db
     .from('user_absences')
-    .select('*')
+    .select(`
+      *,
+      declarer:profiles!user_absences_declared_by_fkey(id, username, avatar_url)
+    `)
     .eq('user_id', targetId)
     .order('from_date', { ascending: false })
 

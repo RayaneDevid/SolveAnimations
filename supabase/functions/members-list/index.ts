@@ -60,16 +60,19 @@ Deno.serve(async (req) => {
   // Current absences (today falls between from_date and to_date)
   const { data: absences } = await db
     .from('user_absences')
-    .select('user_id, from_date, to_date, reason')
+    .select('user_id, from_date, to_date, reason, declared_by, declarer:profiles!user_absences_declared_by_fkey(username)')
     .lte('from_date', today)
     .gte('to_date', today)
     .in('user_id', profileIds)
 
   const absentIds = new Set((absences ?? []).map((a) => a.user_id))
   const absenceReasonMap = new Map<string, string | null>()
+  const absenceDeclaredByMap = new Map<string, string | null>()
   for (const absence of absences ?? []) {
     if (!absenceReasonMap.has(absence.user_id)) {
       absenceReasonMap.set(absence.user_id, absence.reason ?? null)
+      const declarer = absence.declarer as { username?: string | null } | null
+      absenceDeclaredByMap.set(absence.user_id, declarer?.username ?? null)
     }
   }
 
@@ -138,6 +141,7 @@ Deno.serve(async (req) => {
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),
       absenceReason: absenceReasonMap.get(p.id) ?? null,
+      absenceDeclaredBy: absenceDeclaredByMap.get(p.id) ?? null,
       warningCount: warningCountMap.get(p.id) ?? 0,
       steamId: p.steam_id ?? null,
       arrivalDate: p.arrival_date ?? null,

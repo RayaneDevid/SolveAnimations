@@ -268,11 +268,12 @@ export function useSubmitReport() {
 export function useCreateAbsence() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { fromDate: string; toDate: string; reason?: string }) =>
+    mutationFn: (body: { fromDate: string; toDate: string; reason?: string; userId?: string }) =>
       invokeEdge<object>('absences-create', {
         from_date: body.fromDate,
         to_date: body.toDate,
         reason: body.reason,
+        ...(body.userId ? { user_id: body.userId } : {}),
       }),
     onSuccess: () => {
       invalidateAbsenceCaches(qc)

@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatDate } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 
@@ -186,15 +187,35 @@ function ProfileTooltip({ member: m }: { member: MemberEntry }) {
   )
 }
 
-function AbsenceBadge({ reason, declaredBy }: { reason: string | null; declaredBy: string | null }) {
+function AbsenceBadge({
+  reason,
+  declaredBy,
+  fromDate,
+  toDate,
+}: {
+  reason: string | null
+  declaredBy: string | null
+  fromDate: string | null
+  toDate: string | null
+}) {
+  const dateLabel = fromDate && toDate
+    ? `${formatDate(fromDate, 'dd/MM')} → ${formatDate(toDate, 'dd/MM')}`
+    : null
+
   return (
     <Tooltip delayDuration={100}>
       <TooltipTrigger asChild>
         <span className="inline-flex cursor-help rounded-full border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-400">
-          Absent
+          Absent{dateLabel ? ` · ${dateLabel}` : ''}
         </span>
       </TooltipTrigger>
       <TooltipContent side="left" className="max-w-xs p-3">
+        {dateLabel && (
+          <>
+            <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-1">Dates</p>
+            <p className="mb-2 text-sm text-white/80">{dateLabel}</p>
+          </>
+        )}
         <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-1">Raison</p>
         <p className="text-sm text-white/80">{reason?.trim() || 'Aucune raison renseignée'}</p>
         <p className="mt-2 text-xs text-white/35">
@@ -286,7 +307,12 @@ function MemberTable({
               </td>
               <td className="px-4 py-3">
                 {m.isAbsent ? (
-                  <AbsenceBadge reason={m.absenceReason} declaredBy={m.absenceDeclaredBy} />
+                  <AbsenceBadge
+                    reason={m.absenceReason}
+                    declaredBy={m.absenceDeclaredBy}
+                    fromDate={m.absenceFromDate}
+                    toDate={m.absenceToDate}
+                  />
                 ) : (
                   <span className="text-xs text-white/20">—</span>
                 )}

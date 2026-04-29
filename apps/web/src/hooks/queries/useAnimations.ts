@@ -94,10 +94,10 @@ export function useAbsences(userId?: string) {
 export interface AbsencesSummary {
   absentCount: number
   totalStaff: number
-  absentMembers: { username: string; avatar_url: string | null; role?: string | null }[]
+  absentMembers: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
   absentByPole?: {
-    animation: { username: string; avatar_url: string | null; role?: string | null }[]
-    mj: { username: string; avatar_url: string | null; role?: string | null }[]
+    animation: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
+    mj: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
   }
   totalByPole?: {
     animation: number

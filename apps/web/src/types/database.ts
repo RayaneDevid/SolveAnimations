@@ -186,6 +186,8 @@ export interface MemberEntry {
   isAbsent: boolean
   absenceReason: string | null
   absenceDeclaredBy: string | null
+  absenceFromDate: string | null
+  absenceToDate: string | null
   warningCount: number
   steamId: string | null
   arrivalDate: string | null

@@ -22,6 +22,8 @@ import type { UserAbsence } from '@/types/database'
 type SummaryMember = {
   username: string
   avatar_url: string | null
+  from_date: string
+  to_date: string
 }
 
 function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id: string) => void }) {
@@ -169,6 +171,9 @@ function MemberPill({ member }: { member: SummaryMember }) {
         <div className="h-4 w-4 rounded-full bg-white/10" />
       )}
       <span className="text-xs text-white/70">{member.username}</span>
+      <span className="text-[10px] text-white/30">
+        {formatDate(member.from_date, 'dd/MM')} → {formatDate(member.to_date, 'dd/MM')}
+      </span>
     </div>
   )
 }

@@ -60,19 +60,26 @@ Deno.serve(async (req) => {
   // Current absences (today falls between from_date and to_date)
   const { data: absences } = await db
     .from('user_absences')
-    .select('user_id, from_date, to_date, reason, declared_by, declarer:profiles!user_absences_declared_by_fkey(username)')
+    .select('user_id, from_date, to_date, reason, declared_by')
     .lte('from_date', today)
     .gte('to_date', today)
     .in('user_id', profileIds)
 
+  const declarerIds = Array.from(new Set((absences ?? []).map((absence) => absence.declared_by).filter(Boolean)))
+  const { data: declarers } = declarerIds.length > 0
+    ? await db.from('profiles').select('id, username').in('id', declarerIds)
+    : { data: [] }
+  const declarerMap = new Map((declarers ?? []).map((declarer) => [declarer.id, declarer.username]))
+
   const absentIds = new Set((absences ?? []).map((a) => a.user_id))
   const absenceReasonMap = new Map<string, string | null>()
   const absenceDeclaredByMap = new Map<string, string | null>()
+  const absenceDatesMap = new Map<string, { fromDate: string; toDate: string }>()
   for (const absence of absences ?? []) {
     if (!absenceReasonMap.has(absence.user_id)) {
       absenceReasonMap.set(absence.user_id, absence.reason ?? null)
-      const declarer = absence.declarer as { username?: string | null } | null
-      absenceDeclaredByMap.set(absence.user_id, declarer?.username ?? null)
+      absenceDeclaredByMap.set(absence.user_id, absence.declared_by ? declarerMap.get(absence.declared_by) ?? null : null)
+      absenceDatesMap.set(absence.user_id, { fromDate: absence.from_date, toDate: absence.to_date })
     }
   }
 
@@ -142,6 +149,8 @@ Deno.serve(async (req) => {
       isAbsent: absentIds.has(p.id),
       absenceReason: absenceReasonMap.get(p.id) ?? null,
       absenceDeclaredBy: absenceDeclaredByMap.get(p.id) ?? null,
+      absenceFromDate: absenceDatesMap.get(p.id)?.fromDate ?? null,
+      absenceToDate: absenceDatesMap.get(p.id)?.toDate ?? null,
       warningCount: warningCountMap.get(p.id) ?? 0,
       steamId: p.steam_id ?? null,
       arrivalDate: p.arrival_date ?? null,

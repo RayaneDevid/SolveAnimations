@@ -61,6 +61,7 @@ export default function EditAnimation() {
       requiredParticipants: a.required_participants,
       server: a.server,
       type: a.type,
+      pole: a.pole,
       prepTimeMin: a.prep_time_min,
       village: a.village,
       description: a.description ?? undefined,
@@ -180,6 +181,9 @@ export default function EditAnimation() {
                 max={600}
                 {...register('prepTimeMin', { valueAsNumber: true })}
               />
+              {errors.prepTimeMin && (
+                <p className="text-xs text-red-400">{errors.prepTimeMin.message}</p>
+              )}
             </div>
           </div>
 

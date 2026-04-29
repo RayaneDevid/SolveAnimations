@@ -1,6 +1,7 @@
 import { REST, Routes, SlashCommandBuilder } from 'discord.js';
 import { env } from './config/env.js';
 import client from './discord/client.js';
+import { startDiscordProfileSyncScheduler } from './discord/profile-sync.js';
 import { startAnimationReminderScheduler } from './discord/reminders.js';
 import { createFastifyServer } from './http/server.js';
 
@@ -42,11 +43,14 @@ async function bootstrap(): Promise<void> {
 
   const reminderTimer = startAnimationReminderScheduler();
   console.log('✅ Animation reminder scheduler started.');
+  const profileSyncTimer = startDiscordProfileSyncScheduler();
+  console.log('✅ Discord profile sync scheduler started.');
 
   // 3. Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`\n[${signal}] Shutting down...`);
     clearInterval(reminderTimer);
+    clearInterval(profileSyncTimer);
     await app.close();
     await client.destroy();
     process.exit(0);

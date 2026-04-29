@@ -471,114 +471,115 @@ function MemberTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-[1120px] w-full">
-      <thead>
-        <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
-            <th key={h} className={`text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3 ${h ? 'text-left' : 'text-right'}`}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {members.map((m, i) => {
-          const quotaMax = m.weeklyStats.quotaMax
-          const quota = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
-          const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
-          const missionsCount = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
-          return (
-            <motion.tr
-              key={m.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.02 }}
-              className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
-            >
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-sm font-medium text-white/90 truncate">{m.username}</span>
-                    <GenderIcon gender={m.gender} />
-                    {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
-                    <ProfileTooltip member={m} />
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <RoleCell
-                  member={m}
-                  canManagePrimaryRole={canManagePrimaryRole}
-                  onChangeRole={onChangeRole}
-                />
-              </td>
-              <td className="px-4 py-3">
-                <PayPoleCell
-                  member={m}
-                  canManagePayPole={canManagePayPole}
-                  onChangePayPole={onChangePayPole}
-                />
-              </td>
-              <td className="px-4 py-3 text-sm text-white/40 whitespace-nowrap">
-                {m.lastActivityAt
-                  ? formatDistanceToNow(new Date(m.lastActivityAt), { addSuffix: true, locale: fr })
-                  : '—'}
-              </td>
-              <td className="px-4 py-3 text-sm text-white/60">
-                <span className="text-white/90 font-medium">{missionsCount}</span>
-                <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
-              </td>
-              <td className="px-4 py-3 text-sm text-white/60">
-                <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
-                <span className="text-white/30"> / {((m.weeklyTotals?.hoursAnimated ?? 0) / 60).toFixed(1)}h</span>
-              </td>
-              <td className="px-4 py-3 w-32">
-                {quotaMax === null ? (
-                  <span className="text-xs text-white/30">Illimité</span>
-                ) : (
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/60">{quota}/{quotaMax}</span>
+    <table className="w-full">
+        <thead>
+          <tr className="border-b border-white/[0.06]">
+            {['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
+              <th
+                key={h}
+                className={`text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3 ${h ? 'text-left' : 'w-14 text-right'}`}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {members.map((m, i) => {
+            const quotaMax = m.weeklyStats.quotaMax
+            const quota = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
+            const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
+            const missionsCount = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
+            return (
+              <motion.tr
+                key={m.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.02 }}
+                className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm font-medium text-white/90 truncate">{m.username}</span>
+                      <GenderIcon gender={m.gender} />
+                      {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
+                      <ProfileTooltip member={m} />
                     </div>
-                    <Progress
-                      value={quotaPct}
-                      className="h-1"
-                      indicatorClassName={
-                        quotaPct >= 100
-                          ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                          : quotaPct < 40
-                            ? 'bg-gradient-to-r from-red-400 to-orange-400'
-                            : undefined
-                      }
-                    />
                   </div>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                {m.isAbsent ? (
-                  <AbsenceBadge
-                    reason={m.absenceReason}
-                    declaredBy={m.absenceDeclaredBy}
-                    fromDate={m.absenceFromDate}
-                    toDate={m.absenceToDate}
+                </td>
+                <td className="px-4 py-3">
+                  <RoleCell
+                    member={m}
+                    canManagePrimaryRole={canManagePrimaryRole}
+                    onChangeRole={onChangeRole}
                   />
-                ) : (
-                  <span className="text-xs text-white/20">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3 text-right whitespace-nowrap">
-                <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="text-xs gap-1.5 h-7 shrink-0">
-                  <UserX className="h-3 w-3" />
-                </Button>
-              </td>
-            </motion.tr>
-          )
-        })}
-      </tbody>
+                </td>
+                <td className="px-4 py-3">
+                  <PayPoleCell
+                    member={m}
+                    canManagePayPole={canManagePayPole}
+                    onChangePayPole={onChangePayPole}
+                  />
+                </td>
+                <td className="px-4 py-3 text-sm text-white/40 whitespace-nowrap">
+                  {m.lastActivityAt
+                    ? formatDistanceToNow(new Date(m.lastActivityAt), { addSuffix: true, locale: fr })
+                    : '—'}
+                </td>
+                <td className="px-4 py-3 text-sm text-white/60">
+                  <span className="text-white/90 font-medium">{missionsCount}</span>
+                  <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
+                </td>
+                <td className="px-4 py-3 text-sm text-white/60">
+                  <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
+                  <span className="text-white/30"> / {((m.weeklyTotals?.hoursAnimated ?? 0) / 60).toFixed(1)}h</span>
+                </td>
+                <td className="px-4 py-3 w-32">
+                  {quotaMax === null ? (
+                    <span className="text-xs text-white/30">Illimité</span>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-white/60">{quota}/{quotaMax}</span>
+                      </div>
+                      <Progress
+                        value={quotaPct}
+                        className="h-1"
+                        indicatorClassName={
+                          quotaPct >= 100
+                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                            : quotaPct < 40
+                              ? 'bg-gradient-to-r from-red-400 to-orange-400'
+                              : undefined
+                        }
+                      />
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {m.isAbsent ? (
+                    <AbsenceBadge
+                      reason={m.absenceReason}
+                      declaredBy={m.absenceDeclaredBy}
+                      fromDate={m.absenceFromDate}
+                      toDate={m.absenceToDate}
+                    />
+                  ) : (
+                    <span className="text-xs text-white/20">—</span>
+                  )}
+                </td>
+                <td className="w-14 px-3 py-3 text-right whitespace-nowrap">
+                  <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="h-7 w-8 shrink-0 px-0">
+                    <UserX className="h-3 w-3" />
+                  </Button>
+                </td>
+              </motion.tr>
+            )
+          })}
+        </tbody>
       </table>
-    </div>
   )
 }
 
@@ -637,8 +638,7 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-[1080px] w-full">
+    <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
           {['Membre', 'Ancien rôle', 'Raison', 'Retiré par', 'Date', 'Total anim.', 'Perms retirées', ''].map((h) => (
@@ -707,8 +707,7 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
           </motion.tr>
         ))}
       </tbody>
-      </table>
-    </div>
+    </table>
   )
 }
 
@@ -740,7 +739,7 @@ export default function Members() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 w-full max-w-[1600px] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Users className="h-6 w-6 text-cyan-400" />

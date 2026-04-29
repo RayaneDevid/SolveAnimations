@@ -54,13 +54,17 @@ Deno.serve(async (req) => {
   // Check if this Discord user was previously deactivated
   const { data: existingProfile } = await db
     .from('profiles')
-    .select('is_active')
+    .select('is_active, role')
     .eq('id', user.id)
     .single()
 
   if (existingProfile && !existingProfile.is_active) {
     return errorResponse('FORBIDDEN', 'Ton accès a été révoqué.')
   }
+
+  const selectedRole = existingProfile?.role && memberResult.availableRoles.includes(existingProfile.role)
+    ? existingProfile.role
+    : memberResult.role
 
   const { data: profile, error: upsertError } = await db
     .from('profiles')
@@ -69,7 +73,8 @@ Deno.serve(async (req) => {
       discord_id: memberResult.discordId,
       username: memberResult.username,
       avatar_url: memberResult.avatarUrl,
-      role: memberResult.role,
+      role: selectedRole,
+      available_roles: memberResult.availableRoles,
       last_role_check_at: new Date().toISOString(),
       last_login_at: new Date().toISOString(),
     }, { onConflict: 'id' })

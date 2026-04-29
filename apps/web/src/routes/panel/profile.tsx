@@ -11,6 +11,7 @@ import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getRoleLabel, type StaffRoleKey } from '@/lib/config/discord'
 
 type PreferredRole = 'homme' | 'femme' | 'autre'
 
@@ -21,12 +22,15 @@ export default function ProfilePage() {
   const [steamId, setSteamId] = useState(user.steam_id ?? '')
   const [arrivalDate, setArrivalDate] = useState(user.arrival_date ?? '')
   const [gender, setGender] = useState<PreferredRole | null>(user.gender ?? null)
+  const [primaryRole, setPrimaryRole] = useState<StaffRoleKey>(role)
+  const availableRoles = (user.available_roles?.length ? user.available_roles : [role]) as StaffRoleKey[]
 
   useEffect(() => {
     setSteamId(user.steam_id ?? '')
     setArrivalDate(user.arrival_date ?? '')
     setGender(user.gender ?? null)
-  }, [user.steam_id, user.arrival_date, user.gender])
+    setPrimaryRole(role)
+  }, [user.steam_id, user.arrival_date, user.gender, role])
 
   const handleSave = async () => {
     try {
@@ -34,6 +38,7 @@ export default function ProfilePage() {
         steam_id: steamId.trim() || null,
         arrival_date: arrivalDate || null,
         gender: gender ?? null,
+        primary_role: primaryRole,
       })
       toast.success('Profil mis à jour')
     } catch (err) {
@@ -108,6 +113,31 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {availableRoles.length > 1 && (
+          <div className="space-y-2">
+            <Label className="text-white/70">Rôle principal sur le panel</Label>
+            <div className="flex flex-wrap gap-2">
+              {availableRoles.map((availableRole) => (
+                <button
+                  key={availableRole}
+                  type="button"
+                  onClick={() => setPrimaryRole(availableRole)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    primaryRole === availableRole
+                      ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-200'
+                      : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:text-white/75'
+                  }`}
+                >
+                  {getRoleLabel(availableRole, gender)}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-white/30">
+              Ce rôle sert aux quotas, classements, permissions et affichages du panel.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label className="text-white/70">Steam ID 64</Label>

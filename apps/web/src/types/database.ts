@@ -19,6 +19,7 @@ export interface Profile {
   username: string
   avatar_url: string | null
   role: StaffRoleKey
+  available_roles: StaffRoleKey[]
   last_role_check_at: string
   created_at: string
   last_login_at: string

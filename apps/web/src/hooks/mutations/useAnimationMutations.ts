@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
+import { useAuthStore } from '@/stores/auth-store'
 import type { CreateAnimationInput } from '@/lib/schemas/animation'
 import type { Animation } from '@/types/database'
 
@@ -380,9 +381,11 @@ export function useCreateWarning() {
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null }) =>
-      invokeEdge<object>('profile-update', body),
-    onSuccess: () => {
+    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null; primary_role?: string }) =>
+      invokeEdge<{ profile: import('@/types/database').Profile }>('profile-update', body),
+    onSuccess: (data) => {
+      useAuthStore.getState().setUser(data.profile)
+      qc.setQueryData(queryKeys.auth.me, data.profile)
       invalidateProfileCaches(qc)
     },
   })

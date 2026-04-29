@@ -35,7 +35,7 @@ const ROLE_HIERARCHY: Record<string, number> = {
 type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
 
 export type GuildMemberResult =
-  | { ok: true; role: StaffRole; discordId: string; username: string; avatarUrl: string | null }
+  | { ok: true; role: StaffRole; availableRoles: StaffRole[]; discordId: string; username: string; avatarUrl: string | null }
   | { ok: false }
 
 export async function getGuildMember(
@@ -51,15 +51,15 @@ export async function getGuildMember(
   const member = await res.json()
   const memberRoles: string[] = member.roles ?? []
 
-  // Find the highest role this member has
-  let bestRole: StaffRole | null = null
+  const availableRoles: StaffRole[] = []
   for (const [roleName, roleId] of Object.entries(ROLE_IDS)) {
     if (memberRoles.includes(roleId)) {
-      if (!bestRole || ROLE_HIERARCHY[roleName] > ROLE_HIERARCHY[bestRole]) {
-        bestRole = roleName as StaffRole
-      }
+      availableRoles.push(roleName as StaffRole)
     }
   }
+
+  availableRoles.sort((a, b) => ROLE_HIERARCHY[b] - ROLE_HIERARCHY[a])
+  const bestRole = availableRoles[0] ?? null
 
   if (!bestRole) return { ok: false }
 
@@ -73,6 +73,7 @@ export async function getGuildMember(
   return {
     ok: true,
     role: bestRole,
+    availableRoles,
     discordId: user.id,
     username: displayName,
     avatarUrl,

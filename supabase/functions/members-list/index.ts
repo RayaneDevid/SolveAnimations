@@ -124,16 +124,22 @@ Deno.serve(async (req) => {
     weeklyPartMap.set(p.user_id, existing)
   }
 
-  const QUOTA_MAX: Record<string, number | null> = {
-    direction: null,
-    gerance: null,
-    responsable: null,
-    responsable_mj: null,
+const QUOTA_MAX: Record<string, number | null> = {
+  direction: null,
+  gerance: null,
+  responsable: null,
+  responsable_mj: null,
     senior: 5,
-    mj_senior: 3,
-    animateur: 5,
-    mj: 3,
-  }
+  mj_senior: 3,
+  animateur: 5,
+  mj: 3,
+}
+
+function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
+  if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
+  if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
+  return role
+}
 
   const members = (profiles ?? []).map((p) => {
     const weekly = weeklyAnimMap.get(p.id) ?? { count: 0, minutes: 0 }
@@ -145,6 +151,7 @@ Deno.serve(async (req) => {
       avatarUrl: p.avatar_url,
       role: p.role,
       availableRoles: Array.isArray(p.available_roles) && p.available_roles.length > 0 ? p.available_roles : [p.role],
+      payPole: p.pay_pole ?? null,
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),
@@ -160,7 +167,7 @@ Deno.serve(async (req) => {
         animationsCreated: weekly.count,
         hoursAnimated: weekly.minutes + weeklyParticipations.minutes,
         participationsValidated: weeklyParticipations.count,
-        quotaMax: QUOTA_MAX[p.role] ?? null,
+        quotaMax: QUOTA_MAX[resolvePayRole(p.role, p.pay_pole)] ?? null,
       },
       weeklyTotals: {
         animationsCreated: weeklyTotalAnimations,

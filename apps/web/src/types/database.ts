@@ -20,6 +20,7 @@ export interface Profile {
   avatar_url: string | null
   role: StaffRoleKey
   available_roles: StaffRoleKey[]
+  pay_pole: 'animation' | 'mj' | null
   last_role_check_at: string
   created_at: string
   last_login_at: string
@@ -183,6 +184,7 @@ export interface MemberEntry {
   avatarUrl: string | null
   role: StaffRoleKey
   availableRoles: StaffRoleKey[]
+  payPole: 'animation' | 'mj' | null
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean
@@ -221,7 +223,9 @@ export interface PaiesEntry {
   id: string
   username: string
   avatarUrl: string | null
-  role: string
+  role: StaffRoleKey
+  payPole: 'animation' | 'mj'
+  payRole: 'animateur' | 'senior' | 'mj' | 'mj_senior'
   animationsCount: number
   animationMin: number
   prepMin: number

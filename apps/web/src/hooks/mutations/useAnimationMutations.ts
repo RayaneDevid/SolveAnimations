@@ -380,6 +380,23 @@ export function useUpdateMemberPrimaryRole() {
   })
 }
 
+export function useUpdateMemberPayPole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, payPole }: { userId: string; payPole: 'animation' | 'mj' | null }) =>
+      invokeEdge<{ profile: Profile }>('members-update-pay-pole', { user_id: userId, pay_pole: payPole }),
+    onSuccess: (data, { userId }) => {
+      const currentUser = useAuthStore.getState().user
+      if (currentUser?.id === userId) {
+        useAuthStore.getState().setUser(data.profile)
+        qc.setQueryData(queryKeys.auth.me, data.profile)
+      }
+      invalidateMemberCaches(qc)
+      invalidateStatsCaches(qc)
+    },
+  })
+}
+
 export function useCreateWarning() {
   const qc = useQueryClient()
   return useMutation({

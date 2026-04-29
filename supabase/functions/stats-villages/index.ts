@@ -13,6 +13,13 @@ const MJ_QUOTA: Record<string, number> = {
   mj: 3,
 }
 
+function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string | null {
+  if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
+  if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
+  if (role in ANIM_QUOTA || role in MJ_QUOTA) return role
+  return null
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -94,11 +101,17 @@ function buildPercentages(counts: Record<string, number>, total: number): Record
 async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   const { data: profiles } = await db
     .from('profiles')
-    .select('id, role')
+    .select('id, role, pay_pole')
     .eq('is_active', true)
-    .in('role', [...Object.keys(ANIM_QUOTA), ...Object.keys(MJ_QUOTA)])
 
-  const profileIds = (profiles ?? []).map((p: { id: string }) => p.id)
+  const quotaProfiles = (profiles ?? [])
+    .map((profile: { id: string; role: string; pay_pole: 'animation' | 'mj' | null }) => ({
+      ...profile,
+      quotaRole: resolveQuotaRole(profile.role, profile.pay_pole),
+    }))
+    .filter((profile: { quotaRole: string | null }) => profile.quotaRole !== null)
+
+  const profileIds = quotaProfiles.map((p: { id: string }) => p.id)
   if (profileIds.length === 0) {
     return {
       animation: buildQuotaSummary(0, 0),
@@ -137,8 +150,8 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   let mjTotal = 0
   let mjFilled = 0
 
-  for (const profile of profiles ?? []) {
-    const role = profile.role as string
+  for (const profile of quotaProfiles) {
+    const role = profile.quotaRole as string
     const count = missionCount.get(profile.id) ?? 0
     if (role in ANIM_QUOTA) {
       animTotal++

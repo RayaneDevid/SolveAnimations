@@ -13,13 +13,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils/cn'
 import type { PaiesEntry } from '@/types/database'
 
-const ANIM_ROLE_ORDER = ['senior', 'animateur']
-const MJ_ROLE_ORDER   = ['mj_senior', 'mj']
+const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
+const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
-    const ia = roleOrder.indexOf(a.role)
-    const ib = roleOrder.indexOf(b.role)
+    const ia = roleOrder.indexOf(a.payRole)
+    const ib = roleOrder.indexOf(b.payRole)
     if (ia !== ib) return ia - ib
     if (a.quotaFilled !== b.quotaFilled) return a.quotaFilled ? -1 : 1
     return b.remuneration - a.remuneration || a.username.localeCompare(b.username)
@@ -61,7 +61,17 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           <UserAvatar avatarUrl={entry.avatarUrl} username={entry.username} size="sm" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-white/90 truncate">{entry.username}</p>
-            <RoleBadge role={entry.role as import('@/lib/config/discord').StaffRoleKey} className="mt-0.5" />
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <RoleBadge role={entry.role} />
+              <span className={cn(
+                'rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                entry.payPole === 'mj'
+                  ? 'border-red-500/20 bg-red-500/10 text-red-300'
+                  : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+              )}>
+                Paie {entry.payPole === 'mj' ? 'MJ' : 'Anim'}
+              </span>
+            </div>
           </div>
         </div>
       </td>
@@ -143,8 +153,8 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           )}
           {entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              +{(['mj', 'mj_senior'].includes(entry.role)
-                ? (entry.role === 'mj_senior' ? '5 000' : '4 000')
+              +{(['mj', 'mj_senior'].includes(entry.payRole)
+                ? (entry.payRole === 'mj_senior' ? '5 000' : '4 000')
                 : '1 000')} base
             </span>
           )}
@@ -177,11 +187,11 @@ export default function Paies() {
   const showMj   = role !== 'responsable'
 
   const poleAnim = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => ANIM_ROLE_ORDER.includes(e.role)), ANIM_ROLE_ORDER)
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'animation'), ANIM_PAY_ROLE_ORDER)
   , [data])
 
   const poleMj = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => MJ_ROLE_ORDER.includes(e.role)), MJ_ROLE_ORDER)
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj'), MJ_PAY_ROLE_ORDER)
   , [data])
 
   const totals = useMemo(() => {

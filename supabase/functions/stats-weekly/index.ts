@@ -15,6 +15,12 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj: 3,
 }
 
+function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
+  if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
+  if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
+  return role
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -84,11 +90,11 @@ Deno.serve(async (req) => {
 
   const { data: targetProfile } = await db
     .from('profiles')
-    .select('role')
+    .select('role, pay_pole')
     .eq('id', targetId)
     .single()
 
-  const role = targetProfile?.role ?? profile.role
+  const role = resolvePayRole(targetProfile?.role ?? profile.role, targetProfile?.pay_pole ?? null)
   const quotaMax = QUOTA_MAX[role] ?? null
 
   const hoursAnimated = hoursFromCreated + hoursFromParticipations

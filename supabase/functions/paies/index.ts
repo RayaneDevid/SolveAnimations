@@ -30,6 +30,20 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj_senior:      3,
 }
 
+type PayPole = 'animation' | 'mj'
+type PayRole = 'animateur' | 'senior' | 'mj' | 'mj_senior'
+
+function inferPayPole(role: string): PayPole | null {
+  if (role === 'animateur' || role === 'senior') return 'animation'
+  if (role === 'mj' || role === 'mj_senior') return 'mj'
+  return null
+}
+
+function resolvePayRole(role: string, payPole: PayPole): PayRole {
+  if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
+  return role === 'mj_senior' ? 'mj_senior' : 'mj'
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -48,12 +62,28 @@ Deno.serve(async (req) => {
 
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
-    .select('id, username, avatar_url, role')
+    .select('id, username, avatar_url, role, pay_pole')
+    .eq('is_active', true)
     .order('username', { ascending: true })
 
   if (profilesError) return errorResponse('INTERNAL_ERROR', profilesError.message)
 
-  const profileIds = (profiles ?? []).map((p) => p.id)
+  const eligibleProfiles = (profiles ?? [])
+    .map((p) => {
+      const payPole = (p.pay_pole ?? inferPayPole(p.role)) as PayPole | null
+      return payPole ? { ...p, payPole, payRole: resolvePayRole(p.role, payPole) } : null
+    })
+    .filter(Boolean) as Array<{
+      id: string
+      username: string
+      avatar_url: string | null
+      role: string
+      pay_pole: PayPole | null
+      payPole: PayPole
+      payRole: PayRole
+    }>
+
+  const profileIds = eligibleProfiles.map((p) => p.id)
 
   // Finished animations this week with type + durations
   const { data: anims } = await db
@@ -117,25 +147,27 @@ Deno.serve(async (req) => {
     map.set(p.user_id, entry)
   }
 
-  const result = (profiles ?? []).map((p) => {
+  const result = eligibleProfiles.map((p) => {
     const s = map.get(p.id) ?? {
       animationsCount: 0, animationMin: 0, prepMin: 0,
       petite: 0, moyenne: 0, grande: 0,
     }
-    const quotaMax = QUOTA_MAX[p.role] ?? null
+    const quotaMax = QUOTA_MAX[p.payRole] ?? null
     const quotaFilled = quotaMax === null || s.animationsCount >= quotaMax
 
     const animPay =
       s.petite  * REMUNERATION.petite +
       s.moyenne * REMUNERATION.moyenne +
       s.grande  * REMUNERATION.grande
-    const basePay = BASE_PAY[p.role] ?? 0
+    const basePay = BASE_PAY[p.payRole] ?? 0
     const rawRemuneration = (quotaFilled ? basePay : 0) + animPay
     return {
       id: p.id,
       username: p.username,
       avatarUrl: p.avatar_url,
       role: p.role,
+      payPole: p.payPole,
+      payRole: p.payRole,
       animationsCount: s.animationsCount,
       animationMin: s.animationMin,
       prepMin: s.prepMin,

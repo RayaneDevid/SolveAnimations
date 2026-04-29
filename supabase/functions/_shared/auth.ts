@@ -9,6 +9,7 @@ export type Profile = {
   avatar_url: string | null
   role: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
   available_roles?: Array<'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'>
+  pay_pole?: 'animation' | 'mj' | null
   last_role_check_at: string
 }
 

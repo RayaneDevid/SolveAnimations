@@ -6,7 +6,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
-import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPerms, useUpdateMemberPrimaryRole } from '@/hooks/mutations/useAnimationMutations'
+import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPayPole, useUpdateMemberPerms, useUpdateMemberPrimaryRole } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -28,6 +28,7 @@ const MJ_ROLE_ORDER   = ['responsable_mj', 'mj_senior', 'mj']
 const BDM_ROLE_ORDER  = ['responsable_bdm', 'bdm']
 
 type MemberSortMode = 'role' | 'quota' | 'name'
+type PayPole = 'animation' | 'mj'
 
 function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
   return [...members].sort((a, b) => {
@@ -210,6 +211,91 @@ function PrimaryRoleModal({
   )
 }
 
+// ─── Pay pole modal ───────────────────────────────────────────────────────────
+
+function inferPayPole(role: StaffRoleKey): PayPole | null {
+  if (ANIM_ROLE_ORDER.includes(role)) return 'animation'
+  if (MJ_ROLE_ORDER.includes(role)) return 'mj'
+  return null
+}
+
+function getEffectivePayPole(member: MemberEntry): PayPole | null {
+  return member.payPole ?? inferPayPole(member.role)
+}
+
+function PayPoleModal({
+  member,
+  open,
+  onClose,
+}: {
+  member: MemberEntry
+  open: boolean
+  onClose: () => void
+}) {
+  const { mutateAsync, isPending } = useUpdateMemberPayPole()
+
+  const handleSelect = async (payPole: PayPole | null) => {
+    if (payPole === member.payPole || isPending) return
+    try {
+      await mutateAsync({ userId: member.id, payPole })
+      toast.success(`Pôle de paie de ${member.username} mis à jour`)
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du changement de pôle de paie')
+    }
+  }
+
+  const options: Array<{ value: PayPole | null; label: string; helper: string }> = [
+    { value: null, label: 'Automatique', helper: 'Selon le rôle principal' },
+    { value: 'animation', label: 'Pôle Animation', helper: 'Compte dans les paies Anim' },
+    { value: 'mj', label: 'Pôle MJ', helper: 'Compte dans les paies MJ' },
+  ]
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choisir le pôle de paie</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+            <UserAvatar avatarUrl={member.avatarUrl} username={member.username} />
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-white/90">{member.username}</p>
+                <GenderIcon gender={member.gender} />
+              </div>
+              <p className="text-xs text-white/35">Ce réglage ne change pas son rôle principal.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            {options.map((option) => {
+              const active = option.value === member.payPole
+              return (
+                <button
+                  key={option.value ?? 'auto'}
+                  type="button"
+                  onClick={() => handleSelect(option.value)}
+                  disabled={isPending || active}
+                  className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                    active
+                      ? 'border-cyan-400/35 bg-cyan-400/10'
+                      : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
+                  } disabled:cursor-default`}
+                >
+                  <span className="block text-sm font-medium text-white/85">{option.label}</span>
+                  <span className="block text-xs text-white/35">{option.helper}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Profile tooltip ──────────────────────────────────────────────────────────
 
 function ProfileTooltip({ member: m }: { member: MemberEntry }) {
@@ -324,6 +410,49 @@ function RoleCell({
   )
 }
 
+function PayPoleCell({
+  member,
+  canManagePayPole,
+  onChangePayPole,
+}: {
+  member: MemberEntry
+  canManagePayPole: boolean
+  onChangePayPole: (member: MemberEntry) => void
+}) {
+  const effectivePole = getEffectivePayPole(member)
+  const label = effectivePole === 'mj' ? 'MJ' : effectivePole === 'animation' ? 'Anim' : '—'
+  const isForced = member.payPole != null
+
+  const content = (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+      effectivePole === 'mj'
+        ? 'border-red-500/20 bg-red-500/10 text-red-300'
+        : effectivePole === 'animation'
+          ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+          : 'border-white/[0.08] bg-white/[0.03] text-white/30'
+    }`}>
+      {label}{isForced ? '' : ' auto'}
+    </span>
+  )
+
+  if (!canManagePayPole) return content
+
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onChangePayPole(member)}
+          className="rounded-full transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:ring-offset-2 focus:ring-offset-[#0d0f14]"
+        >
+          {content}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">Changer le pôle de paie</TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
@@ -331,11 +460,15 @@ function MemberTable({
   onRemove,
   canManagePrimaryRole,
   onChangeRole,
+  canManagePayPole,
+  onChangePayPole,
 }: {
   members: MemberEntry[]
   onRemove: (m: MemberEntry) => void
   canManagePrimaryRole: boolean
   onChangeRole: (m: MemberEntry) => void
+  canManagePayPole: boolean
+  onChangePayPole: (m: MemberEntry) => void
 }) {
   if (members.length === 0) {
     return <p className="text-center text-white/30 text-sm py-12">Aucun membre</p>
@@ -345,7 +478,7 @@ function MemberTable({
     <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Rôle', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
+          {['Membre', 'Rôle', 'Paie', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
             <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
               {h}
             </th>
@@ -381,6 +514,13 @@ function MemberTable({
                   member={m}
                   canManagePrimaryRole={canManagePrimaryRole}
                   onChangeRole={onChangeRole}
+                />
+              </td>
+              <td className="px-4 py-3">
+                <PayPoleCell
+                  member={m}
+                  canManagePayPole={canManagePayPole}
+                  onChangePayPole={onChangePayPole}
                 />
               </td>
               <td className="px-4 py-3 text-sm text-white/60">
@@ -577,8 +717,10 @@ export default function Members() {
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
   const [roleMember, setRoleMember] = useState<MemberEntry | null>(null)
+  const [payPoleMember, setPayPoleMember] = useState<MemberEntry | null>(null)
   const [sortMode, setSortMode] = useState<MemberSortMode>('role')
   const canManagePrimaryRole = hasRole(role, 'responsable')
+  const canManagePayPole = hasRole(role, 'responsable')
 
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
   const poleAnimMembers   = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
@@ -668,6 +810,8 @@ export default function Members() {
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}
+                canManagePayPole={canManagePayPole}
+                onChangePayPole={setPayPoleMember}
               />
             </GlassCard>
           </TabsContent>
@@ -679,6 +823,8 @@ export default function Members() {
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}
+                canManagePayPole={canManagePayPole}
+                onChangePayPole={setPayPoleMember}
               />
             </GlassCard>
           </TabsContent>
@@ -690,6 +836,8 @@ export default function Members() {
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}
+                canManagePayPole={canManagePayPole}
+                onChangePayPole={setPayPoleMember}
               />
             </GlassCard>
           </TabsContent>
@@ -701,6 +849,8 @@ export default function Members() {
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}
+                canManagePayPole={canManagePayPole}
+                onChangePayPole={setPayPoleMember}
               />
             </GlassCard>
           </TabsContent>
@@ -732,6 +882,14 @@ export default function Members() {
           member={roleMember}
           open={!!roleMember}
           onClose={() => setRoleMember(null)}
+        />
+      )}
+
+      {payPoleMember && (
+        <PayPoleModal
+          member={payPoleMember}
+          open={!!payPoleMember}
+          onClose={() => setPayPoleMember(null)}
         />
       )}
     </div>

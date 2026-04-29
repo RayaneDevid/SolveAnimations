@@ -142,6 +142,9 @@ verify_jwt = false
 [functions.members-update-primary-role]
 verify_jwt = false
 
+[functions.members-update-pay-pole]
+verify_jwt = false
+
 [functions.warnings-list]
 verify_jwt = false
 

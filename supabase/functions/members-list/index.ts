@@ -60,12 +60,18 @@ Deno.serve(async (req) => {
   // Current absences (today falls between from_date and to_date)
   const { data: absences } = await db
     .from('user_absences')
-    .select('user_id, from_date, to_date')
+    .select('user_id, from_date, to_date, reason')
     .lte('from_date', today)
     .gte('to_date', today)
     .in('user_id', profileIds)
 
   const absentIds = new Set((absences ?? []).map((a) => a.user_id))
+  const absenceReasonMap = new Map<string, string | null>()
+  for (const absence of absences ?? []) {
+    if (!absenceReasonMap.has(absence.user_id)) {
+      absenceReasonMap.set(absence.user_id, absence.reason ?? null)
+    }
+  }
 
   const { data: warnings } = await db
     .from('user_warnings')
@@ -131,6 +137,7 @@ Deno.serve(async (req) => {
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),
+      absenceReason: absenceReasonMap.get(p.id) ?? null,
       warningCount: warningCountMap.get(p.id) ?? 0,
       steamId: p.steam_id ?? null,
       arrivalDate: p.arrival_date ?? null,

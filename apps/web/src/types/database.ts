@@ -182,6 +182,7 @@ export interface MemberEntry {
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean
+  absenceReason: string | null
   warningCount: number
   steamId: string | null
   arrivalDate: string | null

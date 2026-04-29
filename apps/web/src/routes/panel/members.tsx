@@ -186,6 +186,22 @@ function ProfileTooltip({ member: m }: { member: MemberEntry }) {
   )
 }
 
+function AbsenceBadge({ reason }: { reason: string | null }) {
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>
+        <span className="inline-flex cursor-help rounded-full border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-400">
+          Absent
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="max-w-xs p-3">
+        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-1">Raison</p>
+        <p className="text-sm text-white/80">{reason?.trim() || 'Aucune raison renseignée'}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
@@ -267,7 +283,7 @@ function MemberTable({
               </td>
               <td className="px-4 py-3">
                 {m.isAbsent ? (
-                  <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">Absent</span>
+                  <AbsenceBadge reason={m.absenceReason} />
                 ) : (
                   <span className="text-xs text-white/20">—</span>
                 )}

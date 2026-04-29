@@ -9,7 +9,6 @@ const bodySchema = z.object({
   steam_id: z.string().trim().regex(/^\d{17}$/, 'Steam ID doit contenir 17 chiffres').nullable().optional(),
   arrival_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   gender: z.enum(['homme', 'femme', 'autre']).nullable().optional(),
-  primary_role: z.enum(['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm', 'senior', 'mj_senior', 'animateur', 'mj', 'bdm']).optional(),
 })
 
 Deno.serve(async (req) => {
@@ -26,21 +25,9 @@ Deno.serve(async (req) => {
   }
 
   const db = getServiceClient()
-  const { primary_role, ...profilePatch } = parsed.data
-  const patch: Record<string, unknown> = { ...profilePatch }
-
-  if (primary_role) {
-    const availableRoles = Array.isArray(profile.available_roles) ? profile.available_roles : []
-    const canUseRole = availableRoles.includes(primary_role) || primary_role === profile.role
-    if (!canUseRole) {
-      return errorResponse('FORBIDDEN', "Tu ne peux choisir qu'un rôle que tu possèdes sur Discord.")
-    }
-    patch.role = primary_role
-  }
-
   const { data, error } = await db
     .from('profiles')
-    .update(patch)
+    .update(parsed.data)
     .eq('id', profile.id)
     .select()
     .single()

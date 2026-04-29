@@ -144,6 +144,7 @@ Deno.serve(async (req) => {
       username: p.username,
       avatarUrl: p.avatar_url,
       role: p.role,
+      availableRoles: Array.isArray(p.available_roles) && p.available_roles.length > 0 ? p.available_roles : [p.role],
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),

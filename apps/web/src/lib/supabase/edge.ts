@@ -44,6 +44,7 @@ export type EdgeFunctionName =
   | 'members-remove-access'
   | 'members-reactivate'
   | 'members-update-perms'
+  | 'members-update-primary-role'
   | 'warnings-list'
   | 'warnings-create'
   | 'profile-update'

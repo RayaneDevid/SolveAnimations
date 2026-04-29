@@ -181,7 +181,8 @@ export interface MemberEntry {
   discordId: string
   username: string
   avatarUrl: string | null
-  role: string
+  role: StaffRoleKey
+  availableRoles: StaffRoleKey[]
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean

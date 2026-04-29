@@ -4,8 +4,9 @@ import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
-import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPerms } from '@/hooks/mutations/useAnimationMutations'
+import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPerms, useUpdateMemberPrimaryRole } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -16,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { hasRole, type StaffRoleKey } from '@/lib/config/discord'
 import { formatDate } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
@@ -142,6 +144,72 @@ function RemoveConfirmModal({
   )
 }
 
+// ─── Primary role modal ───────────────────────────────────────────────────────
+
+function PrimaryRoleModal({
+  member,
+  open,
+  onClose,
+}: {
+  member: MemberEntry
+  open: boolean
+  onClose: () => void
+}) {
+  const { mutateAsync, isPending } = useUpdateMemberPrimaryRole()
+  const availableRoles = member.availableRoles?.length ? member.availableRoles : [member.role]
+
+  const handleSelect = async (nextRole: StaffRoleKey) => {
+    if (nextRole === member.role || isPending) return
+    try {
+      await mutateAsync({ userId: member.id, role: nextRole })
+      toast.success(`Rôle principal de ${member.username} mis à jour`)
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du changement de rôle')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choisir le rôle principal</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+            <UserAvatar avatarUrl={member.avatarUrl} username={member.username} />
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-white/90">{member.username}</p>
+                <GenderIcon gender={member.gender} />
+              </div>
+              <p className="text-xs text-white/35">Seuls les rôles Discord possédés sont proposés.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {availableRoles.map((availableRole) => (
+              <button
+                key={availableRole}
+                type="button"
+                onClick={() => handleSelect(availableRole)}
+                disabled={isPending || availableRole === member.role}
+                className={`rounded-full transition-all ${
+                  availableRole === member.role
+                    ? 'ring-2 ring-cyan-400/45 ring-offset-2 ring-offset-[#0d0f14]'
+                    : 'opacity-70 hover:opacity-100'
+                } disabled:cursor-default`}
+              >
+                <RoleBadge role={availableRole} gender={member.gender} size="md" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Profile tooltip ──────────────────────────────────────────────────────────
 
 function ProfileTooltip({ member: m }: { member: MemberEntry }) {
@@ -226,14 +294,48 @@ function AbsenceBadge({
   )
 }
 
+function RoleCell({
+  member,
+  canManagePrimaryRole,
+  onChangeRole,
+}: {
+  member: MemberEntry
+  canManagePrimaryRole: boolean
+  onChangeRole: (member: MemberEntry) => void
+}) {
+  const availableRoles = member.availableRoles?.length ? member.availableRoles : [member.role]
+  if (!canManagePrimaryRole || availableRoles.length <= 1) {
+    return <RoleBadge role={member.role} gender={member.gender} />
+  }
+
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onChangeRole(member)}
+          className="rounded-full transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:ring-offset-2 focus:ring-offset-[#0d0f14]"
+        >
+          <RoleBadge role={member.role} gender={member.gender} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">Changer le rôle principal</TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
   members,
   onRemove,
+  canManagePrimaryRole,
+  onChangeRole,
 }: {
   members: MemberEntry[]
   onRemove: (m: MemberEntry) => void
+  canManagePrimaryRole: boolean
+  onChangeRole: (m: MemberEntry) => void
 }) {
   if (members.length === 0) {
     return <p className="text-center text-white/30 text-sm py-12">Aucun membre</p>
@@ -274,7 +376,13 @@ function MemberTable({
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>
+              <td className="px-4 py-3">
+                <RoleCell
+                  member={m}
+                  canManagePrimaryRole={canManagePrimaryRole}
+                  onChangeRole={onChangeRole}
+                />
+              </td>
               <td className="px-4 py-3 text-sm text-white/60">
                 <span className="text-white/90 font-medium">{m.weeklyStats.animationsCreated}</span>
                 <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
@@ -464,10 +572,13 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Members() {
+  const { role } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
+  const [roleMember, setRoleMember] = useState<MemberEntry | null>(null)
   const [sortMode, setSortMode] = useState<MemberSortMode>('role')
+  const canManagePrimaryRole = hasRole(role, 'responsable')
 
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
   const poleAnimMembers   = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
@@ -552,25 +663,45 @@ export default function Members() {
 
           <TabsContent value="management">
             <GlassCard className="overflow-hidden">
-              <MemberTable members={managementMembers} onRemove={setRemovingMember} />
+              <MemberTable
+                members={managementMembers}
+                onRemove={setRemovingMember}
+                canManagePrimaryRole={canManagePrimaryRole}
+                onChangeRole={setRoleMember}
+              />
             </GlassCard>
           </TabsContent>
 
           <TabsContent value="animation">
             <GlassCard className="overflow-hidden">
-              <MemberTable members={poleAnimMembers} onRemove={setRemovingMember} />
+              <MemberTable
+                members={poleAnimMembers}
+                onRemove={setRemovingMember}
+                canManagePrimaryRole={canManagePrimaryRole}
+                onChangeRole={setRoleMember}
+              />
             </GlassCard>
           </TabsContent>
 
           <TabsContent value="mj">
             <GlassCard className="overflow-hidden">
-              <MemberTable members={poleMjMembers} onRemove={setRemovingMember} />
+              <MemberTable
+                members={poleMjMembers}
+                onRemove={setRemovingMember}
+                canManagePrimaryRole={canManagePrimaryRole}
+                onChangeRole={setRoleMember}
+              />
             </GlassCard>
           </TabsContent>
 
           <TabsContent value="bdm">
             <GlassCard className="overflow-hidden">
-              <MemberTable members={bdmMembers} onRemove={setRemovingMember} />
+              <MemberTable
+                members={bdmMembers}
+                onRemove={setRemovingMember}
+                canManagePrimaryRole={canManagePrimaryRole}
+                onChangeRole={setRoleMember}
+              />
             </GlassCard>
           </TabsContent>
 
@@ -593,6 +724,14 @@ export default function Members() {
           member={removingMember}
           open={!!removingMember}
           onClose={() => setRemovingMember(null)}
+        />
+      )}
+
+      {roleMember && (
+        <PrimaryRoleModal
+          member={roleMember}
+          open={!!roleMember}
+          onClose={() => setRoleMember(null)}
         />
       )}
     </div>

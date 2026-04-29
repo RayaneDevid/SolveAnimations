@@ -3,7 +3,8 @@ import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
 import { useAuthStore } from '@/stores/auth-store'
 import type { CreateAnimationInput } from '@/lib/schemas/animation'
-import type { Animation } from '@/types/database'
+import type { StaffRoleKey } from '@/lib/config/discord'
+import type { Animation, Profile } from '@/types/database'
 
 const invalidateAnimationCaches = (qc: QueryClient, id?: string) => {
   qc.invalidateQueries({ queryKey: queryKeys.animations.all })
@@ -361,6 +362,24 @@ export function useUpdateMemberPerms() {
   })
 }
 
+export function useUpdateMemberPrimaryRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: StaffRoleKey }) =>
+      invokeEdge<{ profile: Profile }>('members-update-primary-role', { user_id: userId, role }),
+    onSuccess: (data, { userId }) => {
+      const currentUser = useAuthStore.getState().user
+      if (currentUser?.id === userId) {
+        useAuthStore.getState().setUser(data.profile)
+        qc.setQueryData(queryKeys.auth.me, data.profile)
+      }
+      invalidateMemberCaches(qc)
+      invalidateStatsCaches(qc)
+      qc.invalidateQueries({ queryKey: ['seniors'] })
+    },
+  })
+}
+
 export function useCreateWarning() {
   const qc = useQueryClient()
   return useMutation({
@@ -381,8 +400,8 @@ export function useCreateWarning() {
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null; primary_role?: string }) =>
-      invokeEdge<{ profile: import('@/types/database').Profile }>('profile-update', body),
+    mutationFn: (body: { steam_id?: string | null; arrival_date?: string | null; gender?: 'homme' | 'femme' | 'autre' | null }) =>
+      invokeEdge<{ profile: Profile }>('profile-update', body),
     onSuccess: (data) => {
       useAuthStore.getState().setUser(data.profile)
       qc.setQueryData(queryKeys.auth.me, data.profile)

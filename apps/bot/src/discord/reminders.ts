@@ -30,6 +30,16 @@ function formatDate(isoDate: string): string {
     .replace(':', 'h');
 }
 
+const VILLAGE_LABELS: Record<string, string> = {
+  konoha: 'Konoha',
+  suna: 'Suna',
+  oto: 'Oto',
+  kiri: 'Kiri',
+  temple_camelias: 'Temple des Camélias',
+  autre: 'Nukenin',
+  tout_le_monde: 'Tout le monde',
+};
+
 function buildReminderMessage(animation: ReminderAnimation): string {
   const panelUrl = `${env.APP_PUBLIC_URL}/panel/animations/${animation.id}`;
   return [
@@ -37,7 +47,7 @@ function buildReminderMessage(animation: ReminderAnimation): string {
     '',
     `🗓️ ${formatDate(animation.scheduled_at)}`,
     `🌐 Serveur : ${animation.server}`,
-    `🏯 Village : ${animation.village}`,
+    `🏯 Village : ${VILLAGE_LABELS[animation.village] ?? animation.village}`,
     '',
     `🔗 ${panelUrl}`,
   ].join('\n');

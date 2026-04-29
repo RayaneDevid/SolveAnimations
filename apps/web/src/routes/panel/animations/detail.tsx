@@ -18,7 +18,7 @@ import { AnimationChat } from '@/components/animations/AnimationChat'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { VillageBadge } from '@/components/shared/VillageBadge'
+import { VillageBadge, VILLAGE_LABELS } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -132,7 +132,7 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
           <div>
             <label className={labelCls}>Village</label>
             <select value={village} onChange={(e) => setVillage(e.target.value as typeof VILLAGES[number])} className={inputCls}>
-              {VILLAGES.map((v) => <option key={v} value={v}>{v}</option>)}
+              {VILLAGES.map((v) => <option key={v} value={v}>{VILLAGE_LABELS[v]}</option>)}
             </select>
           </div>
           <div>

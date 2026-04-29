@@ -26,6 +26,16 @@ function formatDate(isoDate: string): string {
     .replace(':', 'h');
 }
 
+const VILLAGE_LABELS: Record<string, string> = {
+  konoha: 'Konoha',
+  suna: 'Suna',
+  oto: 'Oto',
+  kiri: 'Kiri',
+  temple_camelias: 'Temple des Camélias',
+  autre: 'Nukenin',
+  tout_le_monde: 'Tout le monde',
+};
+
 export async function registerAnimationReminder(app: FastifyInstance): Promise<void> {
   app.post(
     '/webhook/animation-reminder',
@@ -51,7 +61,7 @@ export async function registerAnimationReminder(app: FastifyInstance): Promise<v
         '',
         `🗓️ ${formatDate(scheduledAt)}`,
         `🌐 Serveur : ${server}`,
-        `🏯 Village : ${village}`,
+        `🏯 Village : ${VILLAGE_LABELS[village] ?? village}`,
         '',
         `🔗 ${panelUrl}`,
       ].join('\n');

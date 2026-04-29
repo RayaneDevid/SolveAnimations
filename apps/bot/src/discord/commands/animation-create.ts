@@ -21,6 +21,26 @@ const TYPES = ['petite', 'moyenne', 'grande'] as const;
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const;
 const POLES = ['animation', 'mj', 'les_deux'] as const;
 
+const VILLAGE_LABELS: Record<string, string> = {
+  konoha: 'Konoha',
+  suna: 'Suna',
+  oto: 'Oto',
+  kiri: 'Kiri',
+  temple_camelias: 'Temple des Camélias',
+  autre: 'Nukenin',
+  tout_le_monde: 'Tout le monde',
+};
+
+function normalizeVillage(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'nukenin') return 'autre';
+  return normalized;
+}
+
+function formatVillage(value: string): string {
+  return VILLAGE_LABELS[value] ?? value;
+}
+
 // ─── State intermédiaire ──────────────────────────────────────────────────────
 
 interface PendingData {
@@ -139,7 +159,7 @@ function buildModal1(): ModalBuilder {
           .setCustomId('village')
           .setLabel('Village')
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('konoha · suna · oto · kiri · temple_camelias · autre · tout_le_monde')
+          .setPlaceholder('konoha · suna · oto · kiri · temple_camelias · nukenin · tout_le_monde')
           .setRequired(true),
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -252,7 +272,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
   const title = interaction.fields.getTextInputValue('title').trim();
   const scheduledAtRaw = interaction.fields.getTextInputValue('scheduled_at').trim();
   const serverRaw = interaction.fields.getTextInputValue('server').trim().toUpperCase();
-  const villageRaw = interaction.fields.getTextInputValue('village').trim().toLowerCase();
+  const villageRaw = normalizeVillage(interaction.fields.getTextInputValue('village'));
   const typeRaw = interaction.fields.getTextInputValue('type').trim().toLowerCase();
 
   if (title.length < 3 || title.length > 120) {
@@ -283,7 +303,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
 
   if (!VILLAGES.includes(villageRaw as (typeof VILLAGES)[number])) {
     await interaction.reply({
-      content: `❌ Village invalide. Valeurs acceptées : \`${VILLAGES.join('`, `')}\``,
+      content: '❌ Village invalide. Valeurs acceptées : `konoha`, `suna`, `oto`, `kiri`, `temple_camelias`, `nukenin`, `tout_le_monde`',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -311,7 +331,7 @@ export async function handleModal1Submit(interaction: ModalSubmitInteraction): P
       '✅ **Étape 1/3 enregistrée.** Clique sur le bouton ci-dessous pour renseigner les paramètres.',
       `> **Titre :** ${title}`,
       `> **Date :** ${scheduledAtRaw} (Europe/Paris)`,
-      `> **Serveur :** ${serverRaw} · **Village :** ${villageRaw} · **Type :** ${typeRaw}`,
+      `> **Serveur :** ${serverRaw} · **Village :** ${formatVillage(villageRaw)} · **Type :** ${typeRaw}`,
     ].join('\n'),
     flags: MessageFlags.Ephemeral,
     components: [

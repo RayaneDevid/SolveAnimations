@@ -25,7 +25,7 @@ export function RoleBadge({ role, gender, className, size = 'sm' }: RoleBadgePro
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border font-medium',
+        'inline-flex shrink-0 items-center rounded-full border font-medium whitespace-nowrap',
         size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
         ROLE_STYLES[role],
         className,

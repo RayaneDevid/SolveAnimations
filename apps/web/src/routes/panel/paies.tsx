@@ -64,7 +64,7 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <RoleBadge role={entry.role} />
               <span className={cn(
-                'rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
                 entry.payPole === 'mj'
                   ? 'border-red-500/20 bg-red-500/10 text-red-300'
                   : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',

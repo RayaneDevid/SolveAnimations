@@ -20,6 +20,7 @@ export interface Profile {
   avatar_url: string | null
   role: StaffRoleKey
   available_roles: StaffRoleKey[]
+  primary_role_overridden: boolean
   pay_pole: 'animation' | 'mj' | null
   last_role_check_at: string
   created_at: string

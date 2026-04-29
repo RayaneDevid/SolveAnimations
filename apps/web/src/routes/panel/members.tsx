@@ -421,17 +421,16 @@ function PayPoleCell({
 }) {
   const effectivePole = getEffectivePayPole(member)
   const label = effectivePole === 'mj' ? 'MJ' : effectivePole === 'animation' ? 'Anim' : '—'
-  const isForced = member.payPole != null
 
   const content = (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${
       effectivePole === 'mj'
         ? 'border-red-500/20 bg-red-500/10 text-red-300'
         : effectivePole === 'animation'
           ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
           : 'border-white/[0.08] bg-white/[0.03] text-white/30'
     }`}>
-      {label}{isForced ? '' : ' auto'}
+      {label}
     </span>
   )
 

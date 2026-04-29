@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await db
     .from('profiles')
-    .update({ role })
+    .update({ role, primary_role_overridden: true })
     .eq('id', user_id)
     .select()
     .single()

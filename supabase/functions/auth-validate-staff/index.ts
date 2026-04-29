@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   // Check if this Discord user was previously deactivated
   const { data: existingProfile } = await db
     .from('profiles')
-    .select('is_active, role')
+    .select('is_active, role, primary_role_overridden')
     .eq('id', user.id)
     .single()
 
@@ -62,7 +62,12 @@ Deno.serve(async (req) => {
     return errorResponse('FORBIDDEN', 'Ton accès a été révoqué.')
   }
 
-  const selectedRole = existingProfile?.role && memberResult.availableRoles.includes(existingProfile.role)
+  const keepExplicitRole = Boolean(
+    existingProfile?.primary_role_overridden &&
+    existingProfile.role &&
+    memberResult.availableRoles.includes(existingProfile.role),
+  )
+  const selectedRole = keepExplicitRole && existingProfile?.role
     ? existingProfile.role
     : memberResult.role
 
@@ -74,6 +79,7 @@ Deno.serve(async (req) => {
       username: memberResult.username,
       avatar_url: memberResult.avatarUrl,
       role: selectedRole,
+      primary_role_overridden: keepExplicitRole,
       available_roles: memberResult.availableRoles,
       last_role_check_at: new Date().toISOString(),
       last_login_at: new Date().toISOString(),

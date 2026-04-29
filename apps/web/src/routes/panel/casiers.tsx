@@ -130,6 +130,11 @@ function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => v
               <ChevronRight className="h-3.5 w-3.5 text-white/20 group-hover:text-cyan-400 shrink-0 transition-colors" />
             </div>
             <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
+            {member.steamId && (
+              <p className="mt-1 text-[10px] font-medium text-white/35 truncate">
+                SteamID {member.steamId}
+              </p>
+            )}
             {member.isAbsent && (
               <span className="inline-block mt-1 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">
                 Absent

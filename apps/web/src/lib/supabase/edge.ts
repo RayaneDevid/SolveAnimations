@@ -39,6 +39,7 @@ export type EdgeFunctionName =
   | 'stats-weekly-evolution'
   | 'leaderboard'
   | 'members-list'
+  | 'members-directory'
   | 'members-former-list'
   | 'members-remove-access'
   | 'members-reactivate'

@@ -198,6 +198,13 @@ export interface MemberEntry {
   }
 }
 
+export interface MemberDirectoryEntry {
+  id: string
+  username: string
+  avatarUrl: string | null
+  role: string
+}
+
 export interface PaiesEntry {
   id: string
   username: string

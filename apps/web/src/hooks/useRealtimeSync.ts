@@ -77,6 +77,7 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
           qc.invalidateQueries({ queryKey: queryKeys.members.list })
+          qc.invalidateQueries({ queryKey: queryKeys.members.directory })
           qc.invalidateQueries({ queryKey: queryKeys.members.former })
           qc.invalidateQueries({ queryKey: ['seniors'] })
           invalidateStatsCaches(qc)

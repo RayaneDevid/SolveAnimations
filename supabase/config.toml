@@ -124,6 +124,9 @@ verify_jwt = false
 [functions.members-list]
 verify_jwt = false
 
+[functions.members-directory]
+verify_jwt = false
+
 [functions.members-remove-access]
 verify_jwt = false
 

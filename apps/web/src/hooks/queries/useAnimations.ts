@@ -134,6 +134,14 @@ export function useMembers() {
   })
 }
 
+export function useMemberDirectory() {
+  return useQuery({
+    queryKey: queryKeys.members.directory,
+    queryFn: () => invokeEdge<import('@/types/database').MemberDirectoryEntry[]>('members-directory'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export interface FormerMemberEntry {
   id: string
   discordId: string

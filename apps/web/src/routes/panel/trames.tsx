@@ -10,8 +10,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useTrameReports } from '@/hooks/queries/useAnimations'
-import { useMembers } from '@/hooks/queries/useAnimations'
+import { useMemberDirectory, useTrameReports } from '@/hooks/queries/useAnimations'
 import { useCreateTrameReport, useDeleteTrameReport } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -143,7 +142,7 @@ function TrameCard({
 
 function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useRequiredAuth()
-  const { data: members = [] } = useMembers()
+  const { data: members = [] } = useMemberDirectory()
   const { mutateAsync, isPending } = useCreateTrameReport()
 
   const [coAuthorIds, setCoAuthorIds] = useState<string[]>([])

@@ -26,6 +26,7 @@ export const queryKeys = {
   leaderboard: (period: string) => ['leaderboard', period] as const,
   members: {
     list: ['members'] as const,
+    directory: ['members', 'directory'] as const,
     former: ['members', 'former'] as const,
   },
   warnings: {

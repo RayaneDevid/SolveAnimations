@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
     page = 1,
     pageSize = 20,
   } = body
+  const safePage = Math.max(1, Number.isFinite(Number(page)) ? Math.floor(Number(page)) : 1)
+  const safePageSize = Math.min(100, Math.max(1, Number.isFinite(Number(pageSize)) ? Math.floor(Number(pageSize)) : 20))
 
   const db = getServiceClient()
 
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
       .eq('status', 'validated')
     participantAnimationIds = (participations ?? []).map((p: { animation_id: string }) => p.animation_id)
     if (participantAnimationIds.length === 0) {
-      return jsonResponse({ animations: [], total: 0, page, pageSize })
+      return jsonResponse({ animations: [], total: 0, page: safePage, pageSize: safePageSize, totalPages: 0 })
     }
   }
 
@@ -60,8 +62,8 @@ Deno.serve(async (req) => {
   if (from)       query = query.gte('scheduled_at', from)
   if (to)         query = query.lte('scheduled_at', to)
 
-  const offset = (page - 1) * pageSize
-  query = query.range(offset, offset + pageSize - 1)
+  const offset = (safePage - 1) * safePageSize
+  query = query.range(offset, offset + safePageSize - 1)
 
   const { data: animations, error, count } = await query
 
@@ -95,5 +97,12 @@ Deno.serve(async (req) => {
     my_participant_status: myStatuses[a.id as string] ?? null,
   }))
 
-  return jsonResponse({ animations: animationsWithCounts, total: count ?? 0, page, pageSize })
+  const total = count ?? 0
+  return jsonResponse({
+    animations: animationsWithCounts,
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages: Math.ceil(total / safePageSize),
+  })
 })

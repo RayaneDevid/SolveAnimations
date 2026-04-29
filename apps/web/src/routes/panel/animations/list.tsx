@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAnimations } from '@/hooks/queries/useAnimations'
 import type { AnimationStatus, Animation } from '@/types/database'
@@ -24,6 +24,7 @@ const TYPE_STYLES: Record<string, string> = {
 type TabValue = 'active' | 'proposed' | 'all' | 'finished' | 'rejected'
 
 const ACTIVE_STATUSES: AnimationStatus[] = ['open', 'preparing', 'running']
+const PAGE_SIZE = 24
 
 const TABS: Array<{ value: TabValue; label: string }> = [
   { value: 'active',   label: 'Ouvertes & en cours' },
@@ -93,8 +94,13 @@ function AnimationCard({ anim }: { anim: Animation }) {
 export default function AnimationsList() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabValue>('active')
+  const [page, setPage] = useState(1)
   const asParticipant = searchParams.get('as_participant') === '1'
   const creatorId = searchParams.get('creator_id') ?? undefined
+
+  useEffect(() => {
+    setPage(1)
+  }, [asParticipant, creatorId])
 
   const tabFilters =
     activeTab === 'all'      ? {} :
@@ -106,11 +112,23 @@ export default function AnimationsList() {
     ...tabFilters,
     ...(asParticipant ? { as_participant: true } : {}),
     ...(creatorId ? { creator_id: creatorId } : {}),
+    page,
+    pageSize: PAGE_SIZE,
   }
 
   const { data, isLoading } = useAnimations(filters)
 
   const animations = data?.animations ?? []
+  const total = data?.total ?? 0
+  const totalPages = data?.totalPages ?? Math.ceil(total / PAGE_SIZE)
+  const safeTotalPages = Math.max(1, totalPages)
+  const fromItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const toItem = Math.min(page * PAGE_SIZE, total)
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as TabValue)
+    setPage(1)
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -118,7 +136,7 @@ export default function AnimationsList() {
         <div>
           <h1 className="text-2xl font-bold text-white">Animations</h1>
           <p className="text-sm text-white/40 mt-0.5">
-            {asParticipant ? 'Mes inscriptions' : creatorId ? 'Animations du membre' : `${data?.total ?? 0} animation${(data?.total ?? 0) > 1 ? 's' : ''}`}
+            {asParticipant ? 'Mes inscriptions' : creatorId ? 'Animations du membre' : `${total} animation${total > 1 ? 's' : ''}`}
           </p>
         </div>
         <Link to="/panel/animations/new">
@@ -129,7 +147,7 @@ export default function AnimationsList() {
         </Link>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           {TABS.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
@@ -151,11 +169,48 @@ export default function AnimationsList() {
                 <p className="text-white/30 text-sm">Aucune animation</p>
               </GlassCard>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {animations.map((anim) => (
-                  <AnimationCard key={anim.id} anim={anim} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {animations.map((anim) => (
+                    <AnimationCard key={anim.id} anim={anim} />
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-white/35">
+                      {fromItem}-{toItem} sur {total}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1 || isLoading}
+                        className="gap-1.5"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Précédent
+                      </Button>
+                      <span className="min-w-20 text-center text-xs text-white/45">
+                        Page {page} / {safeTotalPages}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.min(safeTotalPages, p + 1))}
+                        disabled={page >= safeTotalPages || isLoading}
+                        className="gap-1.5"
+                      >
+                        Suivant
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         ))}

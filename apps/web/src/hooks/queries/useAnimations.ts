@@ -24,6 +24,7 @@ export interface AnimationListResult {
   total: number
   page: number
   pageSize: number
+  totalPages: number
 }
 
 export function useAnimations(filters: AnimationFilters = {}) {

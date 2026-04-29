@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 Deno.serve(async (req) => {
@@ -11,9 +12,8 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
-  if (!isResponsable)
-    return errorResponse('FORBIDDEN', 'Seul un responsable peut refuser la suppression')
+  const guard = requireResponsable(profile)
+  if (guard) return guard
 
   const { request_id } = await req.json()
   if (!request_id) return errorResponse('VALIDATION_ERROR', 'request_id requis')

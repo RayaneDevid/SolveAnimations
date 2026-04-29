@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { isResponsableRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 Deno.serve(async (req) => {
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
   }
 
   // Only responsable can query other users' absences
-  if (user_id && user_id !== profile.id && !['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role))
+  if (user_id && user_id !== profile.id && !isResponsableRole(profile))
     return errorResponse('FORBIDDEN', 'Accès refusé')
 
   const targetId = user_id ?? profile.id

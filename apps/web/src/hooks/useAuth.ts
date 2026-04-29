@@ -1,11 +1,11 @@
 import { useAuthStore } from '@/stores/auth-store'
 import type { Profile } from '@/types/database'
-import type { StaffRoleKey } from '@/lib/config/discord'
+import { getPermissionRole, getPermissionRoles, type StaffRoleKey } from '@/lib/config/discord'
 
 export type AuthState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
-  | { status: 'authenticated'; user: Profile; role: StaffRoleKey }
+  | { status: 'authenticated'; user: Profile; role: StaffRoleKey; permissionRole: StaffRoleKey; permissionRoles: StaffRoleKey[] }
 
 export function useAuth() {
   const { user, isLoading, logout } = useAuthStore()
@@ -13,7 +13,7 @@ export function useAuth() {
   const auth: AuthState = isLoading
     ? { status: 'loading' }
     : user
-    ? { status: 'authenticated', user, role: user.role }
+    ? { status: 'authenticated', user, role: user.role, permissionRole: getPermissionRole(user), permissionRoles: getPermissionRoles(user) }
     : { status: 'unauthenticated' }
 
   return { auth, signOut: logout }
@@ -22,5 +22,5 @@ export function useAuth() {
 export function useRequiredAuth() {
   const { user } = useAuthStore()
   if (!user) throw new Error('Not authenticated')
-  return { status: 'authenticated' as const, user, role: user.role }
+  return { status: 'authenticated' as const, user, role: user.role, permissionRole: getPermissionRole(user), permissionRoles: getPermissionRoles(user) }
 }

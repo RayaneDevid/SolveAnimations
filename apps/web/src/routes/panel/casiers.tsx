@@ -32,7 +32,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import { formatDuration } from '@/lib/utils/format'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 import type { StaffRoleKey } from '@/lib/config/discord'
@@ -860,14 +860,14 @@ function TrameReportsSection({ userId }: { userId: string }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Casiers() {
-  const { role } = useRequiredAuth()
+  const { permissionRoles } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [selectedActive, setSelectedActive] = useState<MemberEntry | null>(null)
   const [selectedFormer, setSelectedFormer] = useState<FormerMemberEntry | null>(null)
-  const canManageWarnings = hasRole(role, 'responsable')
+  const canManageWarnings = hasPermissionRole(permissionRoles, 'responsable')
 
   const filtered = useMemo(() => {
     const filterDef = ROLE_FILTERS.find((f) => f.key === roleFilter)

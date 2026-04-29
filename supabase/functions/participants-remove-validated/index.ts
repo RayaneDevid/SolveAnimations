@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { isResponsableRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
 
   const isCreator = participant.animation?.creator_id === profile.id
   const isSelf = participant.user_id === profile.id
-  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
+  const isResponsable = isResponsableRole(profile)
   if (!isCreator && !isSelf && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul le créateur, le participant lui-même ou un responsable peut le retirer')
 

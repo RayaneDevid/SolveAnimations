@@ -24,7 +24,7 @@ import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import type { Requete, RequeteSubject, RequeteDestination } from '@/types/database'
-import type { StaffRoleKey } from '@/lib/config/discord'
+import { hasOwnedRole, type StaffRoleKey } from '@/lib/config/discord'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -500,12 +500,12 @@ function RequeteList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Requetes() {
-  const { role } = useRequiredAuth()
+  const { permissionRoles } = useRequiredAuth()
   const { data, isLoading } = useRequetes()
   const [createOpen, setCreateOpen] = useState(false)
 
-  const canCreate = CREATOR_ROLES.includes(role)
-  const canDecide = DECIDER_ROLES.includes(role)
+  const canCreate = hasOwnedRole(permissionRoles, CREATOR_ROLES as StaffRoleKey[])
+  const canDecide = hasOwnedRole(permissionRoles, DECIDER_ROLES as StaffRoleKey[])
 
   const mine = data?.mine ?? []
   const incoming = data?.incoming ?? []

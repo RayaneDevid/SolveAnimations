@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasRole, type StaffRoleKey } from '@/lib/config/discord'
+import { hasPermissionRole, type StaffRoleKey } from '@/lib/config/discord'
 import { formatDate } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
@@ -717,15 +717,15 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Members() {
-  const { role } = useRequiredAuth()
+  const { permissionRoles } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
   const [roleMember, setRoleMember] = useState<MemberEntry | null>(null)
   const [payPoleMember, setPayPoleMember] = useState<MemberEntry | null>(null)
   const [sortMode, setSortMode] = useState<MemberSortMode>('role')
-  const canManagePrimaryRole = hasRole(role, 'responsable')
-  const canManagePayPole = hasRole(role, 'responsable')
+  const canManagePrimaryRole = hasPermissionRole(permissionRoles, 'responsable')
+  const canManagePayPole = hasPermissionRole(permissionRoles, 'responsable')
 
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
   const poleAnimMembers   = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)

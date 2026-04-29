@@ -14,22 +14,39 @@ const ROLE_HIERARCHY: Record<string, number> = {
   bdm: 0.1,
 }
 
-export function isResponsableRole(role: string): boolean {
-  return ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(role)
+function rolePool(profile: Profile): string[] {
+  const roles = Array.isArray(profile.available_roles) && profile.available_roles.length > 0
+    ? profile.available_roles
+    : [profile.role]
+  return Array.from(new Set([...roles, profile.role]))
+}
+
+export function hasEffectiveRole(profile: Profile, minRole: string): boolean {
+  return rolePool(profile).some((role) => (ROLE_HIERARCHY[role] ?? 0) >= (ROLE_HIERARCHY[minRole] ?? 0))
+}
+
+export function hasAnyRole(profile: Profile, roles: string[]): boolean {
+  return rolePool(profile).some((role) => roles.includes(role))
+}
+
+export function isResponsableRole(roleOrProfile: string | Profile): boolean {
+  const responsableRoles = ['direction', 'gerance', 'responsable', 'responsable_mj']
+  if (typeof roleOrProfile === 'string') return responsableRoles.includes(roleOrProfile)
+  return hasAnyRole(roleOrProfile, responsableRoles)
 }
 
 export function requireRole(
   profile: Profile,
   minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'mj' | 'animateur' | 'bdm',
 ): Response | null {
-  if ((ROLE_HIERARCHY[profile.role] ?? 0) < ROLE_HIERARCHY[minRole]) {
+  if (!hasEffectiveRole(profile, minRole)) {
     return errorResponse('FORBIDDEN', `Rôle requis : ${minRole}`)
   }
   return null
 }
 
 export function requireResponsable(profile: Profile): Response | null {
-  if (!isResponsableRole(profile.role)) {
+  if (!isResponsableRole(profile)) {
     return errorResponse('FORBIDDEN', 'Accès réservé aux responsables')
   }
   return null

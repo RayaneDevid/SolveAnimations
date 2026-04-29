@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/utils/format'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import type { UserAbsence } from '@/types/database'
 
 type SummaryMember = {
@@ -76,9 +76,9 @@ function AbsenceRow({ absence, onReturn }: { absence: UserAbsence; onReturn: (id
 }
 
 function CreateAbsenceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user, role } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const { mutateAsync, isPending } = useCreateAbsence()
-  const canDeclareForOther = hasRole(role, 'senior')
+  const canDeclareForOther = hasPermissionRole(permissionRoles, 'senior')
   const { data: members = [] } = useMemberDirectory()
   const {
     register,

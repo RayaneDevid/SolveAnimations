@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { hasRole, type StaffRoleKey } from '@/lib/config/discord'
+import { hasPermissionRole, type StaffRoleKey } from '@/lib/config/discord'
 
 interface RoleGateProps {
   allow: StaffRoleKey[]
@@ -14,7 +14,7 @@ export function RoleGate({ allow, children, fallback, redirectTo }: RoleGateProp
 
   if (auth.status !== 'authenticated') return null
 
-  const allowed = allow.some((r) => hasRole(auth.role, r))
+  const allowed = allow.some((r) => hasPermissionRole(auth.permissionRoles, r))
 
   if (!allowed) {
     if (redirectTo) return <Navigate to={redirectTo} replace />

@@ -2,7 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
-import { requireRole } from '../_shared/guards.ts'
+import { isResponsableRole, requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
   // ── Responsable editing the schedule of an open animation ────────────────
   const isCreator = anim.creator_id === profile.id
-  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
+  const isResponsable = isResponsableRole(profile)
 
   if (!isCreator && isResponsable && anim.status === 'open') {
     if (!('scheduled_at' in updates))

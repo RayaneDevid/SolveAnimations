@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 
 const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
@@ -29,7 +29,7 @@ const TYPE_DESCRIPTIONS = {
 export default function EditAnimation() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, role } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync, isPending } = useUpdateAnimation()
 
@@ -48,7 +48,7 @@ export default function EditAnimation() {
   const requiredParticipants = watch('requiredParticipants')
   const animation = data?.animation
   const isCreator = animation?.creator_id === user.id
-  const isResponsable = hasRole(role, 'responsable')
+  const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
   const scheduleOnly = !!animation && !isCreator && isResponsable && animation.status === 'open'
 
   useEffect(() => {

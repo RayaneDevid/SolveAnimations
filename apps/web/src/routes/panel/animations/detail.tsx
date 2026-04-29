@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
 import type { AnimationParticipant, Animation } from '@/types/database'
 
@@ -379,7 +379,7 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
 export default function AnimationDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, role } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const [addParticipantOpen, setAddParticipantOpen] = useState(false)
 
   const { data, isLoading } = useAnimation(id!)
@@ -405,9 +405,9 @@ export default function AnimationDetail() {
 
   const { animation, participants, deletionRequest } = data
   const isCreator = animation.creator_id === user.id
-  const isResponsable = hasRole(role, 'responsable')
-  const canControlTimers = isCreator || hasRole(role, 'senior')
-  const canCorrectFinished = hasRole(role, 'senior')
+  const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
+  const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
+  const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
   const isParticipant = participants.some(
     (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
   )

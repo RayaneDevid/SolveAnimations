@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { hasAnyRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const DECIDER_ROLES = ['responsable', 'responsable_mj', 'direction', 'gerance']
@@ -19,7 +20,7 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  if (!DECIDER_ROLES.includes(profile.role))
+  if (!hasAnyRole(profile, DECIDER_ROLES))
     return errorResponse('FORBIDDEN', 'Seuls les responsables peuvent décider des requêtes')
 
   const body: Body = await req.json().catch(() => ({}))
@@ -47,9 +48,13 @@ Deno.serve(async (req) => {
     return errorResponse('CONFLICT', 'Cette requête a déjà été traitée')
 
   // Vérifier que le responsable a le droit de décider pour cette destination
-  if (profile.role === 'responsable' && requete.destination !== 'ra')
+  const canDecideAll = hasAnyRole(profile, ['direction', 'gerance'])
+  const canDecideRa = hasAnyRole(profile, ['responsable'])
+  const canDecideRmj = hasAnyRole(profile, ['responsable_mj'])
+
+  if (!canDecideAll && requete.destination === 'ra' && !canDecideRa)
     return errorResponse('FORBIDDEN', 'Vous ne pouvez décider que des requêtes RA')
-  if (profile.role === 'responsable_mj' && requete.destination !== 'rmj')
+  if (!canDecideAll && requete.destination === 'rmj' && !canDecideRmj)
     return errorResponse('FORBIDDEN', 'Vous ne pouvez décider que des requêtes RMJ')
 
   const { data: updated, error: updateError } = await db

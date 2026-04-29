@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { hasAnyRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const SELECT = `
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
   // Tickets entrants selon le rôle
   let incoming: unknown[] = []
 
-  if (['direction', 'gerance'].includes(profile.role)) {
+  if (hasAnyRole(profile, ['direction', 'gerance'])) {
     // Voit tout
     const { data, error } = await db
       .from('requetes')
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
     incoming = data ?? []
-  } else if (profile.role === 'responsable') {
+  } else if (hasAnyRole(profile, ['responsable'])) {
     const { data, error } = await db
       .from('requetes')
       .select(SELECT)
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
     incoming = data ?? []
-  } else if (profile.role === 'responsable_mj') {
+  } else if (hasAnyRole(profile, ['responsable_mj'])) {
     const { data, error } = await db
       .from('requetes')
       .select(SELECT)

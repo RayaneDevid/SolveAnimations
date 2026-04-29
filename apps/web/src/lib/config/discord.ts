@@ -58,6 +58,27 @@ export function hasRole(userRole: StaffRoleKey, required: StaffRoleKey): boolean
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[required]
 }
 
+export function getHighestRole(roles: StaffRoleKey[], fallback: StaffRoleKey): StaffRoleKey {
+  const allRoles = roles.length > 0 ? roles : [fallback]
+  return [...allRoles].sort((a, b) => ROLE_HIERARCHY[b] - ROLE_HIERARCHY[a])[0] ?? fallback
+}
+
+export function getPermissionRoles(user: { role: StaffRoleKey; available_roles?: StaffRoleKey[] | null }): StaffRoleKey[] {
+  return Array.from(new Set([...(user.available_roles ?? []), user.role]))
+}
+
+export function getPermissionRole(user: { role: StaffRoleKey; available_roles?: StaffRoleKey[] | null }): StaffRoleKey {
+  return getHighestRole(getPermissionRoles(user), user.role)
+}
+
+export function hasPermissionRole(roles: StaffRoleKey[], required: StaffRoleKey): boolean {
+  return roles.some((role) => hasRole(role, required))
+}
+
+export function hasOwnedRole(roles: StaffRoleKey[], allowed: StaffRoleKey[]): boolean {
+  return roles.some((role) => allowed.includes(role))
+}
+
 const ROLE_LABELS_FEMME: Partial<Record<StaffRoleKey, string>> = {
   animateur: 'Animatrice',
   senior: 'Animatrice Senior',

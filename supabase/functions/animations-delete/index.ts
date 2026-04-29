@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { isResponsableRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const DELETABLE_BY_RESPONSABLE = ['pending_validation', 'open', 'preparing', 'running', 'cancelled', 'rejected', 'postponed', 'finished']
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
 
   const isCreator = anim.creator_id === profile.id
-  const isResponsable = ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(profile.role)
+  const isResponsable = isResponsableRole(profile)
 
   if (isResponsable) {
     if (!DELETABLE_BY_RESPONSABLE.includes(anim.status))

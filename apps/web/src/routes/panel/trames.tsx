@@ -23,7 +23,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import { formatDuration } from '@/lib/utils/format'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import type { TrameReport } from '@/types/database'
 
 const TRAME_CATEGORIES = ['clan', 'hors_clan', 'lore', 'bdm', 'autre'] as const
@@ -736,7 +736,7 @@ function EditTrameDialog({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Trames() {
-  const { user, role } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const { data: reports, isLoading, error } = useTrameReports()
   const { mutateAsync: deleteTrame, isPending: deleting } = useDeleteTrameReport()
   const [createOpen, setCreateOpen] = useState(false)
@@ -802,8 +802,8 @@ export default function Trames() {
               <TrameCard
                 key={report.id}
                 report={report}
-                canEdit={report.author_id === user.id || hasRole(role, 'responsable')}
-                canDelete={report.author_id === user.id || hasRole(role, 'responsable')}
+                canEdit={report.author_id === user.id || hasPermissionRole(permissionRoles, 'responsable')}
+                canDelete={report.author_id === user.id || hasPermissionRole(permissionRoles, 'responsable')}
                 onEdit={setEditingReport}
                 onDelete={handleDelete}
               />

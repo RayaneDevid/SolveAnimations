@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { hasAnyRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  if (!CREATOR_ROLES.includes(profile.role))
+  if (!hasAnyRole(profile, CREATOR_ROLES))
     return errorResponse('FORBIDDEN', 'Rôle insuffisant pour créer une requête')
 
   const body: Body = await req.json().catch(() => ({}))

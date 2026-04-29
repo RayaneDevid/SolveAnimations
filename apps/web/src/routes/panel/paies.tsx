@@ -11,6 +11,7 @@ import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils/cn'
+import { hasOwnedRole } from '@/lib/config/discord'
 import type { PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
@@ -179,12 +180,14 @@ function SummaryCard({ label, value, sub }: { label: string; value: string; sub?
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Paies() {
-  const { role } = useRequiredAuth()
+  const { permissionRoles } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
 
-  const showAnim = role !== 'responsable_mj'
-  const showMj   = role !== 'responsable'
+  const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
+    || (hasOwnedRole(permissionRoles, ['responsable']) && hasOwnedRole(permissionRoles, ['responsable_mj']))
+  const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
+  const showMj   = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_mj'])
 
   const poleAnim = useMemo(() =>
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'animation'), ANIM_PAY_ROLE_ORDER)

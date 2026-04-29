@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDate, formatDateTime, formatDuration, formatWeekLabel } from '@/lib/utils/format'
 import { getWeekBoundsFor } from '@/lib/utils/week'
 import { cn } from '@/lib/utils/cn'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import type { AnimationReport } from '@/types/database'
 
 // ─── Report detail modal ──────────────────────────────────────────────────────
@@ -270,12 +270,12 @@ function WeekSection({ group, onSelect }: { group: WeekGroup; onSelect: (r: Anim
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Reports() {
-  const { user, role } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const inspectedUserId = searchParams.get('user_id')
   const selectedReportId = searchParams.get('report_id')
   const { data: myReports, isLoading: myReportsLoading } = useMyReports()
-  const canSeeTeamReports = hasRole(role, 'responsable')
+  const canSeeTeamReports = hasPermissionRole(permissionRoles, 'responsable')
   const isInspectingUser = !!inspectedUserId && canSeeTeamReports
   const { data: inspectedReports, isLoading: inspectedReportsLoading } = useUserReports(isInspectingUser ? inspectedUserId : '')
   const [selected, setSelected] = useState<AnimationReport | null>(null)

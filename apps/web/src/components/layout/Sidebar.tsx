@@ -26,7 +26,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasRole } from '@/lib/config/discord'
+import { hasPermissionRole } from '@/lib/config/discord'
 import type { StaffRoleKey } from '@/lib/config/discord'
 
 interface NavItem {
@@ -88,13 +88,13 @@ export function Sidebar() {
 
   if (auth.status !== 'authenticated') return null
 
-  const { user, role } = auth
+  const { user, role, permissionRoles } = auth
 
   const visibleSections = NAV_SECTIONS
     .map((section) => ({
       ...section,
       items: section.minRole
-        ? (hasRole(role, section.minRole) ? section.items : [])
+        ? (hasPermissionRole(permissionRoles, section.minRole) ? section.items : [])
         : section.items,
     }))
     .filter((s) => s.items.length > 0)

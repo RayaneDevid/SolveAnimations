@@ -12,7 +12,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDateTime, formatDuration } from '@/lib/utils/format'
+import { formatDate, formatDuration, formatTime } from '@/lib/utils/format'
 
 const TYPE_LABELS = { petite: 'P', moyenne: 'M', grande: 'G' } as const
 const TYPE_STYLES: Record<string, string> = {
@@ -75,7 +75,7 @@ function AnimationCard({ anim }: { anim: Animation }) {
           </div>
 
           <div className="flex items-center justify-between text-xs text-white/40">
-            <span>{formatDateTime(anim.scheduled_at)}</span>
+            <span>{formatDate(anim.scheduled_at, 'EEEE dd/MM/yyyy')} à {formatTime(anim.scheduled_at)}</span>
             <span>{formatDuration(anim.planned_duration_min)}</span>
           </div>
 

@@ -9,10 +9,13 @@ interface Body {
   id: string
   title: string
   documentUrl: string
+  category?: string
   coAuthorIds?: string[]
   writingTimeMin: number
   validatedBy: string
 }
+
+const CATEGORIES = ['clan', 'hors_clan', 'lore', 'bdm', 'autre']
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -22,7 +25,7 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body: Body = await req.json().catch(() => ({}))
-  const { id, title, documentUrl, coAuthorIds = [], writingTimeMin, validatedBy } = body
+  const { id, title, documentUrl, category = 'autre', coAuthorIds = [], writingTimeMin, validatedBy } = body
 
   if (!id || typeof id !== 'string') return errorResponse('VALIDATION_ERROR', 'id requis')
   if (!title || typeof title !== 'string' || title.trim().length < 3)
@@ -35,6 +38,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', "Temps d'écriture invalide")
   if (!validatedBy || typeof validatedBy !== 'string' || validatedBy.trim().length < 2)
     return errorResponse('VALIDATION_ERROR', 'Validateur requis')
+  if (!CATEGORIES.includes(category))
+    return errorResponse('VALIDATION_ERROR', 'Catégorie invalide')
 
   try { new URL(documentUrl) } catch {
     return errorResponse('VALIDATION_ERROR', 'Lien du document invalide')
@@ -64,6 +69,7 @@ Deno.serve(async (req) => {
     .update({
       title: title.trim(),
       document_url: documentUrl,
+      category,
       writing_time_min: writingTimeMin,
       validated_by: validatedBy.trim(),
     })
@@ -96,7 +102,7 @@ Deno.serve(async (req) => {
   const { data: full, error: fullError } = await db
     .from('trame_reports')
     .select(`
-      id, title, document_url, author_id, created_at, writing_time_min, validated_by,
+      id, title, document_url, category, author_id, created_at, writing_time_min, validated_by,
       author:profiles!author_id(id, username, avatar_url),
       co_authors:trame_report_co_authors(
         user:profiles(id, username, avatar_url)
@@ -115,6 +121,7 @@ function shapeReport(r: Record<string, unknown>) {
     id: r.id,
     title: r.title,
     document_url: r.document_url,
+    category: r.category ?? 'autre',
     author_id: r.author_id,
     created_at: r.created_at,
     writing_time_min: r.writing_time_min ?? null,

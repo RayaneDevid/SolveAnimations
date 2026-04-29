@@ -26,9 +26,21 @@ import { formatDuration } from '@/lib/utils/format'
 import { hasRole } from '@/lib/config/discord'
 import type { TrameReport } from '@/types/database'
 
+const TRAME_CATEGORIES = ['clan', 'hors_clan', 'lore', 'bdm', 'autre'] as const
+type TrameCategory = (typeof TRAME_CATEGORIES)[number]
+
+const TRAME_CATEGORY_LABELS: Record<TrameCategory, string> = {
+  clan: 'Clan',
+  hors_clan: 'Hors-Clan',
+  lore: 'Lore',
+  bdm: 'BDM',
+  autre: 'Autre',
+}
+
 const createTrameSchema = z.object({
   title: z.string().trim().min(3, 'Titre requis (min 3 caractères)').max(120),
   documentUrl: z.string().url('URL invalide'),
+  category: z.enum(TRAME_CATEGORIES, { required_error: 'Catégorie requise' }),
   writingTimeMin: z.preprocess(
     (value) => (value === '' || value == null ? undefined : Number(value)),
     z.number({ required_error: 'Temps requis' }).int('Temps invalide').min(1, 'Temps requis').max(10_080, 'Temps trop long'),
@@ -37,6 +49,45 @@ const createTrameSchema = z.object({
 })
 
 type CreateTrameFormValues = z.infer<typeof createTrameSchema>
+
+function CategoryPills({
+  value,
+  onChange,
+}: {
+  value: TrameCategory
+  onChange: (value: TrameCategory) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {TRAME_CATEGORIES.map((category) => {
+        const active = value === category
+        return (
+          <button
+            key={category}
+            type="button"
+            onClick={() => onChange(category)}
+            className={cn(
+              'h-8 rounded-full border px-3 text-xs font-medium transition-colors',
+              active
+                ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-200'
+                : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/[0.16] hover:text-white/70',
+            )}
+          >
+            {TRAME_CATEGORY_LABELS[category]}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function CategoryBadge({ category }: { category: TrameCategory }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-xs font-medium text-violet-200">
+      {TRAME_CATEGORY_LABELS[category]}
+    </span>
+  )
+}
 
 // ─── Trame card ───────────────────────────────────────────────────────────────
 
@@ -65,6 +116,8 @@ function TrameCard({
             <h3 className="text-sm font-semibold text-white/90 truncate">{report.title}</h3>
 
             <div className="flex items-center gap-4 mt-2 flex-wrap">
+              <CategoryBadge category={(report.category ?? 'autre') as TrameCategory} />
+
               {report.author && (
                 <div className="flex items-center gap-1.5">
                   <User className="h-3 w-3 text-white/30 shrink-0" />
@@ -168,10 +221,14 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateTrameFormValues>({
     resolver: zodResolver(createTrameSchema),
+    defaultValues: { category: 'autre' },
   })
+  const category = watch('category') ?? 'autre'
 
   const eligibleMembers = useMemo(() => {
     const q = memberSearch.toLowerCase()
@@ -204,6 +261,7 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
       await mutateAsync({
         title: data.title,
         documentUrl: data.documentUrl,
+        category: data.category,
         writingTimeMin: data.writingTimeMin,
         coAuthorIds,
         validatedBy: data.validatedBy,
@@ -254,6 +312,21 @@ function CreateTrameDialog({ open, onClose }: { open: boolean; onClose: () => vo
               <p className="text-xs text-red-400 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 {errors.documentUrl.message}
+              </p>
+            )}
+          </div>
+
+          {/* Category */}
+          <div className="space-y-1.5">
+            <Label>Catégories <span className="text-red-400">*</span></Label>
+            <CategoryPills
+              value={category}
+              onChange={(value) => setValue('category', value, { shouldValidate: true })}
+            />
+            {errors.category && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.category.message}
               </p>
             )}
           </div>
@@ -411,16 +484,21 @@ function EditTrameDialog({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateTrameFormValues>({
     resolver: zodResolver(createTrameSchema),
+    defaultValues: { category: 'autre' },
   })
+  const category = watch('category') ?? 'autre'
 
   useEffect(() => {
     if (!report) return
     reset({
       title: report.title,
       documentUrl: report.document_url,
+      category: (report.category ?? 'autre') as TrameCategory,
       writingTimeMin: report.writing_time_min ?? 1,
       validatedBy: report.validated_by ?? '',
     })
@@ -461,6 +539,7 @@ function EditTrameDialog({
         id: report.id,
         title: data.title,
         documentUrl: data.documentUrl,
+        category: data.category,
         writingTimeMin: data.writingTimeMin,
         coAuthorIds,
         validatedBy: data.validatedBy,
@@ -509,6 +588,20 @@ function EditTrameDialog({
               <p className="text-xs text-red-400 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 {errors.documentUrl.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Catégories <span className="text-red-400">*</span></Label>
+            <CategoryPills
+              value={category}
+              onChange={(value) => setValue('category', value, { shouldValidate: true })}
+            />
+            {errors.category && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.category.message}
               </p>
             )}
           </div>

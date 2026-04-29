@@ -261,6 +261,7 @@ export interface TrameReport {
   document_url: string
   author_id: string
   created_at: string
+  category: 'clan' | 'hors_clan' | 'lore' | 'bdm' | 'autre'
   writing_time_min: number | null
   validated_by: string | null
   author?: { id: string; username: string; avatar_url: string | null }

@@ -465,7 +465,7 @@ export function useDecideRequete() {
 export function useCreateTrameReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title: string; documentUrl: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
+    mutationFn: (body: { title: string; documentUrl: string; category: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
       invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-create', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trame-reports'] })
@@ -477,7 +477,7 @@ export function useCreateTrameReport() {
 export function useUpdateTrameReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { id: string; title: string; documentUrl: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
+    mutationFn: (body: { id: string; title: string; documentUrl: string; category: string; coAuthorIds: string[]; writingTimeMin: number; validatedBy: string }) =>
       invokeEdge<{ report: import('@/types/database').TrameReport }>('trame-reports-update', body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trame-reports'] })

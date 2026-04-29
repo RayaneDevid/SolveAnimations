@@ -197,7 +197,7 @@ function PoleAbsencesCard({
         </span>
       </div>
       {absent.length === 0 ? (
-        <p className="text-xs text-white/25">Aucun absent actuellement</p>
+        <p className="text-xs text-white/25">Aucune absence actuelle ou à venir</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {absent.map((member) => (
@@ -252,9 +252,9 @@ export default function Absences() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white/80">
-                {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} absent{summary.absentCount > 1 ? 's' : ''} actuellement
+                {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} avec une absence actuelle ou à venir
               </p>
-              <p className="text-xs text-white/30 mt-0.5">absences qui couvrent la date du jour</p>
+              <p className="text-xs text-white/30 mt-0.5">absences dont la date de fin n'est pas passée</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-0 sm:pl-12">

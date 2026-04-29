@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
     const { data: absences } = await db
       .from('user_absences')
       .select('user_id, profiles(username, avatar_url, role)')
-      .lte('from_date', today)
       .gte('to_date', today)
 
     const seen = new Map<string, { username: string; avatar_url: string | null; role: string | null }>()

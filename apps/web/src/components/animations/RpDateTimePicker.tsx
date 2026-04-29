@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { addDays, format, subDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { fromZonedTime, toZonedTime } from 'date-fns-tz'
 import { cn } from '@/lib/utils/cn'
 
 interface RpDateTimePickerProps {
@@ -10,6 +11,7 @@ interface RpDateTimePickerProps {
 }
 
 // Fri (5), Sat (6), Sun (0) → session ends at 04:00 the next morning
+const TZ = 'Europe/Paris'
 const EXTENDED_NIGHTS = new Set([0, 5, 6])
 const SESSION_START_HOUR = 18
 
@@ -56,7 +58,7 @@ function sessionDateFromDate(date: Date): Date {
 }
 
 function defaultSelection(): { sessionDate: Date; time: string } {
-  const candidate = roundUpToTenMinutes(new Date(Date.now() + 10 * 60_000))
+  const candidate = roundUpToTenMinutes(toZonedTime(new Date(Date.now() + 10 * 60_000), TZ))
   const candidateTime = toTimeString(candidate)
   const sessionDate = sessionDateFromDate(candidate)
   const slots = generateTimeSlots(maxHourForDate(sessionDate))
@@ -73,16 +75,17 @@ function defaultSelection(): { sessionDate: Date; time: string } {
 // Times before 18:00 are "next day" (00:00–04:00 belong to the following calendar day)
 function buildDate(sessionDate: Date, time: string): Date {
   const [h, m] = time.split(':').map(Number)
-  const result = h < 18 ? addDays(sessionDate, 1) : new Date(sessionDate)
-  result.setHours(h, m, 0, 0)
-  return result
+  const calendarDate = h < 18 ? addDays(sessionDate, 1) : sessionDate
+  const dateStr = format(calendarDate, 'yyyy-MM-dd')
+  return fromZonedTime(`${dateStr}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`, TZ)
 }
 
 // Given a full scheduledAt, recover the session date + time string
 function decompose(value: Date): { sessionDate: Date; time: string } {
-  const h = value.getHours()
-  const m = value.getMinutes()
-  const sessionDate = new Date(h < 18 ? addDays(value, -1) : value)
+  const parisValue = toZonedTime(value, TZ)
+  const h = parisValue.getHours()
+  const m = parisValue.getMinutes()
+  const sessionDate = new Date(h < 18 ? subDays(parisValue, 1) : parisValue)
   sessionDate.setHours(0, 0, 0, 0)
   const roundedM = Math.round(m / 10) * 10
   const time = `${String(h).padStart(2, '0')}:${String(Math.min(roundedM, 59)).padStart(2, '0')}`

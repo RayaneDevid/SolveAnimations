@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   // Fetch all finished animations in range with creator role (for pole filter)
   const { data: rawAnims, error: allErr } = await db
     .from('animations')
-    .select('ended_at, creator_id, creator:profiles!animations_creator_id_fkey(role)')
+    .select('id, ended_at, creator_id, creator:profiles!animations_creator_id_fkey(role)')
     .eq('status', 'finished')
     .gte('ended_at', oldest.toISOString())
     .lt('ended_at', rangeEnd)
@@ -65,9 +65,27 @@ Deno.serve(async (req) => {
       )
     : (rawAnims ?? [])
 
-  // Apply user filter (subset of pole-filtered)
+  const animIds = (allAnims ?? []).map((a: { id: string }) => a.id)
+  const { data: participations, error: partsErr } = user_id && animIds.length > 0
+    ? await db
+      .from('animation_participants')
+      .select('animation_id')
+      .eq('user_id', user_id)
+      .eq('status', 'validated')
+      .in('animation_id', animIds)
+    : { data: [], error: null }
+
+  if (partsErr) {
+    return errorResponse('INTERNAL_ERROR', partsErr.message)
+  }
+
+  const participatedAnimationIds = new Set((participations ?? []).map((p: { animation_id: string }) => p.animation_id))
+
+  // Apply user filter: animations created by the user + validated participations.
   const userAnims = user_id
-    ? allAnims.filter((a: { creator_id: string }) => a.creator_id === user_id)
+    ? allAnims.filter((a: { id: string; creator_id: string }) =>
+        a.creator_id === user_id || participatedAnimationIds.has(a.id)
+      )
     : allAnims
 
   // Count per bucket

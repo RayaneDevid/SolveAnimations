@@ -97,7 +97,7 @@ export default function NewAnimation() {
       return
     }
 
-    if (!requiredParticipants || requiredParticipants <= 0) {
+    if (requiredParticipants == null) {
       setValue('requiredParticipants', 4, { shouldValidate: true })
     }
   }, [isInstantMission, requiredParticipants, setValue])
@@ -265,7 +265,7 @@ export default function NewAnimation() {
             <Input
               id="requiredParticipants"
               type="number"
-              min={1}
+              min={0}
               max={100}
               placeholder="Ex: 4"
               {...register('requiredParticipants', { valueAsNumber: true })}

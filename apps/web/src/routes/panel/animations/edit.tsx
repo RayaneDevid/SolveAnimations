@@ -192,17 +192,17 @@ export default function EditAnimation() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setValue('requiredParticipants', Math.max(1, (requiredParticipants ?? 1) - 1))}
+                onClick={() => setValue('requiredParticipants', Math.max(0, (requiredParticipants ?? 0) - 1), { shouldValidate: true })}
                 className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
               >
                 <Minus className="h-3 w-3" />
               </button>
               <span className="text-2xl font-bold text-white w-8 text-center">
-                {requiredParticipants ?? 1}
+                {requiredParticipants ?? 0}
               </span>
               <button
                 type="button"
-                onClick={() => setValue('requiredParticipants', Math.min(100, (requiredParticipants ?? 1) + 1))}
+                onClick={() => setValue('requiredParticipants', Math.min(100, (requiredParticipants ?? 0) + 1), { shouldValidate: true })}
                 className="h-8 w-8 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
               >
                 <Plus className="h-3 w-3" />

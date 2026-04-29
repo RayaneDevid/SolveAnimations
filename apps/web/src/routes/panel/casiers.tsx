@@ -48,6 +48,19 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj: 3,
 }
 
+function todayParisString(): string {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return `${year}-${month}-${day}`
+}
+
 type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj_senior' | 'mj' | 'bdm'
 
 const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
@@ -241,7 +254,8 @@ function MemberDetail({
   const upcomingAnims = (animsResult?.animations ?? []).filter((a) =>
     ['open', 'running', 'pending_validation'].includes(a.status),
   )
-  const futureAbsences = (absences ?? []).filter((a) => new Date(a.to_date) >= new Date())
+  const today = todayParisString()
+  const futureAbsences = (absences ?? []).filter((a) => a.to_date > today)
 
   return (
     <>
@@ -373,7 +387,7 @@ function MemberDetail({
             ) : (
               <div className="space-y-2">
                 {futureAbsences.map((absence) => {
-                  const isActive = new Date(absence.from_date) <= new Date() && new Date(absence.to_date) >= new Date()
+                  const isActive = absence.from_date <= today && absence.to_date > today
                   return (
                     <div key={absence.id} className={cn('flex items-start gap-3 p-3 rounded-xl border', isActive ? 'bg-orange-500/5 border-orange-500/20' : 'bg-white/[0.03] border-white/[0.06]')}>
                       <CalendarOff className={cn('h-4 w-4 mt-0.5 shrink-0', isActive ? 'text-orange-400' : 'text-white/30')} />

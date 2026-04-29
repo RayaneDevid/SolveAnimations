@@ -360,7 +360,7 @@ function AbsenceBadge({
     <Tooltip delayDuration={100}>
       <TooltipTrigger asChild>
         <span className="inline-flex cursor-help rounded-full border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-400">
-          Absent{dateLabel ? ` · ${dateLabel}` : ''}
+          Absent
         </span>
       </TooltipTrigger>
       <TooltipContent side="left" className="max-w-xs p-3">

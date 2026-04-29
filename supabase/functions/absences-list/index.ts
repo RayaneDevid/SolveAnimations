@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const { data: absences, error: absencesError } = await db
       .from('user_absences')
       .select('user_id, from_date, to_date')
-      .gte('to_date', today)
+      .gt('to_date', today)
       .order('from_date', { ascending: true })
 
     if (absencesError) return errorResponse('INTERNAL_ERROR', absencesError.message)

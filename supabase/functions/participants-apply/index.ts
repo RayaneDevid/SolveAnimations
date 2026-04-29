@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     .select('id')
     .eq('user_id', profile.id)
     .lte('from_date', animDate)
-    .gte('to_date', animDate)
+    .gt('to_date', animDate)
     .limit(1)
     .maybeSingle()
 

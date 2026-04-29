@@ -283,7 +283,7 @@ export function useCreateAbsence() {
   })
 }
 
-export function useDeleteAbsence() {
+export function useMarkAbsenceReturn() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => invokeEdge<object>('absences-delete', { id }),

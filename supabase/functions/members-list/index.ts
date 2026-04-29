@@ -57,12 +57,12 @@ Deno.serve(async (req) => {
     .lt('animations.ended_at' as never, weekEnd.toISOString())
     .in('user_id', profileIds)
 
-  // Current absences (today falls between from_date and to_date)
+  // Current absences: to_date is the return date, so it no longer blocks that day.
   const { data: absences } = await db
     .from('user_absences')
     .select('user_id, from_date, to_date, reason, declared_by')
     .lte('from_date', today)
-    .gte('to_date', today)
+    .gt('to_date', today)
     .in('user_id', profileIds)
 
   const declarerIds = Array.from(new Set((absences ?? []).map((absence) => absence.declared_by).filter(Boolean)))

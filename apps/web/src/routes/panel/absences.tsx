@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Plus, CalendarOff, Trash2, Users } from 'lucide-react'
+import { Plus, CalendarOff, CheckCircle2, Users } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { isAfter, parseISO } from 'date-fns'
 import { useAbsences, useAbsencesSummary, useMemberDirectory } from '@/hooks/queries/useAnimations'
-import { useCreateAbsence, useDeleteAbsence } from '@/hooks/mutations/useAnimationMutations'
+import { useCreateAbsence, useMarkAbsenceReturn } from '@/hooks/mutations/useAnimationMutations'
 import { absenceSchema, type AbsenceInput } from '@/lib/schemas/animation'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -26,8 +25,23 @@ type SummaryMember = {
   to_date: string
 }
 
-function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id: string) => void }) {
-  const isPast = isAfter(new Date(), parseISO(absence.to_date))
+function todayParisString(): string {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return `${year}-${month}-${day}`
+}
+
+function AbsenceRow({ absence, onReturn }: { absence: UserAbsence; onReturn: (id: string) => void }) {
+  const today = todayParisString()
+  const isPast = absence.to_date <= today
+  const isCurrent = absence.from_date <= today && absence.to_date > today
   return (
     <div className="flex items-start justify-between py-3">
       <div className="flex-1 min-w-0">
@@ -48,12 +62,13 @@ function AbsenceRow({ absence, onDelete }: { absence: UserAbsence; onDelete: (id
           Déclarée par {absence.declarer?.username ?? 'inconnu'}
         </p>
       </div>
-      {!isPast && (
+      {isCurrent && (
         <button
-          onClick={() => onDelete(absence.id)}
-          className="ml-3 h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center"
+          onClick={() => onReturn(absence.id)}
+          className="ml-3 inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Marquer mon retour
         </button>
       )}
     </div>
@@ -218,19 +233,19 @@ export default function Absences() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: absences, isLoading } = useAbsences()
   const { data: summary } = useAbsencesSummary()
-  const { mutateAsync: deleteAbsence } = useDeleteAbsence()
+  const { mutateAsync: markReturn } = useMarkAbsenceReturn()
 
-  const now = new Date()
-  const upcoming = absences?.filter((a) => !isAfter(now, parseISO(a.to_date))) ?? []
-  const past = absences?.filter((a) => isAfter(now, parseISO(a.to_date))) ?? []
+  const today = todayParisString()
+  const upcoming = absences?.filter((a) => a.to_date > today) ?? []
+  const past = absences?.filter((a) => a.to_date <= today) ?? []
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette absence ?')) return
+  const handleMarkReturn = async (id: string) => {
+    if (!confirm("Marquer ton retour aujourd'hui ?")) return
     try {
-      await deleteAbsence(id)
-      toast.success('Absence supprimée')
-    } catch {
-      toast.error('Erreur')
+      await markReturn(id)
+      toast.success('Retour marqué')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
     }
   }
 
@@ -259,7 +274,7 @@ export default function Absences() {
               <p className="text-sm font-semibold text-white/80">
                 {summary.absentCount} / {summary.totalStaff} membre{summary.totalStaff > 1 ? 's' : ''} avec une absence actuelle ou à venir
               </p>
-              <p className="text-xs text-white/30 mt-0.5">absences dont la date de fin n'est pas passée</p>
+              <p className="text-xs text-white/30 mt-0.5">absences dont la date de retour est à venir</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-0 sm:pl-12">
@@ -294,7 +309,7 @@ export default function Absences() {
             ) : (
               <div className="divide-y divide-white/[0.05]">
                 {upcoming.map((a) => (
-                  <AbsenceRow key={a.id} absence={a} onDelete={handleDelete} />
+                  <AbsenceRow key={a.id} absence={a} onReturn={handleMarkReturn} />
                 ))}
               </div>
             )}
@@ -307,7 +322,7 @@ export default function Absences() {
               </h2>
               <div className="divide-y divide-white/[0.05]">
                 {past.slice(0, 10).map((a) => (
-                  <AbsenceRow key={a.id} absence={a} onDelete={handleDelete} />
+                  <AbsenceRow key={a.id} absence={a} onReturn={handleMarkReturn} />
                 ))}
               </div>
             </GlassCard>

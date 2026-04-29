@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   FolderOpen, Search, X, CalendarOff, Clock, Sword,
@@ -6,7 +6,7 @@ import {
   FileText, CheckCircle2, AlertCircle, History, UserX, RotateCcw,
   UserPlus, GraduationCap, ScrollText, AlertTriangle,
 } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { format, formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -863,11 +863,42 @@ export default function Casiers() {
   const { permissionRoles } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [selectedActive, setSelectedActive] = useState<MemberEntry | null>(null)
   const [selectedFormer, setSelectedFormer] = useState<FormerMemberEntry | null>(null)
   const canManageWarnings = hasPermissionRole(permissionRoles, 'responsable')
+  const selectedUserId = searchParams.get('user_id')
+
+  useEffect(() => {
+    if (!selectedUserId) return
+
+    const activeMember = members.find((member) => member.id === selectedUserId)
+    if (activeMember) {
+      setSelectedActive(activeMember)
+      setSelectedFormer(null)
+      return
+    }
+
+    const formerMember = former.find((member) => member.id === selectedUserId)
+    if (formerMember) {
+      setSelectedFormer(formerMember)
+      setSelectedActive(null)
+    }
+  }, [selectedUserId, members, former])
+
+  const closeSelectedMember = () => {
+    setSelectedActive(null)
+    setSelectedFormer(null)
+    if (!selectedUserId) return
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.delete('user_id')
+      return next
+    }, { replace: true })
+  }
 
   const filtered = useMemo(() => {
     const filterDef = ROLE_FILTERS.find((f) => f.key === roleFilter)
@@ -948,7 +979,19 @@ export default function Casiers() {
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <AnimatePresence mode="popLayout">
                 {filtered.map((member) => (
-                  <MemberCard key={member.id} member={member} onClick={() => setSelectedActive(member)} />
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    onClick={() => {
+                      setSelectedActive(member)
+                      setSelectedFormer(null)
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current)
+                        next.set('user_id', member.id)
+                        return next
+                      }, { replace: true })
+                    }}
+                  />
                 ))}
               </AnimatePresence>
             </motion.div>
@@ -970,7 +1013,19 @@ export default function Casiers() {
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
               <AnimatePresence mode="popLayout">
                 {filteredFormer.map((member) => (
-                  <FormerMemberCard key={member.id} member={member} onClick={() => setSelectedFormer(member)} />
+                  <FormerMemberCard
+                    key={member.id}
+                    member={member}
+                    onClick={() => {
+                      setSelectedFormer(member)
+                      setSelectedActive(null)
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current)
+                        next.set('user_id', member.id)
+                        return next
+                      }, { replace: true })
+                    }}
+                  />
                 ))}
               </AnimatePresence>
             </motion.div>
@@ -985,11 +1040,11 @@ export default function Casiers() {
             key={selectedActive.id}
             member={selectedActive}
             canManageWarnings={canManageWarnings}
-            onClose={() => setSelectedActive(null)}
+            onClose={closeSelectedMember}
           />
         )}
         {selectedFormer && (
-          <FormerMemberDetail key={selectedFormer.id} member={selectedFormer} onClose={() => setSelectedFormer(null)} />
+          <FormerMemberDetail key={selectedFormer.id} member={selectedFormer} onClose={closeSelectedMember} />
         )}
       </AnimatePresence>
     </div>

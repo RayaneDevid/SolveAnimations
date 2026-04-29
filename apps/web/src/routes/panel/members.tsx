@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, CheckCircle2, CircleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
@@ -502,7 +503,12 @@ function MemberTable({
                   <div className="flex items-center gap-2.5">
                     <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm font-medium text-white/90 truncate">{m.username}</span>
+                      <Link
+                        to={`/panel/casiers?user_id=${m.id}`}
+                        className="text-sm font-medium text-white/90 truncate transition-colors hover:text-cyan-300"
+                      >
+                        {m.username}
+                      </Link>
                       <GenderIcon gender={m.gender} />
                       {m.isAbsent && <CalendarOff className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
                       <ProfileTooltip member={m} />

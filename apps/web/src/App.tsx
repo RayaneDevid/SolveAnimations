@@ -20,6 +20,7 @@ import Leaderboard from '@/routes/panel/leaderboard'
 import Members from '@/routes/panel/members'
 import Casiers from '@/routes/panel/casiers'
 import Paies from '@/routes/panel/paies'
+import Logs from '@/routes/panel/logs'
 import Villages from '@/routes/panel/villages'
 import ProfilePage from '@/routes/panel/profile'
 import Recrutement from '@/routes/panel/recrutement'
@@ -88,6 +89,14 @@ export default function App() {
             element={
               <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Paies />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="logs"
+            element={
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+                <Logs />
               </RoleGate>
             }
           />

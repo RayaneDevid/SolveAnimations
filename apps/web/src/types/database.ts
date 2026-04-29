@@ -186,6 +186,7 @@ export interface MemberEntry {
   role: StaffRoleKey
   availableRoles: StaffRoleKey[]
   payPole: 'animation' | 'mj' | null
+  lastActivityAt: string | null
   lastLoginAt: string
   lastRoleCheckAt: string
   isAbsent: boolean
@@ -239,6 +240,26 @@ export interface PaiesEntry {
   remuneration: number
   remunerationCapped: boolean
   trameReportsCount?: number
+}
+
+export interface AuditLogEntry {
+  id: string
+  actor_id: string | null
+  action: string
+  target_type: string
+  target_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  actor?: { id: string; username: string; avatar_url: string | null; role: StaffRoleKey } | null
+}
+
+export interface AuditLogsResult {
+  logs: AuditLogEntry[]
+  actions: string[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
 }
 
 export type RequeteSubject =

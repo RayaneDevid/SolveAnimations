@@ -32,6 +32,9 @@ export const queryKeys = {
   warnings: {
     user: (userId: string) => ['warnings', userId] as const,
   },
+  logs: {
+    list: (filters?: object) => ['logs', filters] as const,
+  },
   calendar: {
     week: (weekStart: string) => ['calendar', weekStart] as const,
   },

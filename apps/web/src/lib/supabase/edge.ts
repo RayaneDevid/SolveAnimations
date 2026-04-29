@@ -46,6 +46,7 @@ export type EdgeFunctionName =
   | 'members-update-perms'
   | 'members-update-primary-role'
   | 'members-update-pay-pole'
+  | 'logs-list'
   | 'warnings-list'
   | 'warnings-create'
   | 'profile-update'

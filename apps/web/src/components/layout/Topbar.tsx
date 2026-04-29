@@ -15,6 +15,7 @@ const ROUTE_LABELS: Record<string, string> = {
   validation: 'Validation',
   leaderboard: 'Classement',
   members: 'Membres',
+  logs: 'Logs',
   villages: 'Statistiques',
   new: 'Nouvelle animation',
   edit: 'Modifier',

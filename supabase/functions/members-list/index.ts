@@ -93,6 +93,19 @@ Deno.serve(async (req) => {
     warningCountMap.set(warning.user_id, (warningCountMap.get(warning.user_id) ?? 0) + 1)
   }
 
+  const { data: activityLogs } = await db
+    .from('audit_log')
+    .select('actor_id, created_at')
+    .in('actor_id', profileIds)
+    .order('created_at', { ascending: false })
+
+  const lastActivityMap = new Map<string, string>()
+  for (const log of activityLogs ?? []) {
+    if (log.actor_id && !lastActivityMap.has(log.actor_id)) {
+      lastActivityMap.set(log.actor_id, log.created_at)
+    }
+  }
+
   // Build per-user aggregates
   const weeklyAnimMap = new Map<string, { count: number; minutes: number }>()
   let weeklyTotalAnimations = 0
@@ -152,6 +165,7 @@ function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undef
       role: p.role,
       availableRoles: Array.isArray(p.available_roles) && p.available_roles.length > 0 ? p.available_roles : [p.role],
       payPole: p.pay_pole ?? null,
+      lastActivityAt: lastActivityMap.get(p.id) ?? null,
       lastLoginAt: p.last_login_at,
       lastRoleCheckAt: p.last_role_check_at,
       isAbsent: absentIds.has(p.id),

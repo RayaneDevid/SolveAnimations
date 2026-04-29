@@ -477,7 +477,7 @@ function MemberTable({
     <table className="w-full">
       <thead>
         <tr className="border-b border-white/[0.06]">
-          {['Membre', 'Rôle', 'Paie', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
+          {['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
             <th key={h} className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3">
               {h}
             </th>
@@ -489,6 +489,7 @@ function MemberTable({
           const quotaMax = m.weeklyStats.quotaMax
           const quota = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
           const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
+          const missionsCount = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
           return (
             <motion.tr
               key={m.id}
@@ -522,8 +523,13 @@ function MemberTable({
                   onChangePayPole={onChangePayPole}
                 />
               </td>
+              <td className="px-4 py-3 text-sm text-white/40 whitespace-nowrap">
+                {m.lastActivityAt
+                  ? formatDistanceToNow(new Date(m.lastActivityAt), { addSuffix: true, locale: fr })
+                  : '—'}
+              </td>
               <td className="px-4 py-3 text-sm text-white/60">
-                <span className="text-white/90 font-medium">{m.weeklyStats.animationsCreated}</span>
+                <span className="text-white/90 font-medium">{missionsCount}</span>
                 <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
               </td>
               <td className="px-4 py-3 text-sm text-white/60">

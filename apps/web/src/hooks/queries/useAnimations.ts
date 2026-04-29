@@ -181,6 +181,26 @@ export function useUserWarnings(userId: string) {
   })
 }
 
+export interface AuditLogFilters {
+  action?: string | null
+  actorId?: string | null
+  page?: number
+  pageSize?: number
+}
+
+export function useAuditLogs(filters: AuditLogFilters) {
+  return useQuery({
+    queryKey: queryKeys.logs.list(filters),
+    queryFn: () =>
+      invokeEdge<import('@/types/database').AuditLogsResult>('logs-list', {
+        ...(filters.action ? { action: filters.action } : {}),
+        ...(filters.actorId ? { actor_id: filters.actorId } : {}),
+        page: filters.page ?? 1,
+        pageSize: filters.pageSize ?? 50,
+      }),
+  })
+}
+
 export interface WeeklyEvolutionPoint {
   weekStart: string
   label: string

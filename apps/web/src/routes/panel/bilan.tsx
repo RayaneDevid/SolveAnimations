@@ -3,15 +3,17 @@ import { addDays, format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { toPng } from 'html-to-image'
 import { AlertTriangle, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
-import { useWeeklyReview, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
+import { useWeeklyReview, useVillageStats, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { cn } from '@/lib/utils/cn'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { QuotaCompletion } from '@/types/database'
 
 function dateFromInput(value: string): Date {
   return new Date(`${value}T00:00:00`)
@@ -110,22 +112,26 @@ function DepartureBadge({ departure }: { departure: WeeklyReviewDeparture }) {
     departure.username,
     departure.discord_username ? `Discord: @${departure.discord_username}` : 'Discord inconnu',
     departure.steam_id ? `SteamID: ${departure.steam_id}` : null,
-    departure.deactivation_reason ? `Raison: ${departure.deactivation_reason}` : 'Raison: aucune raison renseignée',
     departure.deactivated_by_username ? `Retiré par: ${departure.deactivated_by_username}` : null,
   ].filter(Boolean).join('\n')
 
   return (
     <span
       title={title}
-      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/[0.07] px-2 py-1 text-xs text-red-100/85"
+      className="inline-flex max-w-full flex-col gap-0.5 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-2.5 py-1.5 text-xs text-red-100/85"
     >
-      <UserAvatar avatarUrl={departure.avatar_url} username={departure.username} size="xs" />
-      <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{departure.username}</span>
-      {departure.deactivated_at && (
-        <span className="shrink-0 text-red-200/45">
-          {format(new Date(departure.deactivated_at), 'dd/MM', { locale: fr })}
-        </span>
-      )}
+      <span className="flex items-center gap-1.5">
+        <UserAvatar avatarUrl={departure.avatar_url} username={departure.username} size="xs" />
+        <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{departure.username}</span>
+        {departure.deactivated_at && (
+          <span className="ml-auto shrink-0 text-red-200/45">
+            {format(new Date(departure.deactivated_at), 'dd/MM', { locale: fr })}
+          </span>
+        )}
+      </span>
+      <p className="pl-5 text-[10px] leading-snug text-red-200/50 line-clamp-2">
+        {departure.deactivation_reason ?? 'Aucune raison renseignée'}
+      </p>
     </span>
   )
 }
@@ -183,6 +189,68 @@ function ReviewCard({
   )
 }
 
+const QUOTA_TOOLTIP_STYLE = {
+  backgroundColor: '#13141A',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px',
+  color: 'rgba(255,255,255,0.8)',
+  fontSize: '12px',
+}
+
+function QuotaTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { count: number } }> }) {
+  if (!active || !payload?.length) return null
+  const item = payload[0]
+  return (
+    <div style={QUOTA_TOOLTIP_STYLE} className="p-3">
+      <p className="text-sm text-white/80">{item.name}: <strong>{item.value.toFixed(1)}%</strong></p>
+      <p className="mt-0.5 text-xs text-white/40">{item.payload.count} personne{item.payload.count > 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
+function QuotaPieCard({ data }: { data: QuotaCompletion }) {
+  const chartData = [
+    { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: '#22c55e' },
+    { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: '#f97316' },
+  ].filter((entry) => entry.count > 0)
+
+  if (data.total === 0) return null
+
+  return (
+    <GlassCard className="p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">Taux de complétion quota</p>
+      <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+        <ResponsiveContainer width="100%" height={140}>
+          <PieChart>
+            <Pie data={chartData} cx="50%" cy="50%" innerRadius={36} outerRadius={60} paddingAngle={3} dataKey="value">
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} opacity={0.9} />
+              ))}
+            </Pie>
+            <Tooltip content={<QuotaTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="space-y-2">
+          <div>
+            <p className="text-2xl font-bold text-white">{data.filledPercent.toFixed(1)}%</p>
+            <p className="text-[11px] text-white/35">ont rempli leur quota</p>
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-white/55"><span className="h-2 w-2 rounded-sm bg-emerald-500" />Rempli</span>
+              <span className="font-medium text-white/75">{data.filled}/{data.total}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-white/55"><span className="h-2 w-2 rounded-sm bg-orange-500" />Non rempli</span>
+              <span className="font-medium text-white/75">{data.missing}/{data.total}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  )
+}
+
 function PoleCards({
   warnings,
   departures,
@@ -191,6 +259,7 @@ function PoleCards({
   quotaMissingThisWeek,
   quotaMissingTwoWeeks,
   hasTwoWeekHistory,
+  quotaCompletion,
 }: {
   warnings: WeeklyReviewWarning[]
   departures: WeeklyReviewDeparture[]
@@ -199,79 +268,85 @@ function PoleCards({
   quotaMissingThisWeek: WeeklyReviewMember[]
   quotaMissingTwoWeeks: WeeklyReviewMember[]
   hasTwoWeekHistory: boolean
+  quotaCompletion: QuotaCompletion | undefined
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      <ReviewCard
-        title="Avertissements"
-        subtitle="Warns ajoutés sur la semaine active"
-        icon={ShieldAlert}
-        count={warnings.length}
-        tone="amber"
-      >
-        <WarningList warnings={warnings} />
-      </ReviewCard>
-
-      <ReviewCard
-        title="Départs"
-        subtitle="Membres retirés du panel cette semaine"
-        icon={LogOut}
-        count={departures.length}
-        tone="red"
-      >
-        <DepartureList departures={departures} />
-      </ReviewCard>
-
-      <ReviewCard
-        title="Absence injustifiée"
-        subtitle="Quota à 0 et aucune absence déclarée"
-        icon={UserX}
-        count={unjustifiedThisWeek.length}
-        tone="red"
-      >
-        <MemberList members={unjustifiedThisWeek} />
-      </ReviewCard>
-
-      {hasTwoWeekHistory && (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <ReviewCard
-          title="Absence injustifiée x2"
-          subtitle="Quota à 0 sans absence sur 2 semaines"
-          icon={UserX}
-          count={unjustifiedTwoWeeks.length}
-          tone="red"
-        >
-          <MemberList members={unjustifiedTwoWeeks} />
-        </ReviewCard>
-      )}
-
-      <ReviewCard
-        title="Quota non rempli"
-        subtitle="Membres sous quota sur la semaine active"
-        icon={Target}
-        count={quotaMissingThisWeek.length}
-        tone="amber"
-        className={!hasTwoWeekHistory ? 'col-span-full' : ''}
-      >
-        <MemberList members={quotaMissingThisWeek} />
-      </ReviewCard>
-
-      {hasTwoWeekHistory && (
-        <ReviewCard
-          title="Quota non rempli x2"
-          subtitle="Membres sous quota sur 2 semaines"
-          icon={AlertTriangle}
-          count={quotaMissingTwoWeeks.length}
+          title="Avertissements"
+          subtitle="Warns ajoutés sur la semaine active"
+          icon={ShieldAlert}
+          count={warnings.length}
           tone="amber"
         >
-          <MemberList members={quotaMissingTwoWeeks} />
+          <WarningList warnings={warnings} />
         </ReviewCard>
-      )}
+
+        <ReviewCard
+          title="Départs"
+          subtitle="Membres retirés du panel cette semaine"
+          icon={LogOut}
+          count={departures.length}
+          tone="red"
+        >
+          <DepartureList departures={departures} />
+        </ReviewCard>
+
+        <ReviewCard
+          title="Absence injustifiée"
+          subtitle="Quota à 0 et aucune absence déclarée"
+          icon={UserX}
+          count={unjustifiedThisWeek.length}
+          tone="red"
+        >
+          <MemberList members={unjustifiedThisWeek} />
+        </ReviewCard>
+
+        {hasTwoWeekHistory && (
+          <ReviewCard
+            title="Absence injustifiée x2"
+            subtitle="Quota à 0 sans absence sur 2 semaines"
+            icon={UserX}
+            count={unjustifiedTwoWeeks.length}
+            tone="red"
+          >
+            <MemberList members={unjustifiedTwoWeeks} />
+          </ReviewCard>
+        )}
+
+        <ReviewCard
+          title="Quota non rempli"
+          subtitle="Membres sous quota sur la semaine active"
+          icon={Target}
+          count={quotaMissingThisWeek.length}
+          tone="amber"
+          className={!hasTwoWeekHistory ? 'col-span-full' : ''}
+        >
+          <MemberList members={quotaMissingThisWeek} />
+        </ReviewCard>
+
+        {hasTwoWeekHistory && (
+          <ReviewCard
+            title="Quota non rempli x2"
+            subtitle="Membres sous quota sur 2 semaines"
+            icon={AlertTriangle}
+            count={quotaMissingTwoWeeks.length}
+            tone="amber"
+          >
+            <MemberList members={quotaMissingTwoWeeks} />
+          </ReviewCard>
+        )}
+      </div>
+
+      {quotaCompletion && <QuotaPieCard data={quotaCompletion} />}
     </div>
   )
 }
 
 export default function Bilan() {
   const { data, isLoading } = useWeeklyReview()
+  const { data: villageStats } = useVillageStats()
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<'animation' | 'mj'>('animation')
@@ -445,6 +520,7 @@ export default function Bilan() {
                 quotaMissingThisWeek={animQuotaMissingThisWeek}
                 quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
                 hasTwoWeekHistory={data.hasTwoWeekHistory}
+                quotaCompletion={villageStats?.quotaCompletion.animation}
               />
             </div>
           </TabsContent>
@@ -463,6 +539,7 @@ export default function Bilan() {
                 quotaMissingThisWeek={mjQuotaMissingThisWeek}
                 quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
                 hasTwoWeekHistory={data.hasTwoWeekHistory}
+                quotaCompletion={villageStats?.quotaCompletion.mj}
               />
             </div>
           </TabsContent>

@@ -78,6 +78,8 @@ function RemoveConfirmModal({
 }) {
   const { mutateAsync, isPending } = useRemoveMemberAccess()
   const [reason, setReason] = useState('')
+  const [igPermsRemoved, setIgPermsRemoved] = useState(false)
+  const [discordPermsRemoved, setDiscordPermsRemoved] = useState(true)
 
   const handleConfirm = async () => {
     if (reason.trim().length < 3) {
@@ -85,7 +87,12 @@ function RemoveConfirmModal({
       return
     }
     try {
-      await mutateAsync({ userId: member.id, reason: reason.trim() })
+      await mutateAsync({
+        userId: member.id,
+        reason: reason.trim(),
+        igPermsRemoved,
+        discordPermsRemoved,
+      })
       toast.success(`Accès de ${member.username} révoqué`)
       onClose()
     } catch (err) {
@@ -123,6 +130,24 @@ function RemoveConfirmModal({
               placeholder="ex. Viré du pôle, Inactivité prolongée…"
               className="w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-red-500/50"
             />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-white/50">Perms déjà retirées</p>
+            <div className="flex flex-wrap gap-2">
+              <PermCheckbox
+                checked={igPermsRemoved}
+                label="IG"
+                pending={isPending}
+                onChange={setIgPermsRemoved}
+              />
+              <PermCheckbox
+                checked={discordPermsRemoved}
+                label="Discord"
+                pending={isPending}
+                onChange={setDiscordPermsRemoved}
+              />
+            </div>
           </div>
 
           <p className="text-sm text-white/60">

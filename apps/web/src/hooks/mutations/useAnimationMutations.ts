@@ -430,8 +430,23 @@ export function useUpdateProfile() {
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
-      invokeEdge<object>('members-remove-access', { user_id: userId, reason }),
+    mutationFn: ({
+      userId,
+      reason,
+      igPermsRemoved,
+      discordPermsRemoved,
+    }: {
+      userId: string
+      reason: string
+      igPermsRemoved?: boolean
+      discordPermsRemoved?: boolean
+    }) =>
+      invokeEdge<object>('members-remove-access', {
+        user_id: userId,
+        reason,
+        ig_perms_removed: igPermsRemoved,
+        discord_perms_removed: discordPermsRemoved,
+      }),
     onSuccess: () => {
       invalidateMemberCaches(qc)
       invalidateStatsCaches(qc)

@@ -16,10 +16,17 @@ Deno.serve(async (req) => {
   const guard = requireResponsable(profile)
   if (guard) return guard
 
-  const { user_id, reason } = await req.json()
+  const {
+    user_id,
+    reason,
+    ig_perms_removed = false,
+    discord_perms_removed = false,
+  } = await req.json()
   if (!user_id) return errorResponse('VALIDATION_ERROR', 'user_id requis')
   if (!reason || String(reason).trim().length < 3)
     return errorResponse('VALIDATION_ERROR', 'Une raison est requise (min. 3 caractères)')
+  if (typeof ig_perms_removed !== 'boolean' || typeof discord_perms_removed !== 'boolean')
+    return errorResponse('VALIDATION_ERROR', 'Les permissions retirées doivent être des booléens')
   if (user_id === profile.id)
     return errorResponse('VALIDATION_ERROR', 'Tu ne peux pas te retirer toi-même')
 
@@ -51,6 +58,8 @@ Deno.serve(async (req) => {
       deactivated_at: new Date().toISOString(),
       deactivation_reason: String(reason).trim(),
       deactivated_by: profile.id,
+      ig_perms_removed,
+      discord_perms_removed,
     })
     .eq('id', user_id)
 
@@ -65,6 +74,8 @@ Deno.serve(async (req) => {
       discord_id: target.discord_id,
       username: target.username,
       reason: String(reason).trim(),
+      ig_perms_removed,
+      discord_perms_removed,
     },
   })
 

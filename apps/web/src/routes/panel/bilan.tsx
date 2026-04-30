@@ -286,16 +286,32 @@ export default function Bilan() {
     if (!ref.current) return
     setExporting(true)
     await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const el = ref.current
+    const width = el.offsetWidth
+
+    // Clone outside the scroll container so html-to-image can measure full height
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.style.cssText = `
+      position: fixed;
+      top: -99999px;
+      left: 0;
+      width: ${width}px;
+      background: #0A0B0F;
+      padding: 16px;
+      overflow: visible;
+    `
+    document.body.appendChild(clone)
+    // Let the browser lay out the clone
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
     try {
-      const el = ref.current
-      const dataUrl = await toPng(el, {
+      const dataUrl = await toPng(clone, {
         pixelRatio: 2,
         skipFonts: true,
         backgroundColor: '#0A0B0F',
-        width: el.offsetWidth,
-        height: el.scrollHeight,
-        style: { overflow: 'visible', height: `${el.scrollHeight}px` },
-        filter: (node) => !(node instanceof HTMLElement && node.dataset.exportIgnore === 'true'),
+        width: clone.offsetWidth,
+        height: clone.scrollHeight,
       })
       const link = document.createElement('a')
       link.download = `${exportFileName}.png`
@@ -304,6 +320,7 @@ export default function Bilan() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Impossible d'exporter l'image")
     } finally {
+      document.body.removeChild(clone)
       setExporting(false)
     }
   }

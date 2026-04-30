@@ -31,15 +31,13 @@ export default function Login() {
   const handleLogin = async () => {
     const redirectTo = `${APP_URL.replace(/\/+$/, '')}/auth/callback`
     const scopes = 'identify email guilds.members.read'
-    console.log('[auth-login] starting Discord OAuth', { redirectTo, scopes })
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
         scopes,
         redirectTo,
       },
     })
-    console.log('[auth-login] signInWithOAuth result', { data, error })
   }
 
   return (

@@ -50,6 +50,15 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
+  // A removed participant should no longer keep an animation report, even if it was already submitted.
+  const { error: reportError } = await db
+    .from('animation_reports')
+    .delete()
+    .eq('animation_id', participant.animation_id)
+    .eq('user_id', participant.user_id)
+
+  if (reportError) return errorResponse('INTERNAL_ERROR', reportError.message)
+
   await syncEmbed(db, participant.animation_id)
 
   return jsonResponse({ participant: updated })

@@ -35,7 +35,7 @@ const ROLE_HIERARCHY: Record<string, number> = {
 type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
 
 export type GuildMemberResult =
-  | { ok: true; role: StaffRole; availableRoles: StaffRole[]; discordId: string; username: string; avatarUrl: string | null }
+  | { ok: true; role: StaffRole; availableRoles: StaffRole[]; discordId: string; username: string; discordUsername: string; avatarUrl: string | null }
   | { ok: false }
 
 export async function getGuildMember(
@@ -69,6 +69,9 @@ export async function getGuildMember(
     : null
 
   const displayName: string = member.nick ?? user.global_name ?? user.username
+  const discordUsername: string = user.discriminator && user.discriminator !== '0'
+    ? `${user.username}#${user.discriminator}`
+    : user.username
 
   return {
     ok: true,
@@ -76,6 +79,7 @@ export async function getGuildMember(
     availableRoles,
     discordId: user.id,
     username: displayName,
+    discordUsername,
     avatarUrl,
   }
 }

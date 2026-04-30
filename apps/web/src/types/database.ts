@@ -17,6 +17,7 @@ export interface Profile {
   id: string
   discord_id: string
   username: string
+  discord_username: string | null
   avatar_url: string | null
   role: StaffRoleKey
   available_roles: StaffRoleKey[]
@@ -182,6 +183,7 @@ export interface MemberEntry {
   id: string
   discordId: string
   username: string
+  discordUsername: string | null
   avatarUrl: string | null
   role: StaffRoleKey
   availableRoles: StaffRoleKey[]

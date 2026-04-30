@@ -161,6 +161,7 @@ function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undef
       id: p.id,
       discordId: p.discord_id,
       username: p.username,
+      discordUsername: p.discord_username ?? null,
       avatarUrl: p.avatar_url,
       role: p.role,
       availableRoles: Array.isArray(p.available_roles) && p.available_roles.length > 0 ? p.available_roles : [p.role],

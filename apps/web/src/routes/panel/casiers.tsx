@@ -130,8 +130,13 @@ function MemberCard({ member, onClick }: { member: MemberEntry; onClick: () => v
               <ChevronRight className="h-3.5 w-3.5 text-white/20 group-hover:text-cyan-400 shrink-0 transition-colors" />
             </div>
             <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
+            {member.discordUsername && (
+              <p className="mt-1 text-[10px] font-medium text-white/45 truncate">
+                @{member.discordUsername}
+              </p>
+            )}
             {member.steamId && (
-              <p className="mt-1 text-[10px] font-medium text-white/35 truncate">
+              <p className="mt-0.5 text-[10px] font-medium text-white/35 truncate">
                 SteamID {member.steamId}
               </p>
             )}
@@ -290,6 +295,18 @@ function MemberDetail({
               <WarningIndicator count={member.warningCount} className="h-5 w-5 shrink-0" />
             </div>
             <RoleBadge role={member.role as StaffRoleKey} gender={member.gender} className="mt-1" />
+            <div className="mt-2 space-y-0.5">
+              {member.discordUsername && (
+                <p className="text-xs text-white/45 truncate">
+                  Discord @{member.discordUsername}
+                </p>
+              )}
+              {member.steamId && (
+                <p className="text-xs text-white/35 truncate">
+                  SteamID <span className="font-mono text-white/50">{member.steamId}</span>
+                </p>
+              )}
+            </div>
             <p className="text-xs text-white/30 mt-2">
               Connecté {formatDistanceToNow(new Date(member.lastLoginAt), { locale: fr, addSuffix: true })}
             </p>

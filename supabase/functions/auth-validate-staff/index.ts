@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
       id: user.id,
       discord_id: memberResult.discordId,
       username: memberResult.username,
+      discord_username: memberResult.discordUsername,
       avatar_url: memberResult.avatarUrl,
       role: selectedRole,
       primary_role_overridden: keepExplicitRole,

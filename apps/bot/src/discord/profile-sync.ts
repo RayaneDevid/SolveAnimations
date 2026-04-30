@@ -21,6 +21,7 @@ type ProfileRow = {
   id: string;
   discord_id: string;
   username: string;
+  discord_username: string | null;
   avatar_url: string | null;
   role: StaffRole;
   available_roles: StaffRole[] | null;
@@ -57,6 +58,12 @@ function getDiscordDisplayName(member: GuildMember): string {
   return member.nickname ?? member.user.globalName ?? member.user.username;
 }
 
+function getDiscordUsername(member: GuildMember): string {
+  return member.user.discriminator && member.user.discriminator !== '0'
+    ? `${member.user.username}#${member.user.discriminator}`
+    : member.user.username;
+}
+
 function getDiscordAvatarUrl(member: GuildMember): string | null {
   if (!member.user.avatar) return null;
   return member.user.displayAvatarURL({ extension: 'webp', size: 128 });
@@ -83,6 +90,7 @@ function sameRoles(a: StaffRole[], b: StaffRole[]): boolean {
 
 async function updateProfileFromDiscord(profile: ProfileRow, member: GuildMember): Promise<boolean> {
   const username = getDiscordDisplayName(member);
+  const discordUsername = getDiscordUsername(member);
   const avatarUrl = getDiscordAvatarUrl(member);
   const availableRoles = getAvailableRoles(member);
 
@@ -102,6 +110,7 @@ async function updateProfileFromDiscord(profile: ProfileRow, member: GuildMember
   const changes: Partial<ProfileRow> & { last_role_check_at?: string } = {};
 
   if (profile.username !== username) changes.username = username;
+  if (profile.discord_username !== discordUsername) changes.discord_username = discordUsername;
   if (profile.avatar_url !== avatarUrl) changes.avatar_url = avatarUrl;
   if (profile.role !== nextRole) changes.role = nextRole;
   if (!sameRoles(currentAvailableRoles, availableRoles)) changes.available_roles = availableRoles;
@@ -130,6 +139,7 @@ async function updateProfileFromDiscord(profile: ProfileRow, member: GuildMember
     target_id: profile.id,
     metadata: {
       username_changed: profile.username !== username,
+      discord_username_changed: profile.discord_username !== discordUsername,
       avatar_changed: profile.avatar_url !== avatarUrl,
       role_before: profile.role,
       role_after: nextRole,
@@ -144,7 +154,7 @@ async function updateProfileFromDiscord(profile: ProfileRow, member: GuildMember
 export async function runDiscordProfileSync(): Promise<void> {
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, discord_id, username, avatar_url, role, available_roles, primary_role_overridden')
+    .select('id, discord_id, username, discord_username, avatar_url, role, available_roles, primary_role_overridden')
     .eq('is_active', true);
 
   if (error) {

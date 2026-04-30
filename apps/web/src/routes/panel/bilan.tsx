@@ -122,7 +122,6 @@ function AbsenceBadge({ absence }: { absence: WeeklyReviewAbsence }) {
     user?.discord_username ? `Discord: @${user.discord_username}` : 'Discord inconnu',
     user?.steam_id ? `SteamID: ${user.steam_id}` : null,
     `Du ${formatShortDate(absence.from_date)} au ${formatShortDate(absence.to_date)}`,
-    absence.reason ? `Raison: ${absence.reason}` : null,
     absence.declarer ? `Déclarée par: ${absence.declarer.username}` : null,
   ].filter(Boolean).join('\n')
 
@@ -140,7 +139,7 @@ function AbsenceBadge({ absence }: { absence: WeeklyReviewAbsence }) {
         </span>
       </span>
       <p className="pl-5 text-[10px] leading-snug text-cyan-200/50 line-clamp-2">
-        {absence.reason ?? `${formatShortDate(absence.from_date)} → ${formatShortDate(absence.to_date)}`}
+        {formatShortDate(absence.from_date)} → {formatShortDate(absence.to_date)}
       </p>
     </Link>
   )
@@ -322,7 +321,7 @@ function PoleCards({
 }) {
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ReviewCard
           title="Avertissements"
           subtitle="Warns ajoutés sur la semaine active"

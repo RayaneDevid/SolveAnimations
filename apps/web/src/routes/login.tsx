@@ -30,13 +30,16 @@ export default function Login() {
 
   const handleLogin = async () => {
     const redirectTo = `${APP_URL.replace(/\/+$/, '')}/auth/callback`
-    await supabase.auth.signInWithOAuth({
+    const scopes = 'identify email guilds.members.read'
+    console.log('[auth-login] starting Discord OAuth', { redirectTo, scopes })
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        scopes: 'identify guilds.members.read',
+        scopes,
         redirectTo,
       },
     })
+    console.log('[auth-login] signInWithOAuth result', { data, error })
   }
 
   return (
@@ -72,6 +75,8 @@ export default function Login() {
                   ? "Tu n'as pas les rôles nécessaires pour accéder à ce panel."
                   : error === 'revoked'
                   ? 'Tes accès ont été révoqués.'
+                  : error === 'auth_callback'
+                  ? searchParams.get('message') ?? 'Supabase a refusé la connexion Discord.'
                   : 'Une erreur est survenue lors de la connexion.'}
               </p>
             </div>

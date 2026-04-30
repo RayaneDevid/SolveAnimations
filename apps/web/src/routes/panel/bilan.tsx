@@ -287,10 +287,14 @@ export default function Bilan() {
     setExporting(true)
     await new Promise((resolve) => setTimeout(resolve, 50))
     try {
-      const dataUrl = await toPng(ref.current, {
+      const el = ref.current
+      const dataUrl = await toPng(el, {
         pixelRatio: 2,
         skipFonts: true,
         backgroundColor: '#0A0B0F',
+        width: el.offsetWidth,
+        height: el.scrollHeight,
+        style: { overflow: 'visible', height: `${el.scrollHeight}px` },
         filter: (node) => !(node instanceof HTMLElement && node.dataset.exportIgnore === 'true'),
       })
       const link = document.createElement('a')

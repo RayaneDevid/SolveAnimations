@@ -8,7 +8,7 @@ import {
   ActionRowBuilder,
 } from 'discord.js';
 import { supabase } from '../lib/supabase.js';
-import { buildAnimationEmbed, buildJoinRow } from './embeds/animation.js';
+import { buildAnimationEmbed, buildJoinRow, formatParticipantsLine } from './embeds/animation.js';
 import { sendDM } from './actions/sendDM.js';
 import client from './client.js';
 import { env } from '../config/env.js';
@@ -86,11 +86,9 @@ async function refreshAnimationParticipantCount(animationId: string, messageId: 
   const existingEmbed = msg.embeds[0];
   if (!existingEmbed) return;
 
-  const participantsLine = requiredParticipants > 0
-    ? `👥  Participants : ${count ?? 0} / ${requiredParticipants}`
-    : `👥  Participants : ${count ?? 0} · ouvert à tous`;
+  const participantsLine = formatParticipantsLine(count ?? 0, requiredParticipants);
   const updatedDesc = (existingEmbed.description ?? '').replace(
-    /👥  Participants : \d+(?: \/ \d+| · ouvert à tous)/,
+    /👥  Participants : (?:\d+(?: \/ \d+| · ouvert à tous)|aucun participant demandé)/,
     participantsLine,
   );
   const { EmbedBuilder } = await import('discord.js');

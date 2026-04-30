@@ -16,6 +16,12 @@ export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilde
   );
 }
 
+export function formatParticipantsLine(currentParticipants: number, requiredParticipants: number): string {
+  return requiredParticipants > 0
+    ? `👥  Participants : ${currentParticipants} / ${requiredParticipants}`
+    : '👥  Participants : aucun participant demandé';
+}
+
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 export const TYPE_LABELS: Record<string, string> = {
@@ -160,9 +166,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     status === 'finished' && actualDurationMin != null
       ? `⏱️  Durée réelle : ${formatDuration(actualDurationMin)}`
       : `⏱️  Durée prévue : ${formatDuration(plannedDurationMin)}${prepTimeMin > 0 ? ` · Prépa : ${formatDuration(prepTimeMin)}` : ''}`;
-  const participantsLine = requiredParticipants > 0
-    ? `👥  Participants : ${currentParticipants} / ${requiredParticipants}`
-    : `👥  Participants : ${currentParticipants} · ouvert à tous`;
+  const participantsLine = formatParticipantsLine(currentParticipants, requiredParticipants);
 
   const embed = new EmbedBuilder()
     .setColor(color)

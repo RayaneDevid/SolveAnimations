@@ -81,7 +81,7 @@ function AnimationCard({ anim }: { anim: Animation }) {
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-white/40 mb-1">
               <span>Participants</span>
-              <span>{anim.required_participants > 0 ? `${anim.required_participants} requis` : 'Ouvert à tous'}</span>
+              <span>{anim.required_participants > 0 ? `${anim.required_participants} requis` : 'Aucun participant demandé'}</span>
             </div>
           </div>
         </GlassCard>

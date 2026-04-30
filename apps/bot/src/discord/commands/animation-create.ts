@@ -189,7 +189,7 @@ function buildModal2(): ModalBuilder {
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId('participants')
-          .setLabel('Participants requis (0 = sans limite)')
+          .setLabel('Participants requis (0 = aucun)')
           .setStyle(TextInputStyle.Short)
           .setPlaceholder('Ex: 4')
           .setRequired(true),
@@ -417,7 +417,7 @@ export async function handleModal2Submit(interaction: ModalSubmitInteraction): P
     content: [
       '✅ **Étape 2/3 enregistrée.** Clique sur le bouton ci-dessous pour finir.',
       `> **Durée :** ${plannedDurationMin} min · **Débrief :** ${prepTimeMin} min`,
-      `> **Participants :** ${requiredParticipants} · **Validation :** ${validationRaw}`,
+      `> **Participants :** ${requiredParticipants > 0 ? requiredParticipants : 'aucun participant demandé'} · **Validation :** ${validationRaw}`,
     ].join('\n'),
     flags: MessageFlags.Ephemeral,
     components: [

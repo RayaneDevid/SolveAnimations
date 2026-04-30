@@ -28,7 +28,7 @@ const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: str
   },
   spontanee_bdm: {
     label: 'Mission spontanée / BDM',
-    description: 'Créée immédiatement, sans limite de participants.',
+    description: 'Créée immédiatement, sans participant demandé.',
   },
 }
 

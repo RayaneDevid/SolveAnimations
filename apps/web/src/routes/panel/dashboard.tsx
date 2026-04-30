@@ -323,7 +323,7 @@ export default function Dashboard() {
                         <Users className="h-3 w-3" />
                         {anim.required_participants > 0
                           ? `${anim.validated_participants_count ?? 0}/${anim.required_participants}`
-                          : `${anim.validated_participants_count ?? 0} inscrit${(anim.validated_participants_count ?? 0) > 1 ? 's' : ''}`}
+                          : 'Aucun participant'}
                       </span>
                     </div>
                   </div>

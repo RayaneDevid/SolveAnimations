@@ -118,7 +118,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
   const isFull = hasParticipantLimit && validated >= required
   const participantsLabel = hasParticipantLimit
     ? (isFull ? 'Complet' : `${validated}/${required} joueurs`)
-    : `${validated} inscrit${validated > 1 ? 's' : ''}`
+    : 'Aucun participant'
 
   const durationLabel = isFinished
     ? formatDurationShort(animation.actual_duration_min ?? animation.planned_duration_min)

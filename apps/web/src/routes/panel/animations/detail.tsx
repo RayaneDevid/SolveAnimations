@@ -562,7 +562,7 @@ export default function AnimationDetail() {
             <Users className="h-4 w-4 text-emerald-400" />
             {hasParticipantLimit
               ? `${validated.length}/${animation.required_participants}`
-              : `${validated.length} inscrit${validated.length > 1 ? 's' : ''} · ouvert à tous`}
+              : 'Aucun participant demandé'}
           </div>
           {animation.description && (
             <p className="text-sm text-white/60 line-clamp-2">{animation.description}</p>

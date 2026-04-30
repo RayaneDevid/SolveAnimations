@@ -145,6 +145,7 @@ export interface WeeklyReviewMember {
   username: string
   avatar_url: string | null
   role: string
+  pay_pole: 'animation' | 'mj' | null
   discord_username: string | null
   steam_id: string | null
   quota: number

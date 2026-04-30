@@ -23,6 +23,12 @@ function formatWeekRange(startDate: string, endDate: string): string {
   return `${formatShortDate(startDate)} - ${format(addDays(dateFromInput(endDate), -1), 'dd/MM/yyyy', { locale: fr })}`
 }
 
+const MJ_ROLES = ['mj', 'mj_senior', 'responsable_mj']
+
+function isMjRole(role: string): boolean {
+  return MJ_ROLES.includes(role)
+}
+
 function EmptyState() {
   return <p className="py-3 text-sm text-white/25">Rien à signaler</p>
 }
@@ -167,6 +173,110 @@ function ReviewCard({
   )
 }
 
+function SectionHeader({ label, accent }: { label: string; accent: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`text-xs font-bold uppercase tracking-widest ${accent}`}>{label}</span>
+      <div className="h-px flex-1 bg-white/[0.06]" />
+    </div>
+  )
+}
+
+function PoleSection({
+  pole,
+  warnings,
+  departures,
+  unjustifiedThisWeek,
+  unjustifiedTwoWeeks,
+  quotaMissingThisWeek,
+  quotaMissingTwoWeeks,
+  hasTwoWeekHistory,
+}: {
+  pole: 'animation' | 'mj'
+  warnings: WeeklyReviewWarning[]
+  departures: WeeklyReviewDeparture[]
+  unjustifiedThisWeek: WeeklyReviewMember[]
+  unjustifiedTwoWeeks: WeeklyReviewMember[]
+  quotaMissingThisWeek: WeeklyReviewMember[]
+  quotaMissingTwoWeeks: WeeklyReviewMember[]
+  hasTwoWeekHistory: boolean
+}) {
+  const isMj = pole === 'mj'
+  const label = isMj ? 'Pôle MJ' : 'Pôle Animation'
+  const accent = isMj ? 'text-red-400' : 'text-cyan-400'
+
+  return (
+    <div className="space-y-3">
+      <SectionHeader label={label} accent={accent} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ReviewCard
+          title="Avertissements"
+          subtitle="Warns ajoutés sur la semaine active"
+          icon={ShieldAlert}
+          count={warnings.length}
+          tone="amber"
+        >
+          <WarningList warnings={warnings} />
+        </ReviewCard>
+
+        <ReviewCard
+          title="Départs"
+          subtitle="Membres retirés du panel cette semaine"
+          icon={LogOut}
+          count={departures.length}
+          tone="red"
+        >
+          <DepartureList departures={departures} />
+        </ReviewCard>
+
+        <ReviewCard
+          title="Absence injustifiée"
+          subtitle="Quota à 0 et aucune absence déclarée"
+          icon={UserX}
+          count={unjustifiedThisWeek.length}
+          tone="red"
+        >
+          <MemberList members={unjustifiedThisWeek} />
+        </ReviewCard>
+
+        {hasTwoWeekHistory && (
+          <ReviewCard
+            title="Absence injustifiée x2"
+            subtitle="Quota à 0 sans absence sur 2 semaines"
+            icon={UserX}
+            count={unjustifiedTwoWeeks.length}
+            tone="red"
+          >
+            <MemberList members={unjustifiedTwoWeeks} />
+          </ReviewCard>
+        )}
+
+        <ReviewCard
+          title="Quota non rempli"
+          subtitle="Membres sous quota sur la semaine active"
+          icon={Target}
+          count={quotaMissingThisWeek.length}
+          tone="amber"
+        >
+          <MemberList members={quotaMissingThisWeek} />
+        </ReviewCard>
+
+        {hasTwoWeekHistory && (
+          <ReviewCard
+            title="Quota non rempli x2"
+            subtitle="Membres sous quota sur 2 semaines"
+            icon={AlertTriangle}
+            count={quotaMissingTwoWeeks.length}
+            tone="amber"
+          >
+            <MemberList members={quotaMissingTwoWeeks} />
+          </ReviewCard>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Bilan() {
   const { data, isLoading } = useWeeklyReview()
   const exportRef = useRef<HTMLDivElement>(null)
@@ -207,7 +317,7 @@ export default function Bilan() {
       <div className="mx-auto max-w-7xl space-y-6 p-6">
         <Skeleton className="h-16 w-full" />
         <div className="grid gap-4 lg:grid-cols-2">
-          {[...Array(6)].map((_, index) => <Skeleton key={index} className="h-64" />)}
+          {[...Array(8)].map((_, index) => <Skeleton key={index} className="h-48" />)}
         </div>
       </div>
     )
@@ -221,111 +331,99 @@ export default function Bilan() {
     )
   }
 
+  const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? ''))
+  const mjWarnings = data.warnings.filter((w) => isMjRole(w.user?.role ?? ''))
+  const animDepartures = data.departures.filter((d) => !isMjRole(d.role))
+  const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
+
+  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => m.pay_pole !== 'mj')
+  const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => m.pay_pole === 'mj')
+  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => m.pay_pole !== 'mj')
+  const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => m.pay_pole === 'mj')
+  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => m.pay_pole !== 'mj')
+  const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => m.pay_pole === 'mj')
+  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => m.pay_pole !== 'mj')
+  const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => m.pay_pole === 'mj')
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
       <style>{`
         @media print {
-          body { background: #0A0B0F !important; }
-          aside, header, [data-export-ignore="true"] { display: none !important; }
-          main { overflow: visible !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body, html { background: #0A0B0F !important; height: auto !important; overflow: visible !important; }
+          aside, nav, header, [data-export-ignore="true"] { display: none !important; }
+          div[class*="h-screen"], div[class*="overflow-hidden"], div[class*="overflow-y-auto"] {
+            height: auto !important;
+            overflow: visible !important;
+          }
+          main { overflow: visible !important; height: auto !important; }
           #weekly-review-export {
             max-width: none !important;
-            padding: 0 !important;
+            padding: 16px !important;
             margin: 0 !important;
+          }
+          #weekly-review-export .grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          #weekly-review-export [class*="GlassCard"] {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            background: rgba(255,255,255,0.04) !important;
           }
         }
       `}</style>
 
-      <div ref={exportRef} id="weekly-review-export" className="space-y-6 bg-[#0A0B0F]">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <ClipboardList className="h-6 w-6 text-cyan-400" />
-            Bilan hebdomadaire
-          </h1>
-          <p className="mt-0.5 text-sm text-white/40">
-            Semaine active : {formatWeekRange(data.week.startDate, data.week.endDate)}
+      <div ref={exportRef} id="weekly-review-export" className="space-y-8 bg-[#0A0B0F]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
+              <ClipboardList className="h-6 w-6 text-cyan-400" />
+              Bilan hebdomadaire
+            </h1>
+            <p className="mt-0.5 text-sm text-white/40">
+              Semaine active : {formatWeekRange(data.week.startDate, data.week.endDate)}
+            </p>
+          </div>
+          <p className="text-xs text-white/30">
+            {data.hasTwoWeekHistory
+              ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
+              : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
           </p>
         </div>
-        <p className="text-xs text-white/30">
-          {data.hasTwoWeekHistory
-            ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
-            : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
-        </p>
-      </div>
 
-      <div data-export-ignore="true" className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={handleExportImage} disabled={exporting} className="gap-1.5">
-          <Download className="h-3.5 w-3.5" />
-          {exporting ? 'Export...' : 'Exporter image'}
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-1.5">
-          <FileDown className="h-3.5 w-3.5" />
-          Exporter PDF
-        </Button>
-      </div>
+        <div data-export-ignore="true" className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportImage} disabled={exporting} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            {exporting ? 'Export...' : 'Exporter image'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-1.5">
+            <FileDown className="h-3.5 w-3.5" />
+            Exporter PDF
+          </Button>
+        </div>
 
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        <ReviewCard
-          title="Avertissements"
-          subtitle="Warns ajoutés sur la semaine active"
-          icon={ShieldAlert}
-          count={data.warnings.length}
-          tone="amber"
-        >
-          <WarningList warnings={data.warnings} />
-        </ReviewCard>
+        <PoleSection
+          pole="animation"
+          warnings={animWarnings}
+          departures={animDepartures}
+          unjustifiedThisWeek={animUnjustifiedThisWeek}
+          unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
+          quotaMissingThisWeek={animQuotaMissingThisWeek}
+          quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
+          hasTwoWeekHistory={data.hasTwoWeekHistory}
+        />
 
-        <ReviewCard
-          title="Départs"
-          subtitle="Membres retirés du panel cette semaine"
-          icon={LogOut}
-          count={data.departures.length}
-          tone="red"
-        >
-          <DepartureList departures={data.departures} />
-        </ReviewCard>
-
-        <ReviewCard
-          title="Absence sans justification"
-          subtitle="Quota à 0 et aucune absence déclarée cette semaine"
-          icon={UserX}
-          count={data.unjustifiedThisWeek.length}
-          tone="red"
-        >
-          <MemberList members={data.unjustifiedThisWeek} />
-        </ReviewCard>
-
-        <ReviewCard
-          title="Absence sans justification x2"
-          subtitle="Quota à 0 sans absence sur les 2 dernières semaines"
-          icon={UserX}
-          count={data.unjustifiedTwoWeeks.length}
-          tone="red"
-        >
-          <MemberList members={data.unjustifiedTwoWeeks} />
-        </ReviewCard>
-
-        <ReviewCard
-          title="Quota non rempli"
-          subtitle="Membres sous quota sur la semaine active"
-          icon={Target}
-          count={data.quotaMissingThisWeek.length}
-          tone="amber"
-        >
-          <MemberList members={data.quotaMissingThisWeek} />
-        </ReviewCard>
-
-        <ReviewCard
-          title="Quota non rempli x2"
-          subtitle="Membres sous quota sur les 2 dernières semaines"
-          icon={AlertTriangle}
-          count={data.quotaMissingTwoWeeks.length}
-          tone="amber"
-        >
-          <MemberList members={data.quotaMissingTwoWeeks} />
-        </ReviewCard>
-      </div>
+        <PoleSection
+          pole="mj"
+          warnings={mjWarnings}
+          departures={mjDepartures}
+          unjustifiedThisWeek={mjUnjustifiedThisWeek}
+          unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}
+          quotaMissingThisWeek={mjQuotaMissingThisWeek}
+          quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
+          hasTwoWeekHistory={data.hasTwoWeekHistory}
+        />
       </div>
     </div>
   )

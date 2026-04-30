@@ -40,6 +40,7 @@ function profileSummary(profile: ProfileRow, quota: number, quotaMax: number) {
     username: profile.username,
     avatar_url: profile.avatar_url,
     role: profile.role,
+    pay_pole: profile.pay_pole ?? null,
     discord_username: profile.discord_username ?? null,
     steam_id: profile.steam_id ?? null,
     quota,

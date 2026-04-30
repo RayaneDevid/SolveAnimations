@@ -283,44 +283,49 @@ export default function Bilan() {
 
   const handleExportImage = async () => {
     const ref = activeTab === 'animation' ? animExportRef : mjExportRef
-    if (!ref.current) return
+    if (!ref.current || !data) return
+
     setExporting(true)
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
-    const el = ref.current
-    const width = el.offsetWidth
-
-    // Clone outside the scroll container so html-to-image can measure full height
-    const clone = el.cloneNode(true) as HTMLElement
-    clone.style.cssText = `
-      position: fixed;
-      top: -99999px;
-      left: 0;
-      width: ${width}px;
-      background: #0A0B0F;
-      padding: 16px;
-      overflow: visible;
-    `
-    document.body.appendChild(clone)
-    // Let the browser lay out the clone
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
+    const restorations: Array<() => void> = []
     try {
-      const dataUrl = await toPng(clone, {
+      const el = ref.current
+
+      // Pre-convert cross-origin Discord CDN images to blob URLs to bypass CORS
+      const imgEls = Array.from(el.querySelectorAll<HTMLImageElement>('img'))
+      await Promise.allSettled(
+        imgEls.map(async (img) => {
+          if (!img.src || img.src.startsWith('data:') || img.src.startsWith('blob:')) return
+          try {
+            const res = await fetch(img.src)
+            const blobUrl = URL.createObjectURL(await res.blob())
+            const orig = img.src
+            img.src = blobUrl
+            restorations.push(() => { URL.revokeObjectURL(blobUrl); img.src = orig })
+          } catch {
+            img.style.visibility = 'hidden'
+            restorations.push(() => { img.style.visibility = '' })
+          }
+        }),
+      )
+
+      const dataUrl = await toPng(el, {
         pixelRatio: 2,
-        skipFonts: true,
         backgroundColor: '#0A0B0F',
-        width: clone.offsetWidth,
-        height: clone.scrollHeight,
+        width: el.offsetWidth,
+        height: el.scrollHeight,
       })
-      const link = document.createElement('a')
-      link.download = `${exportFileName}.png`
-      link.href = dataUrl
-      link.click()
+
+      restorations.forEach((r) => r())
+
+      const a = document.createElement('a')
+      a.download = `${exportFileName}-${activeTab}.png`
+      a.href = dataUrl
+      a.click()
+      toast.success('Image exportée')
     } catch (err) {
+      restorations.forEach((r) => r())
       toast.error(err instanceof Error ? err.message : "Impossible d'exporter l'image")
     } finally {
-      document.body.removeChild(clone)
       setExporting(false)
     }
   }
@@ -427,7 +432,11 @@ export default function Bilan() {
           </TabsList>
 
           <TabsContent value="animation">
-            <div ref={animExportRef}>
+            <div ref={animExportRef} className="rounded-xl bg-[#0A0B0F] p-4">
+              <div className="mb-4 flex items-baseline justify-between border-b border-white/[0.06] pb-3">
+                <span className="text-sm font-semibold text-white/70">Pôle Animation</span>
+                <span className="text-xs text-white/30">{formatWeekRange(data.week.startDate, data.week.endDate)}</span>
+              </div>
               <PoleCards
                 warnings={animWarnings}
                 departures={animDepartures}
@@ -441,7 +450,11 @@ export default function Bilan() {
           </TabsContent>
 
           <TabsContent value="mj">
-            <div ref={mjExportRef}>
+            <div ref={mjExportRef} className="rounded-xl bg-[#0A0B0F] p-4">
+              <div className="mb-4 flex items-baseline justify-between border-b border-white/[0.06] pb-3">
+                <span className="text-sm font-semibold text-white/70">Pôle MJ</span>
+                <span className="text-xs text-white/30">{formatWeekRange(data.week.startDate, data.week.endDate)}</span>
+              </div>
               <PoleCards
                 warnings={mjWarnings}
                 departures={mjDepartures}

@@ -102,13 +102,13 @@ Deno.serve(async (req) => {
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedThisWeek = quotaProfiles
-    .filter((p) => (currentQuota.get(p.id) ?? 0) < p.quotaMax && !currentAbsences.has(p.id))
+    .filter((p) => (currentQuota.get(p.id) ?? 0) === 0 && !currentAbsences.has(p.id))
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedTwoWeeks = quotaProfiles
     .filter((p) => hasTwoWeekHistory &&
-      (currentQuota.get(p.id) ?? 0) < p.quotaMax &&
-      (previousQuota.get(p.id) ?? 0) < p.quotaMax &&
+      (currentQuota.get(p.id) ?? 0) === 0 &&
+      (previousQuota.get(p.id) ?? 0) === 0 &&
       !currentAbsences.has(p.id) &&
       !previousAbsences.has(p.id)
     )

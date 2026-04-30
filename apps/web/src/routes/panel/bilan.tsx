@@ -1,11 +1,15 @@
+import { useRef, useState } from 'react'
 import { addDays, format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { AlertTriangle, ClipboardList, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
+import { toPng } from 'html-to-image'
+import { AlertTriangle, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
+import { toast } from 'sonner'
 import { useWeeklyReview, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { StaffRoleKey } from '@/lib/config/discord'
 
@@ -158,6 +162,37 @@ function ReviewCard({
 
 export default function Bilan() {
   const { data, isLoading } = useWeeklyReview()
+  const exportRef = useRef<HTMLDivElement>(null)
+  const [exporting, setExporting] = useState(false)
+
+  const exportFileName = data
+    ? `bilan-${data.week.startDate}-${format(addDays(dateFromInput(data.week.endDate), -1), 'yyyy-MM-dd')}`
+    : 'bilan'
+
+  const handleExportImage = async () => {
+    if (!exportRef.current) return
+    setExporting(true)
+    try {
+      const dataUrl = await toPng(exportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#0A0B0F',
+        filter: (node) => !(node instanceof HTMLElement && node.dataset.exportIgnore === 'true'),
+      })
+      const link = document.createElement('a')
+      link.download = `${exportFileName}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Impossible d'exporter l'image")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportPdf = () => {
+    window.print()
+  }
 
   if (isLoading) {
     return (
@@ -180,6 +215,20 @@ export default function Bilan() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
+      <style>{`
+        @media print {
+          body { background: #0A0B0F !important; }
+          aside, header, [data-export-ignore="true"] { display: none !important; }
+          main { overflow: visible !important; }
+          #weekly-review-export {
+            max-width: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
+
+      <div ref={exportRef} id="weekly-review-export" className="space-y-6 bg-[#0A0B0F]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
@@ -195,6 +244,17 @@ export default function Bilan() {
             ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
             : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
         </p>
+      </div>
+
+      <div data-export-ignore="true" className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={handleExportImage} disabled={exporting} className="gap-1.5">
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? 'Export...' : 'Exporter image'}
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-1.5">
+          <FileDown className="h-3.5 w-3.5" />
+          Exporter PDF
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -228,7 +288,7 @@ export default function Bilan() {
 
         <ReviewCard
           title="Absence sans justification"
-          subtitle="Quota non rempli et aucune absence déclarée cette semaine"
+          subtitle="Quota à 0 et aucune absence déclarée cette semaine"
           icon={UserX}
           count={data.unjustifiedThisWeek.length}
           tone="red"
@@ -238,7 +298,7 @@ export default function Bilan() {
 
         <ReviewCard
           title="Absence sans justification x2"
-          subtitle="Quota non rempli sans absence sur les 2 dernières semaines"
+          subtitle="Quota à 0 sans absence sur les 2 dernières semaines"
           icon={UserX}
           count={data.unjustifiedTwoWeeks.length}
           tone="red"
@@ -265,6 +325,7 @@ export default function Bilan() {
         >
           <MemberList members={data.quotaMissingTwoWeeks} />
         </ReviewCard>
+      </div>
       </div>
     </div>
   )

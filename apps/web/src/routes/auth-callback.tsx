@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
@@ -14,6 +14,7 @@ interface AuthValidateResult {
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { setUser, clearUser } = useAuthStore()
   const qc = useQueryClient()
   const ran = useRef(false)
@@ -24,7 +25,11 @@ export default function AuthCallback() {
 
     async function handleCallback() {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const code = searchParams.get('code')
+        const sessionResult = code
+          ? await supabase.auth.exchangeCodeForSession(code)
+          : await supabase.auth.getSession()
+        const { data: { session }, error } = sessionResult
         if (error || !session) {
           navigate('/login?error=unauthorized', { replace: true })
           return
@@ -45,7 +50,7 @@ export default function AuthCallback() {
     }
 
     handleCallback()
-  }, [navigate, setUser, clearUser, qc])
+  }, [navigate, searchParams, setUser, clearUser, qc])
 
   return (
     <div className="min-h-screen bg-[#0A0B0F] flex items-center justify-center">

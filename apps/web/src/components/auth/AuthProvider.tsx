@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
 
     // On the OAuth callback page, skip restoration — AuthCallback handles the full flow.
-    const isOAuthCallback = new URLSearchParams(window.location.search).has('code')
+    const isOAuthCallback = window.location.pathname === '/auth/callback'
     if (!isOAuthCallback) {
       ;(async () => {
         try {

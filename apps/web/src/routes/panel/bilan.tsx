@@ -30,6 +30,12 @@ function isMjRole(role: string): boolean {
   return MJ_ROLES.includes(role)
 }
 
+function isEffectivelyMj(m: WeeklyReviewMember): boolean {
+  if (m.pay_pole === 'mj') return true
+  if (m.pay_pole === 'animation') return false
+  return ['mj', 'mj_senior'].includes(m.role)
+}
+
 function EmptyState() {
   return <p className="py-3 text-sm text-white/25">Rien à signaler</p>
 }
@@ -319,14 +325,14 @@ export default function Bilan() {
   const animDepartures = data.departures.filter((d) => !isMjRole(d.role))
   const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
 
-  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => m.pay_pole !== 'mj')
-  const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => m.pay_pole === 'mj')
-  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => m.pay_pole !== 'mj')
-  const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => m.pay_pole === 'mj')
-  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => m.pay_pole !== 'mj')
-  const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => m.pay_pole === 'mj')
-  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => m.pay_pole !== 'mj')
-  const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => m.pay_pole === 'mj')
+  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m))
+  const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyMj)
+  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m))
+  const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyMj)
+  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m))
+  const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyMj)
+  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m))
+  const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyMj)
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">

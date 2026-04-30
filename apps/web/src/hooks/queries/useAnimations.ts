@@ -41,6 +41,10 @@ export interface CalendarAvailability {
   absentCount: number
   totalUsers: number
   activeAnimationCount: number
+  byPole: {
+    animation: { occupiedCount: number; presentCount: number }
+    mj: { occupiedCount: number; presentCount: number }
+  }
 }
 
 export function useCalendarAvailability(params: { day: string; from: string; to: string }) {

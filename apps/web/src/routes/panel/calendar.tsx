@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
+import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5 } from 'lucide-react'
 import { addDays, format, isSameDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAnimations, useCalendarAvailability } from '@/hooks/queries/useAnimations'
@@ -78,18 +78,32 @@ export default function Calendar() {
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
           <div
-            className="h-9 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-2"
             title={`${availability?.activeAnimationCount ?? 0} animation(s) ouverte(s), en débrief ou en cours sur la session du ${format(availabilityDayDate, 'dd/MM/yyyy', { locale: fr })}`}
           >
             <Users className="h-4 w-4 text-cyan-400" />
-            <span className="text-sm font-semibold text-white/90">
-              {availabilityLoading
-                ? '...'
-                : `${availability?.occupiedCount ?? 0} / ${availability?.presentCount ?? 0}`}
-            </span>
-            <span className="text-xs text-white/45">
-              occupés
-            </span>
+            {[
+              {
+                label: 'Anim',
+                icon: Swords,
+                color: 'text-cyan-300',
+                value: availability?.byPole.animation,
+              },
+              {
+                label: 'MJ',
+                icon: Dice5,
+                color: 'text-rose-300',
+                value: availability?.byPole.mj,
+              },
+            ].map(({ label, icon: Icon, color, value }) => (
+              <div key={label} className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.03] px-2 py-1">
+                <Icon className={`h-3.5 w-3.5 ${color}`} />
+                <span className="text-xs font-semibold text-white/90">
+                  {availabilityLoading ? '...' : `${value?.occupiedCount ?? 0}/${value?.presentCount ?? 0}`}
+                </span>
+                <span className="text-[10px] font-medium text-white/40">{label}</span>
+              </div>
+            ))}
           </div>
 
           <Tabs value={mode} onValueChange={(value) => setMode(value as CalendarMode)}>

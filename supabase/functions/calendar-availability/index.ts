@@ -5,6 +5,14 @@ import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const ACTIVE_STATUSES = ['open', 'preparing', 'running']
+type Pole = 'animation' | 'mj'
+
+function inferPole(role: string | null, payPole: Pole | null): Pole | null {
+  if (payPole) return payPole
+  if (['direction', 'gerance', 'responsable', 'senior', 'animateur'].includes(role ?? '')) return 'animation'
+  if (['responsable_mj', 'mj_senior', 'mj'].includes(role ?? '')) return 'mj'
+  return null
+}
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -27,7 +35,7 @@ Deno.serve(async (req) => {
 
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
-    .select('id')
+    .select('id, role, pay_pole')
     .eq('is_active', true)
 
   if (profilesError) return errorResponse('INTERNAL_ERROR', profilesError.message)
@@ -41,6 +49,10 @@ Deno.serve(async (req) => {
       absentCount: 0,
       totalUsers: 0,
       activeAnimationCount: 0,
+      byPole: {
+        animation: { occupiedCount: 0, presentCount: 0 },
+        mj: { occupiedCount: 0, presentCount: 0 },
+      },
     })
   }
 
@@ -56,6 +68,11 @@ Deno.serve(async (req) => {
 
   const absentIds = new Set((absences ?? []).map((absence) => absence.user_id as string))
   const presentIds = new Set(profileIds.filter((id) => !absentIds.has(id)))
+  const profilePoleMap = new Map<string, Pole>()
+  for (const profile of profiles ?? []) {
+    const pole = inferPole(profile.role as string | null, profile.pay_pole as Pole | null)
+    if (pole) profilePoleMap.set(profile.id as string, pole)
+  }
 
   const { data: animations, error: animationsError } = await db
     .from('animations')
@@ -96,5 +113,15 @@ Deno.serve(async (req) => {
     absentCount: absentIds.size,
     totalUsers: profileIds.length,
     activeAnimationCount: animationIds.length,
+    byPole: {
+      animation: {
+        occupiedCount: Array.from(occupiedIds).filter((id) => profilePoleMap.get(id) === 'animation').length,
+        presentCount: Array.from(presentIds).filter((id) => profilePoleMap.get(id) === 'animation').length,
+      },
+      mj: {
+        occupiedCount: Array.from(occupiedIds).filter((id) => profilePoleMap.get(id) === 'mj').length,
+        presentCount: Array.from(presentIds).filter((id) => profilePoleMap.get(id) === 'mj').length,
+      },
+    },
   })
 })

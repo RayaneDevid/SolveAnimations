@@ -41,7 +41,7 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
   const [prepMin, setPrepMin] = useState(animation.actual_prep_time_min ?? 0)
   const [village, setVillage] = useState(animation.village)
   const [server, setServer] = useState(animation.server)
-  const [type, setType] = useState(animation.type)
+  const [type, setType] = useState((animation.type as string) === 'petite' ? 'moyenne' : animation.type)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
     animation.scheduled_at ? new Date(animation.scheduled_at) : undefined,
   )

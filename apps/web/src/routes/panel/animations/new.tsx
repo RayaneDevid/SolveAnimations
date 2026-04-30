@@ -15,9 +15,8 @@ import { VillageBadge } from '@/components/shared/VillageBadge'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { cn } from '@/lib/utils/cn'
 
-const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
+const TYPE_LABELS_FULL = { moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
-  petite: 'Pour les animations courtes',
   moyenne: 'Pour les tickets animations, les missions spontanées / BDM et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
@@ -205,7 +204,7 @@ export default function NewAnimation() {
                   <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300/80">
                     Date dans le passé — l'animation sera créée directement comme <strong className="text-amber-300">terminée</strong>.
-                    La durée réelle sera calculée selon le type : Petite 15 min · Moyenne 30 min · Grande 60 min.
+                    La durée réelle sera calculée selon le type : Moyenne 30 min · Grande 60 min.
                   </p>
                 </div>
               )}
@@ -344,7 +343,7 @@ export default function NewAnimation() {
             name="type"
             control={control}
             render={({ field }) => (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {TYPES.map((t) => (
                   <button
                     key={t}

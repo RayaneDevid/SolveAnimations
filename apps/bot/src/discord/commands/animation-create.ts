@@ -17,7 +17,7 @@ import { env } from '../../config/env.js';
 import client from '../client.js';
 
 const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const;
-const TYPES = ['petite', 'moyenne', 'grande'] as const;
+const TYPES = ['moyenne', 'grande'] as const;
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const;
 const POLES = ['animation', 'mj', 'les_deux'] as const;
 
@@ -167,7 +167,7 @@ function buildModal1(): ModalBuilder {
           .setCustomId('type')
           .setLabel('Type')
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('petite · moyenne · grande')
+          .setPlaceholder('moyenne · grande')
           .setRequired(true),
       ),
     );

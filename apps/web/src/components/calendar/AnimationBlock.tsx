@@ -13,7 +13,6 @@ const SESSION_START_MIN = 18 * 60
 const MIN_DEBRIEF_HEIGHT = 18
 
 const TYPE_LABELS: Record<string, string> = {
-  petite: 'Petite',
   moyenne: 'Moyenne',
   grande: 'Grande',
 }

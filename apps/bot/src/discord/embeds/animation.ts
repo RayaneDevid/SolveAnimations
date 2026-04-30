@@ -19,7 +19,6 @@ export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilde
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 export const TYPE_LABELS: Record<string, string> = {
-  petite: 'Petite',
   moyenne: 'Moyenne',
   grande: 'Grande',
 };

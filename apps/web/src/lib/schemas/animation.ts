@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
-export const TYPES = ['petite', 'moyenne', 'grande'] as const
+export const TYPES = ['moyenne', 'grande'] as const
 export const POLES = ['animation', 'mj', 'les_deux'] as const
 export const MISSION_KINDS = ['classique', 'spontanee_bdm'] as const
 export const VILLAGES = [

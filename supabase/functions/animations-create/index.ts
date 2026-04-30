@@ -6,11 +6,11 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
 const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
-const TYPES    = ['petite','moyenne','grande'] as const
+const TYPES    = ['moyenne','grande'] as const
 const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 
-const PAST_DURATION: Record<string, number> = { petite: 15, moyenne: 30, grande: 60 }
+const PAST_DURATION: Record<string, number> = { moyenne: 30, grande: 60 }
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)

@@ -13,7 +13,6 @@ const BASE_PAY: Record<string, number> = {
 }
 
 const REMUNERATION: Record<string, number> = {
-  petite:  200,
   moyenne: 350,
   grande:  500,
 }
@@ -112,13 +111,12 @@ Deno.serve(async (req) => {
     animationsCount: number
     animationMin: number
     prepMin: number
-    petite: number
     moyenne: number
     grande: number
   }>()
 
   const getEntry = (userId: string) =>
-    map.get(userId) ?? { animationsCount: 0, animationMin: 0, prepMin: 0, petite: 0, moyenne: 0, grande: 0 }
+    map.get(userId) ?? { animationsCount: 0, animationMin: 0, prepMin: 0, moyenne: 0, grande: 0 }
 
   // Created animations
   for (const a of anims ?? []) {
@@ -127,8 +125,7 @@ Deno.serve(async (req) => {
     entry.animationsCount++
     entry.animationMin += a.actual_duration_min ?? 0
     entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
-    if (a.type === 'petite') entry.petite++
-    else if (a.type === 'moyenne') entry.moyenne++
+    if (a.type === 'moyenne' || a.type === 'petite') entry.moyenne++
     else if (a.type === 'grande') entry.grande++
     map.set(a.creator_id, entry)
   }
@@ -141,8 +138,7 @@ Deno.serve(async (req) => {
     entry.animationsCount++
     entry.animationMin += anim.actual_duration_min ?? 0
     entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
-    if (anim.type === 'petite') entry.petite++
-    else if (anim.type === 'moyenne') entry.moyenne++
+    if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
     else if (anim.type === 'grande') entry.grande++
     map.set(p.user_id, entry)
   }
@@ -150,13 +146,12 @@ Deno.serve(async (req) => {
   const result = eligibleProfiles.map((p) => {
     const s = map.get(p.id) ?? {
       animationsCount: 0, animationMin: 0, prepMin: 0,
-      petite: 0, moyenne: 0, grande: 0,
+      moyenne: 0, grande: 0,
     }
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
     const quotaFilled = quotaMax === null || s.animationsCount >= quotaMax
 
     const animPay =
-      s.petite  * REMUNERATION.petite +
       s.moyenne * REMUNERATION.moyenne +
       s.grande  * REMUNERATION.grande
     const basePay = BASE_PAY[p.payRole] ?? 0
@@ -172,7 +167,6 @@ Deno.serve(async (req) => {
       animationMin: s.animationMin,
       prepMin: s.prepMin,
       totalMin: s.animationMin + s.prepMin,
-      petite: s.petite,
       moyenne: s.moyenne,
       grande: s.grande,
       quotaMax,

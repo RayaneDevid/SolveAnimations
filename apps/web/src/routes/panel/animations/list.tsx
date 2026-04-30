@@ -14,9 +14,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatDuration, formatTime } from '@/lib/utils/format'
 
-const TYPE_LABELS = { petite: 'P', moyenne: 'M', grande: 'G' } as const
+const TYPE_LABELS = { moyenne: 'M', grande: 'G' } as const
 const TYPE_STYLES: Record<string, string> = {
-  petite: 'bg-white/[0.07] text-white/60 border-white/10',
   moyenne: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
   grande: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
 }

@@ -235,7 +235,6 @@ export interface PaiesEntry {
   animationMin: number
   prepMin: number
   totalMin: number
-  petite: number
   moyenne: number
   grande: number
   quotaMax: number | null

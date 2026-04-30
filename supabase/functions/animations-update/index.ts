@@ -16,6 +16,9 @@ Deno.serve(async (req) => {
   const body = await req.json()
   const { id, ...updates } = body
   if (!id) return errorResponse('VALIDATION_ERROR', 'id requis')
+  if (updates.type === 'petite') {
+    return errorResponse('VALIDATION_ERROR', "Le type Petite n'existe plus. Utilise Moyenne ou Grande.")
+  }
 
   const db = getServiceClient()
 

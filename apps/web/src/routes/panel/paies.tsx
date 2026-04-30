@@ -93,14 +93,9 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         )}
       </td>
 
-      {/* Petite / Moyenne / Grande */}
+      {/* Moyenne / Grande */}
       <td className="py-3 pr-4 text-center tabular-nums">
         <div className="flex items-center justify-center gap-1.5">
-          {entry.petite > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-white/[0.06] text-white/60">
-              <span className="text-white/40">P</span>{entry.petite}
-            </span>
-          )}
           {entry.moyenne > 0 && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-cyan-400/10 text-cyan-400">
               <span className="text-cyan-400/60">M</span>{entry.moyenne}
@@ -302,10 +297,6 @@ export default function Paies() {
           Base quota atteint : Anim 1 000 · MJ 4 000 · MJS 5 000 crédits
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-white/20" />
-          Petite × 200 crédits
-        </div>
-        <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400" />
           Moyenne × 350 crédits
         </div>
@@ -359,7 +350,7 @@ export default function Paies() {
                           <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Animations</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Trames</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">P / M / G</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">M / G</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>

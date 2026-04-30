@@ -19,9 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
 import { hasPermissionRole } from '@/lib/config/discord'
 
-const TYPE_LABELS_FULL = { petite: 'Petite', moyenne: 'Moyenne', grande: 'Grande' } as const
+const TYPE_LABELS_FULL = { moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
-  petite: 'Pour les animations spontanées',
   moyenne: 'Pour les tickets animations, les missions et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
@@ -60,7 +59,7 @@ export default function EditAnimation() {
       plannedDurationMin: a.planned_duration_min,
       requiredParticipants: a.required_participants,
       server: a.server,
-      type: a.type,
+      type: (a.type as string) === 'petite' ? 'moyenne' : a.type,
       pole: a.pole,
       prepTimeMin: a.prep_time_min,
       village: a.village,
@@ -276,7 +275,7 @@ export default function EditAnimation() {
             name="type"
             control={control}
             render={({ field }) => (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {TYPES.map((t) => (
                   <button
                     key={t}

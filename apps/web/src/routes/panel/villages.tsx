@@ -33,6 +33,10 @@ const QUOTA_COLORS = {
   missing: '#f97316',
 }
 
+function totalAnimations(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((sum, count) => sum + count, 0)
+}
+
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
   if (!active || !payload?.length) return null
   return (
@@ -171,6 +175,7 @@ export default function Villages() {
     return {
       name: label,
       weekStart: 'weekStart' in w ? w.weekStart : currentWeek.start,
+      totalAnimations: totalAnimations(w.counts),
       ...Object.fromEntries(
         villages.map((v) => [v, w.byVillage[v] ?? 0])
       ),
@@ -289,6 +294,21 @@ export default function Villages() {
               ))}
             </BarChart>
           </ResponsiveContainer>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {[...barData].reverse().map((week) => (
+              <div
+                key={week.name}
+                className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2"
+              >
+                <span className="text-xs font-medium text-white/50">
+                  {week.name === 'Cette sem.' ? 'Cette semaine' : week.name}
+                </span>
+                <span className="text-xs font-semibold text-white/80">
+                  {week.totalAnimations} animation{week.totalAnimations > 1 ? 's' : ''} au total
+                </span>
+              </div>
+            ))}
+          </div>
         </GlassCard>
       </div>
 

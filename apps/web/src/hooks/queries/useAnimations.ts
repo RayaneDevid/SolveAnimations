@@ -183,6 +183,8 @@ export interface WeeklyReviewDeparture {
 export interface WeeklyReview {
   week: { start: string; end: string; startDate: string; endDate: string }
   previousWeek: { start: string; end: string; startDate: string; endDate: string }
+  hasTwoWeekHistory: boolean
+  firstWeekStartDate: string
   warnings: WeeklyReviewWarning[]
   departures: WeeklyReviewDeparture[]
   unjustifiedThisWeek: WeeklyReviewMember[]

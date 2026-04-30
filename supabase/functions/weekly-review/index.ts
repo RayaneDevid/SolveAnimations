@@ -16,6 +16,8 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj: 3,
 }
 
+const PANEL_FIRST_WEEK_START_DATE = '2026-04-25'
+
 type ProfileRow = {
   id: string
   username: string
@@ -66,6 +68,7 @@ Deno.serve(async (req) => {
   const currentEndDate = parisDateString(currentEnd)
   const previousStartDate = parisDateString(previousStart)
   const previousEndDate = parisDateString(previousEnd)
+  const hasTwoWeekHistory = previousStartDate >= PANEL_FIRST_WEEK_START_DATE
 
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
@@ -83,16 +86,16 @@ Deno.serve(async (req) => {
     .filter((p): p is ProfileRow & { quotaMax: number } => typeof p.quotaMax === 'number')
 
   const currentQuota = await buildMissionCounts(db, currentStart, currentEnd)
-  const previousQuota = await buildMissionCounts(db, previousStart, previousEnd)
+  const previousQuota = hasTwoWeekHistory ? await buildMissionCounts(db, previousStart, previousEnd) : new Map<string, number>()
   const currentAbsences = await buildAbsenceSet(db, currentStartDate, currentEndDate)
-  const previousAbsences = await buildAbsenceSet(db, previousStartDate, previousEndDate)
+  const previousAbsences = hasTwoWeekHistory ? await buildAbsenceSet(db, previousStartDate, previousEndDate) : new Set<string>()
 
   const quotaMissingThisWeek = quotaProfiles
     .filter((p) => (currentQuota.get(p.id) ?? 0) < p.quotaMax)
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const quotaMissingTwoWeeks = quotaProfiles
-    .filter((p) =>
+    .filter((p) => hasTwoWeekHistory &&
       (currentQuota.get(p.id) ?? 0) < p.quotaMax &&
       (previousQuota.get(p.id) ?? 0) < p.quotaMax
     )
@@ -103,7 +106,7 @@ Deno.serve(async (req) => {
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedTwoWeeks = quotaProfiles
-    .filter((p) =>
+    .filter((p) => hasTwoWeekHistory &&
       (currentQuota.get(p.id) ?? 0) < p.quotaMax &&
       (previousQuota.get(p.id) ?? 0) < p.quotaMax &&
       !currentAbsences.has(p.id) &&
@@ -157,6 +160,8 @@ Deno.serve(async (req) => {
       startDate: previousStartDate,
       endDate: previousEndDate,
     },
+    hasTwoWeekHistory,
+    firstWeekStartDate: PANEL_FIRST_WEEK_START_DATE,
     warnings: warnings ?? [],
     departures: (departures ?? []).map((departure) => ({
       ...departure,

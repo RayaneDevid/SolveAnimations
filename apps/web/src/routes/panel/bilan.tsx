@@ -191,7 +191,9 @@ export default function Bilan() {
           </p>
         </div>
         <p className="text-xs text-white/30">
-          Comparaison 2 semaines : {formatWeekRange(data.previousWeek.startDate, data.week.endDate)}
+          {data.hasTwoWeekHistory
+            ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
+            : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
         </p>
       </div>
 

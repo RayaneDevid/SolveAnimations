@@ -150,6 +150,7 @@ export interface VillageStats {
   lastFourWeeks: Array<{
     weekStart: string
     byVillage: Record<string, number>
+    counts: Record<string, number>
   }>
 }
 

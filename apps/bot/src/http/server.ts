@@ -10,6 +10,7 @@ import { registerAnimationReminder } from './routes/animation-reminder.js';
 import { registerAnimationEmbedRefresh } from './routes/animation-embed-refresh.js';
 import { registerMemberRemoveRoles } from './routes/member-remove-roles.js';
 import { registerMemberRestoreRoles } from './routes/member-restore-roles.js';
+import { registerDiscordMemberLookup } from './routes/discord-member-lookup.js';
 import { registerAnimationDeletionRequested } from './routes/animation-deletion-requested.js';
 import { registerRequeteCreated } from './routes/requete-created.js';
 import { registerReportSubmitted } from './routes/report-submitted.js';
@@ -47,6 +48,7 @@ export async function createFastifyServer(): Promise<FastifyInstance> {
   await registerAnimationEmbedRefresh(app);
   await registerMemberRemoveRoles(app);
   await registerMemberRestoreRoles(app);
+  await registerDiscordMemberLookup(app);
   await registerAnimationDeletionRequested(app);
   await registerRequeteCreated(app);
   await registerReportSubmitted(app);

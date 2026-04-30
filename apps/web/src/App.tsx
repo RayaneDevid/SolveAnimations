@@ -21,6 +21,7 @@ import Members from '@/routes/panel/members'
 import Casiers from '@/routes/panel/casiers'
 import Paies from '@/routes/panel/paies'
 import Logs from '@/routes/panel/logs'
+import Bilan from '@/routes/panel/bilan'
 import Villages from '@/routes/panel/villages'
 import ProfilePage from '@/routes/panel/profile'
 import Recrutement from '@/routes/panel/recrutement'
@@ -97,6 +98,14 @@ export default function App() {
             element={
               <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
                 <Logs />
+              </RoleGate>
+            }
+          />
+          <Route
+            path="bilan"
+            element={
+              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+                <Bilan />
               </RoleGate>
             }
           />

@@ -1,20 +1,24 @@
-const BOT_URL    = Deno.env.get('BOT_WEBHOOK_URL')!.replace(/\/+$/, '')
-const BOT_SECRET = Deno.env.get('BOT_WEBHOOK_SECRET')!
-
 const BOT_TIMEOUT_MS = 8_000
 
 export async function notifyBot<T = Record<string, unknown>>(
   route: string,
   payload: unknown,
 ): Promise<T | null> {
+  const botUrl = Deno.env.get('BOT_WEBHOOK_URL')?.replace(/\/+$/, '')
+  const botSecret = Deno.env.get('BOT_WEBHOOK_SECRET')
+  if (!botUrl || !botSecret) {
+    console.error('Bot webhook env is missing')
+    return null
+  }
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), BOT_TIMEOUT_MS)
   try {
-    const res = await fetch(`${BOT_URL}/webhook/${route}`, {
+    const res = await fetch(`${botUrl}/webhook/${route}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Bot-Secret': BOT_SECRET,
+        'X-Bot-Secret': botSecret,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

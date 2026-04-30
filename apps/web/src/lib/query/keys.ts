@@ -24,6 +24,7 @@ export const queryKeys = {
     villages: ['stats', 'villages'] as const,
   },
   leaderboard: (period: string) => ['leaderboard', period] as const,
+  weeklyReview: ['weekly-review'] as const,
   members: {
     list: ['members'] as const,
     directory: ['members', 'directory'] as const,

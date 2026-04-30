@@ -1,3 +1,5 @@
+import { notifyBot } from './bot.ts'
+
 const DISCORD_API = 'https://discord.com/api/v10'
 const GUILD_ID = Deno.env.get('DISCORD_GUILD_ID')!
 
@@ -38,17 +40,26 @@ export type GuildMemberResult =
   | { ok: true; role: StaffRole; availableRoles: StaffRole[]; discordId: string; username: string; discordUsername: string; avatarUrl: string | null }
   | { ok: false }
 
-export async function getGuildMember(
-  providerToken: string,
-): Promise<GuildMemberResult> {
-  const res = await fetch(
-    `${DISCORD_API}/users/@me/guilds/${GUILD_ID}/member`,
-    { headers: { Authorization: `Bearer ${providerToken}` } },
-  )
+type DiscordUser = {
+  id: string
+  username: string
+  discriminator?: string
+  global_name?: string | null
+  avatar?: string | null
+}
 
-  if (!res.ok) return { ok: false }
+type DiscordMember = {
+  roles?: string[]
+  nick?: string | null
+  user?: DiscordUser
+}
 
-  const member = await res.json()
+type BotLookupResponse = {
+  success: boolean
+  data?: GuildMemberResult & { reason?: string; discordRoleIds?: string[] }
+}
+
+function buildResultFromMember(member: DiscordMember): GuildMemberResult {
   const memberRoles: string[] = member.roles ?? []
 
   const availableRoles: StaffRole[] = []
@@ -61,7 +72,7 @@ export async function getGuildMember(
   availableRoles.sort((a, b) => ROLE_HIERARCHY[b] - ROLE_HIERARCHY[a])
   const bestRole = availableRoles[0] ?? null
 
-  if (!bestRole) return { ok: false }
+  if (!bestRole || !member.user) return { ok: false }
 
   const user = member.user
   const avatarUrl = user.avatar
@@ -82,6 +93,55 @@ export async function getGuildMember(
     discordUsername,
     avatarUrl,
   }
+}
+
+async function getCurrentDiscordUser(providerToken: string): Promise<DiscordUser | null> {
+  const res = await fetch(`${DISCORD_API}/users/@me`, {
+    headers: { Authorization: `Bearer ${providerToken}` },
+  })
+  if (!res.ok) return null
+  return await res.json() as DiscordUser
+}
+
+async function getGuildMemberViaBot(discordUserId: string): Promise<GuildMemberResult> {
+  const result = await notifyBot<BotLookupResponse>('discord-member-lookup', { discordUserId })
+  if (result?.data?.ok) {
+    return result.data
+  }
+  console.warn('Discord bot member lookup failed or found no mapped staff role', {
+    discordUserId,
+    reason: result?.data && 'reason' in result.data ? result.data.reason : null,
+  })
+  return { ok: false }
+}
+
+export async function getGuildMember(
+  providerToken: string,
+): Promise<GuildMemberResult> {
+  const res = await fetch(
+    `${DISCORD_API}/users/@me/guilds/${GUILD_ID}/member`,
+    { headers: { Authorization: `Bearer ${providerToken}` } },
+  )
+
+  if (!res.ok) {
+    console.warn('Discord OAuth guild member lookup failed', { status: res.status })
+    const user = await getCurrentDiscordUser(providerToken)
+    return user ? await getGuildMemberViaBot(user.id) : { ok: false }
+  }
+
+  const member = await res.json() as DiscordMember
+  const oauthResult = buildResultFromMember(member)
+  if (oauthResult.ok) return oauthResult
+
+  if (member.user?.id) {
+    console.warn('Discord OAuth member lookup returned no mapped staff role, trying bot fallback', {
+      discordUserId: member.user.id,
+      discordRoleIds: member.roles ?? [],
+    })
+    return await getGuildMemberViaBot(member.user.id)
+  }
+
+  return { ok: false }
 }
 
 export function getAllStaffRoleIds(): string[] {

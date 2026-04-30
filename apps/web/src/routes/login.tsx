@@ -29,9 +29,7 @@ export default function Login() {
   }, [auth.status, navigate])
 
   const handleLogin = async () => {
-    const redirectTo = import.meta.env.DEV
-      ? 'http://localhost:5173/'
-      : `${APP_URL}/auth/callback`
+    const redirectTo = `${APP_URL.replace(/\/+$/, '')}/auth/callback`
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {

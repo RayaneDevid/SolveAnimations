@@ -38,6 +38,7 @@ export type EdgeFunctionName =
   | 'stats-weekly'
   | 'stats-villages'
   | 'stats-weekly-evolution'
+  | 'weekly-review'
   | 'leaderboard'
   | 'members-list'
   | 'members-directory'

@@ -16,6 +16,7 @@ import {
   ScrollText,
   Ticket,
   Activity,
+  ClipboardList,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -78,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/panel/casiers',    label: 'Casiers',             icon: FolderOpen },
       { to: '/panel/paies',      label: 'Paies',               icon: Banknote },
       { to: '/panel/logs',       label: 'Logs',                icon: Activity },
+      { to: '/panel/bilan',      label: 'Bilan',               icon: ClipboardList },
     ],
   },
 ]

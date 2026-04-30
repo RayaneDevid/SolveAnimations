@@ -16,6 +16,7 @@ const invalidateStatsCaches = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ['stats'] })
   qc.invalidateQueries({ queryKey: ['leaderboard'] })
   qc.invalidateQueries({ queryKey: ['paies'] })
+  qc.invalidateQueries({ queryKey: queryKeys.weeklyReview })
 }
 
 export function useRealtimeSync() {
@@ -61,6 +62,7 @@ export function useRealtimeSync() {
           qc.invalidateQueries({ queryKey: ['absences'] })
           qc.invalidateQueries({ queryKey: queryKeys.members.list })
           qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
+          qc.invalidateQueries({ queryKey: queryKeys.weeklyReview })
         },
       )
       .on(
@@ -69,6 +71,7 @@ export function useRealtimeSync() {
         (payload) => {
           const record = (payload.new ?? payload.old) as { user_id?: string } | null
           qc.invalidateQueries({ queryKey: ['warnings'] })
+          qc.invalidateQueries({ queryKey: queryKeys.weeklyReview })
           if (record?.user_id) {
             qc.invalidateQueries({ queryKey: queryKeys.warnings.user(record.user_id) })
           }
@@ -84,6 +87,7 @@ export function useRealtimeSync() {
           qc.invalidateQueries({ queryKey: queryKeys.members.former })
           qc.invalidateQueries({ queryKey: ['seniors'] })
           qc.invalidateQueries({ queryKey: queryKeys.calendar.availabilityAll })
+          qc.invalidateQueries({ queryKey: queryKeys.weeklyReview })
           invalidateStatsCaches(qc)
         },
       )

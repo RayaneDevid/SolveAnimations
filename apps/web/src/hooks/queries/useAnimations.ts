@@ -140,6 +140,64 @@ export function useVillageStats() {
   })
 }
 
+export interface WeeklyReviewMember {
+  id: string
+  username: string
+  avatar_url: string | null
+  role: string
+  discord_username: string | null
+  steam_id: string | null
+  quota: number
+  quotaMax: number
+  missing: number
+}
+
+export interface WeeklyReviewWarning {
+  id: string
+  warning_date: string
+  reason: string
+  created_at: string
+  user: {
+    id: string
+    username: string
+    avatar_url: string | null
+    role: string
+    discord_username: string | null
+    steam_id: string | null
+  } | null
+  creator: { id: string; username: string; avatar_url: string | null } | null
+}
+
+export interface WeeklyReviewDeparture {
+  id: string
+  username: string
+  avatar_url: string | null
+  role: string
+  discord_username: string | null
+  steam_id: string | null
+  deactivated_at: string | null
+  deactivation_reason: string | null
+  deactivated_by_username: string | null
+}
+
+export interface WeeklyReview {
+  week: { start: string; end: string; startDate: string; endDate: string }
+  previousWeek: { start: string; end: string; startDate: string; endDate: string }
+  warnings: WeeklyReviewWarning[]
+  departures: WeeklyReviewDeparture[]
+  unjustifiedThisWeek: WeeklyReviewMember[]
+  unjustifiedTwoWeeks: WeeklyReviewMember[]
+  quotaMissingThisWeek: WeeklyReviewMember[]
+  quotaMissingTwoWeeks: WeeklyReviewMember[]
+}
+
+export function useWeeklyReview() {
+  return useQuery({
+    queryKey: queryKeys.weeklyReview,
+    queryFn: () => invokeEdge<WeeklyReview>('weekly-review'),
+  })
+}
+
 export function useLeaderboard(period: 'week' | 'month' | 'all') {
   return useQuery({
     queryKey: queryKeys.leaderboard(period),

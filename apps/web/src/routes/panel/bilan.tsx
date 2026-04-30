@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/shared/GlassCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function dateFromInput(value: string): Date {
   return new Date(`${value}T00:00:00`)
@@ -173,17 +174,7 @@ function ReviewCard({
   )
 }
 
-function SectionHeader({ label, accent }: { label: string; accent: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`text-xs font-bold uppercase tracking-widest ${accent}`}>{label}</span>
-      <div className="h-px flex-1 bg-white/[0.06]" />
-    </div>
-  )
-}
-
-function PoleSection({
-  pole,
+function PoleCards({
   warnings,
   departures,
   unjustifiedThisWeek,
@@ -192,7 +183,6 @@ function PoleSection({
   quotaMissingTwoWeeks,
   hasTwoWeekHistory,
 }: {
-  pole: 'animation' | 'mj'
   warnings: WeeklyReviewWarning[]
   departures: WeeklyReviewDeparture[]
   unjustifiedThisWeek: WeeklyReviewMember[]
@@ -201,78 +191,71 @@ function PoleSection({
   quotaMissingTwoWeeks: WeeklyReviewMember[]
   hasTwoWeekHistory: boolean
 }) {
-  const isMj = pole === 'mj'
-  const label = isMj ? 'Pôle MJ' : 'Pôle Animation'
-  const accent = isMj ? 'text-red-400' : 'text-cyan-400'
-
   return (
-    <div className="space-y-3">
-      <SectionHeader label={label} accent={accent} />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <ReviewCard
-          title="Avertissements"
-          subtitle="Warns ajoutés sur la semaine active"
-          icon={ShieldAlert}
-          count={warnings.length}
-          tone="amber"
-        >
-          <WarningList warnings={warnings} />
-        </ReviewCard>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ReviewCard
+        title="Avertissements"
+        subtitle="Warns ajoutés sur la semaine active"
+        icon={ShieldAlert}
+        count={warnings.length}
+        tone="amber"
+      >
+        <WarningList warnings={warnings} />
+      </ReviewCard>
 
-        <ReviewCard
-          title="Départs"
-          subtitle="Membres retirés du panel cette semaine"
-          icon={LogOut}
-          count={departures.length}
-          tone="red"
-        >
-          <DepartureList departures={departures} />
-        </ReviewCard>
+      <ReviewCard
+        title="Départs"
+        subtitle="Membres retirés du panel cette semaine"
+        icon={LogOut}
+        count={departures.length}
+        tone="red"
+      >
+        <DepartureList departures={departures} />
+      </ReviewCard>
 
+      <ReviewCard
+        title="Absence injustifiée"
+        subtitle="Quota à 0 et aucune absence déclarée"
+        icon={UserX}
+        count={unjustifiedThisWeek.length}
+        tone="red"
+      >
+        <MemberList members={unjustifiedThisWeek} />
+      </ReviewCard>
+
+      {hasTwoWeekHistory && (
         <ReviewCard
-          title="Absence injustifiée"
-          subtitle="Quota à 0 et aucune absence déclarée"
+          title="Absence injustifiée x2"
+          subtitle="Quota à 0 sans absence sur 2 semaines"
           icon={UserX}
-          count={unjustifiedThisWeek.length}
+          count={unjustifiedTwoWeeks.length}
           tone="red"
         >
-          <MemberList members={unjustifiedThisWeek} />
+          <MemberList members={unjustifiedTwoWeeks} />
         </ReviewCard>
+      )}
 
-        {hasTwoWeekHistory && (
-          <ReviewCard
-            title="Absence injustifiée x2"
-            subtitle="Quota à 0 sans absence sur 2 semaines"
-            icon={UserX}
-            count={unjustifiedTwoWeeks.length}
-            tone="red"
-          >
-            <MemberList members={unjustifiedTwoWeeks} />
-          </ReviewCard>
-        )}
+      <ReviewCard
+        title="Quota non rempli"
+        subtitle="Membres sous quota sur la semaine active"
+        icon={Target}
+        count={quotaMissingThisWeek.length}
+        tone="amber"
+      >
+        <MemberList members={quotaMissingThisWeek} />
+      </ReviewCard>
 
+      {hasTwoWeekHistory && (
         <ReviewCard
-          title="Quota non rempli"
-          subtitle="Membres sous quota sur la semaine active"
-          icon={Target}
-          count={quotaMissingThisWeek.length}
+          title="Quota non rempli x2"
+          subtitle="Membres sous quota sur 2 semaines"
+          icon={AlertTriangle}
+          count={quotaMissingTwoWeeks.length}
           tone="amber"
         >
-          <MemberList members={quotaMissingThisWeek} />
+          <MemberList members={quotaMissingTwoWeeks} />
         </ReviewCard>
-
-        {hasTwoWeekHistory && (
-          <ReviewCard
-            title="Quota non rempli x2"
-            subtitle="Membres sous quota sur 2 semaines"
-            icon={AlertTriangle}
-            count={quotaMissingTwoWeeks.length}
-            tone="amber"
-          >
-            <MemberList members={quotaMissingTwoWeeks} />
-          </ReviewCard>
-        )}
-      </div>
+      )}
     </div>
   )
 }
@@ -403,27 +386,36 @@ export default function Bilan() {
           </Button>
         </div>
 
-        <PoleSection
-          pole="animation"
-          warnings={animWarnings}
-          departures={animDepartures}
-          unjustifiedThisWeek={animUnjustifiedThisWeek}
-          unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
-          quotaMissingThisWeek={animQuotaMissingThisWeek}
-          quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
-          hasTwoWeekHistory={data.hasTwoWeekHistory}
-        />
+        <Tabs defaultValue="animation">
+          <TabsList className="mb-4">
+            <TabsTrigger value="animation">Pôle Animation</TabsTrigger>
+            <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+          </TabsList>
 
-        <PoleSection
-          pole="mj"
-          warnings={mjWarnings}
-          departures={mjDepartures}
-          unjustifiedThisWeek={mjUnjustifiedThisWeek}
-          unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}
-          quotaMissingThisWeek={mjQuotaMissingThisWeek}
-          quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
-          hasTwoWeekHistory={data.hasTwoWeekHistory}
-        />
+          <TabsContent value="animation">
+            <PoleCards
+              warnings={animWarnings}
+              departures={animDepartures}
+              unjustifiedThisWeek={animUnjustifiedThisWeek}
+              unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
+              quotaMissingThisWeek={animQuotaMissingThisWeek}
+              quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
+              hasTwoWeekHistory={data.hasTwoWeekHistory}
+            />
+          </TabsContent>
+
+          <TabsContent value="mj">
+            <PoleCards
+              warnings={mjWarnings}
+              departures={mjDepartures}
+              unjustifiedThisWeek={mjUnjustifiedThisWeek}
+              unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}
+              quotaMissingThisWeek={mjQuotaMissingThisWeek}
+              quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
+              hasTwoWeekHistory={data.hasTwoWeekHistory}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

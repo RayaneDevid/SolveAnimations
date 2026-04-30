@@ -112,6 +112,69 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
   }
 
   const now = new Date().toISOString();
+  const isPastMission = anim.actual_duration_min != null && new Date(anim.scheduled_at).getTime() <= Date.now();
+
+  if (isPastMission) {
+    const scheduledAt = new Date(anim.scheduled_at);
+    const actualDurationMin = Math.max(1, Number(anim.actual_duration_min));
+    const actualPrepTimeMin = Math.max(0, Number(anim.actual_prep_time_min ?? anim.prep_time_min ?? 0));
+    const updatePayload: Record<string, unknown> = {
+      status: 'finished',
+      validated_by: profile.id,
+      validated_at: now,
+      started_at: scheduledAt.toISOString(),
+      ended_at: new Date(scheduledAt.getTime() + actualDurationMin * 60_000).toISOString(),
+      actual_duration_min: actualDurationMin,
+      actual_prep_time_min: actualPrepTimeMin,
+    };
+
+    if (actualPrepTimeMin > 0) {
+      updatePayload.prep_started_at = new Date(scheduledAt.getTime() - actualPrepTimeMin * 60_000).toISOString();
+      updatePayload.prep_ended_at = scheduledAt.toISOString();
+    }
+
+    const { error } = await supabase
+      .from('animations')
+      .update(updatePayload)
+      .eq('id', animationId);
+
+    if (error) {
+      await interaction.editReply({ content: '❌ Erreur lors de la validation.' });
+      return;
+    }
+
+    await supabase.from('animation_reports').upsert({
+      animation_id: animationId,
+      user_id: anim.creator_id,
+      pole: anim.pole === 'mj' ? 'mj' : 'animateur',
+      character_name: '—',
+      comments: null,
+      submitted_at: null,
+    }, { onConflict: 'animation_id,user_id' });
+
+    await supabase.from('audit_log').insert({
+      actor_id: profile.id,
+      action: 'animation.validate',
+      target_type: 'animation',
+      target_id: animationId,
+      metadata: { via: 'discord_button', pastMission: true },
+    });
+
+    try {
+      await interaction.message.delete();
+    } catch {}
+
+    if (anim.creator?.discord_id) {
+      await sendDM(
+        anim.creator.discord_id,
+        `✅ Ta mission passée **${anim.title}** a été validée par ${profile.username} et ajoutée comme terminée.`,
+      );
+    }
+
+    await interaction.editReply({ content: `✅ Mission passée **${anim.title}** validée et ajoutée comme terminée.` });
+    return;
+  }
+
   const { error } = await supabase
     .from('animations')
     .update({ status: 'open', validated_by: profile.id, validated_at: now })

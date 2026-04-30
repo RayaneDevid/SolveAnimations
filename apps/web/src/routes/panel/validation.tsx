@@ -84,11 +84,12 @@ function RejectModal({
 function ValidationCard({ animation }: { animation: Animation }) {
   const [rejectOpen, setRejectOpen] = useState(false)
   const { mutateAsync: validate, isPending: validating } = useValidateAnimation()
+  const isPastMission = animation.status === 'pending_validation' && animation.actual_duration_min != null
 
   const handleValidate = async () => {
     try {
       await validate(animation.id)
-      toast.success('Animation validée !')
+      toast.success(isPastMission ? 'Mission passée validée et ajoutée comme terminée !' : 'Animation validée !')
     } catch (err) {
       toast.error('Erreur')
     }
@@ -126,8 +127,15 @@ function ValidationCard({ animation }: { animation: Animation }) {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-white/50">
             <Clock className="h-3.5 w-3.5 text-violet-400" />
-            {formatDuration(animation.planned_duration_min)}
+            {formatDuration(animation.actual_duration_min ?? animation.planned_duration_min)}
+            {isPastMission && <span className="text-white/30">réel</span>}
           </div>
+          {isPastMission && animation.actual_prep_time_min != null && (
+            <div className="flex items-center gap-1.5 text-xs text-white/50">
+              <Clock className="h-3.5 w-3.5 text-amber-400" />
+              Prépa {formatDuration(animation.actual_prep_time_min)}
+            </div>
+          )}
           <ServerBadge server={animation.server} />
           <VillageBadge village={animation.village} />
         </div>

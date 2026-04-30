@@ -22,6 +22,9 @@ const bodySchema = z.object({
   requiredParticipants: z.number().int(),
   pingRoles: z.boolean().optional().default(true),
   adminMessageId: z.string().optional(),
+  finishedPast: z.boolean().optional().default(false),
+  actualDurationMin: z.number().int().optional(),
+  actualPrepTimeMin: z.number().int().optional(),
 });
 
 function buildParticipantPing(pole: string | undefined): { content: string; allowedMentions: import('discord.js').MessageCreateOptions['allowedMentions'] } | null {
@@ -72,6 +75,15 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
         } catch (err) {
           console.warn('[animation-validated] Could not delete admin message:', err);
         }
+      }
+
+      if (payload.finishedPast) {
+        await sendDM(
+          payload.creatorDiscordId,
+          `✅ Ta mission passée **${payload.title}** a été validée et ajoutée comme terminée.`,
+        );
+
+        return reply.send({ success: true, data: {} });
       }
 
       // 2. Post public embed in announce channel

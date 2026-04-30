@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
 export const TYPES = ['moyenne', 'grande'] as const
 export const POLES = ['animation', 'mj', 'les_deux'] as const
-export const MISSION_KINDS = ['classique', 'spontanee_bdm'] as const
+export const MISSION_KINDS = ['classique', 'spontanee_bdm', 'passee'] as const
 export const VILLAGES = [
   'konoha',
   'suna',
@@ -52,10 +52,25 @@ export const createAnimationSchema = z
   })
   .superRefine((value, ctx) => {
     const isInstantMission = value.spontaneous || value.missionKind === 'spontanee_bdm'
+    const isPastMission = value.missionKind === 'passee'
     if (!isInstantMission && !value.scheduledAt) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Date requise',
+        path: ['scheduledAt'],
+      })
+    }
+    if (value.scheduledAt && value.missionKind === 'classique' && value.scheduledAt.getTime() < Date.now()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Une mission classique ne peut pas être antidatée',
+        path: ['scheduledAt'],
+      })
+    }
+    if (value.scheduledAt && isPastMission && value.scheduledAt.getTime() > Date.now()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Une mission passée ne peut pas être dans le futur',
         path: ['scheduledAt'],
       })
     }

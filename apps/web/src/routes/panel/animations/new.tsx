@@ -24,11 +24,15 @@ const TYPE_DESCRIPTIONS = {
 const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: string }> = {
   classique: {
     label: 'Mission classique',
-    description: 'Date, heure, validation et nombre de participants comme actuellement.',
+    description: 'Mission planifiée à venir, avec validation optionnelle.',
   },
   spontanee_bdm: {
     label: 'Mission spontanée / BDM',
     description: 'Créée immédiatement, sans participant demandé.',
+  },
+  passee: {
+    label: 'Mission passée',
+    description: 'Mission déjà jouée, soumise à validation Responsable.',
   },
 }
 
@@ -80,8 +84,10 @@ export default function NewAnimation() {
   const scheduledAt = watch('scheduledAt')
   const missionKind = watch('missionKind')
   const isInstantMission = missionKind === 'spontanee_bdm'
+  const isPastMission = missionKind === 'passee'
   const requiredParticipants = watch('requiredParticipants')
-  const isPast = !isInstantMission && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+  const isClassicPastDate = missionKind === 'classique' && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+  const isPastFutureDate = isPastMission && scheduledAt instanceof Date && scheduledAt.getTime() > Date.now()
 
   useEffect(() => {
     if (isInstantMission) {
@@ -96,14 +102,20 @@ export default function NewAnimation() {
       return
     }
 
+    if (isPastMission) {
+      setValue('requestValidation', true)
+      setValue('pingRoles', false)
+    }
+
     if (requiredParticipants == null) {
       setValue('requiredParticipants', 4, { shouldValidate: true })
     }
-  }, [isInstantMission, requiredParticipants, setValue])
+  }, [isInstantMission, isPastMission, requiredParticipants, setValue])
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
       const instantMission = data.missionKind === 'spontanee_bdm'
+      const pastMission = data.missionKind === 'passee'
       const result = await mutateAsync({
         ...data,
         spontaneous: instantMission,
@@ -114,8 +126,8 @@ export default function NewAnimation() {
         type: instantMission ? 'moyenne' : data.type,
         pole: instantMission ? 'animation' : data.pole,
         description: data.description,
-        requestValidation: instantMission ? false : data.requestValidation,
-        pingRoles: instantMission ? false : data.pingRoles,
+        requestValidation: pastMission ? true : instantMission ? false : data.requestValidation,
+        pingRoles: pastMission || instantMission ? false : data.pingRoles,
       })
       toast.success('Animation créée avec succès !')
       navigate(`/panel/animations/${result.animation.id}`)
@@ -156,7 +168,7 @@ export default function NewAnimation() {
               name="missionKind"
               control={control}
               render={({ field }) => (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {MISSION_KINDS.map((kind) => {
                     const config = MISSION_KIND_CONFIG[kind]
                     const selected = field.value === kind
@@ -199,12 +211,27 @@ export default function NewAnimation() {
                   />
                 )}
               />
-              {isPast && (
+              {isClassicPastDate && (
+                <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <History className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-300/80">
+                    Une mission classique ne peut pas être antidatée. Utilise le type Mission passée.
+                  </p>
+                </div>
+              )}
+              {isPastFutureDate && (
+                <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <History className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-300/80">
+                    Une mission passée doit avoir une date déjà écoulée.
+                  </p>
+                </div>
+              )}
+              {isPastMission && !isPastFutureDate && (
                 <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300/80">
-                    Date dans le passé — l'animation sera créée directement comme <strong className="text-amber-300">terminée</strong>.
-                    La durée réelle sera calculée selon le type : Moyenne 30 min · Grande 60 min.
+                    La mission sera créée en attente de validation Responsable, puis ajoutée comme terminée après validation.
                   </p>
                 </div>
               )}
@@ -232,7 +259,7 @@ export default function NewAnimation() {
           <div className="grid grid-cols-2 gap-4">
             {/* Duration */}
             <div className="space-y-1.5">
-              <Label>Durée prévue (min)</Label>
+              <Label>{isPastMission ? 'Durée réelle (min)' : 'Durée estimée (min)'}</Label>
               <Input
                 type="number"
                 min={15}
@@ -246,7 +273,7 @@ export default function NewAnimation() {
 
             {/* Prep time */}
             <div className="space-y-1.5">
-              <Label>Durée du débrief (min)</Label>
+              <Label>{isPastMission ? 'Temps de préparation réel (min)' : 'Temps de préparation estimé (min)'}</Label>
               <Input
                 type="number"
                 min={0}
@@ -401,8 +428,29 @@ export default function NewAnimation() {
           {errors.pole && <p className="text-xs text-red-400">{errors.pole.message}</p>}
         </GlassCard>}
 
-        {/* Validation — hidden for past dates */}
-        {!isInstantMission && !isPast && <GlassCard className="p-5">
+        {/* Validation */}
+        {isPastMission && <GlassCard className="p-5">
+          <div className="flex items-start gap-4 w-full text-left">
+            <div className="mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border bg-cyan-500/20 border-cyan-500/50">
+              <svg className="h-3 w-3 text-cyan-400" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-cyan-400" />
+                <span className="text-sm font-semibold text-white/80">
+                  Validation Responsable obligatoire
+                </span>
+              </div>
+              <p className="text-xs text-white/40 mt-1">
+                La mission passée restera en attente tant qu'un Responsable ne l'aura pas validée.
+              </p>
+            </div>
+          </div>
+        </GlassCard>}
+
+        {!isInstantMission && !isPastMission && <GlassCard className="p-5">
           <Controller
             name="requestValidation"
             control={control}
@@ -446,8 +494,8 @@ export default function NewAnimation() {
           />
         </GlassCard>}
 
-        {/* Ping roles — hidden for past dates */}
-        {!isInstantMission && !isPast && <GlassCard className="p-5">
+        {/* Ping roles */}
+        {!isInstantMission && !isPastMission && <GlassCard className="p-5">
           <Controller
             name="pingRoles"
             control={control}
@@ -497,7 +545,7 @@ export default function NewAnimation() {
             Annuler
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Création...' : isPast ? 'Créer comme terminée' : isInstantMission ? 'Créer maintenant' : "Créer l'animation"}
+            {isPending ? 'Création...' : isPastMission ? 'Créer la mission passée' : isInstantMission ? 'Créer maintenant' : "Créer l'animation"}
           </Button>
         </div>
       </form>

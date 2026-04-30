@@ -92,14 +92,19 @@ Deno.serve(async (req) => {
   const previousAbsences = hasTwoWeekHistory ? await buildAbsenceSet(db, previousStartDate, previousEndDate) : new Set<string>()
 
   const quotaMissingThisWeek = quotaProfiles
-    .filter((p) => (currentQuota.get(p.id) ?? 0) < p.quotaMax)
+    .filter((p) => {
+      const count = currentQuota.get(p.id) ?? 0
+      return count > 0 && count < p.quotaMax
+    })
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const quotaMissingTwoWeeks = quotaProfiles
-    .filter((p) => hasTwoWeekHistory &&
-      (currentQuota.get(p.id) ?? 0) < p.quotaMax &&
-      (previousQuota.get(p.id) ?? 0) < p.quotaMax
-    )
+    .filter((p) => {
+      if (!hasTwoWeekHistory) return false
+      const cur = currentQuota.get(p.id) ?? 0
+      const prev = previousQuota.get(p.id) ?? 0
+      return cur > 0 && cur < p.quotaMax && prev > 0 && prev < p.quotaMax
+    })
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedThisWeek = quotaProfiles

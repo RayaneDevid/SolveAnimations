@@ -7,6 +7,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useWeeklyReview, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
+import { cn } from '@/lib/utils/cn'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -144,6 +145,7 @@ function ReviewCard({
   icon: Icon,
   count,
   tone,
+  className,
   children,
 }: {
   title: string
@@ -151,6 +153,7 @@ function ReviewCard({
   icon: LucideIcon
   count: number
   tone: 'amber' | 'red' | 'cyan'
+  className?: string
   children: React.ReactNode
 }) {
   const toneClasses = {
@@ -160,7 +163,7 @@ function ReviewCard({
   }
 
   return (
-    <GlassCard className="p-3">
+    <GlassCard className={cn('p-3', className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${toneClasses[tone]}`}>
@@ -247,6 +250,7 @@ function PoleCards({
         icon={Target}
         count={quotaMissingThisWeek.length}
         tone="amber"
+        className={!hasTwoWeekHistory ? 'col-span-full' : ''}
       >
         <MemberList members={quotaMissingThisWeek} />
       </ReviewCard>
@@ -268,7 +272,9 @@ function PoleCards({
 
 export default function Bilan() {
   const { data, isLoading } = useWeeklyReview()
-  const exportRef = useRef<HTMLDivElement>(null)
+  const animExportRef = useRef<HTMLDivElement>(null)
+  const mjExportRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>('animation')
   const [exporting, setExporting] = useState(false)
 
   const exportFileName = data
@@ -276,11 +282,12 @@ export default function Bilan() {
     : 'bilan'
 
   const handleExportImage = async () => {
-    if (!exportRef.current) return
+    const ref = activeTab === 'animation' ? animExportRef : mjExportRef
+    if (!ref.current) return
     setExporting(true)
     await new Promise((resolve) => setTimeout(resolve, 50))
     try {
-      const dataUrl = await toPng(exportRef.current, {
+      const dataUrl = await toPng(ref.current, {
         pixelRatio: 2,
         skipFonts: true,
         backgroundColor: '#0A0B0F',
@@ -363,7 +370,7 @@ export default function Bilan() {
         }
       `}</style>
 
-      <div ref={exportRef} id="weekly-review-export" className="space-y-8 bg-[#0A0B0F]">
+      <div id="weekly-review-export" className="space-y-8 bg-[#0A0B0F]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
@@ -392,34 +399,38 @@ export default function Bilan() {
           </Button>
         </div>
 
-        <Tabs defaultValue="animation">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj')}>
           <TabsList className="mb-4">
             <TabsTrigger value="animation">Pôle Animation</TabsTrigger>
             <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
           </TabsList>
 
           <TabsContent value="animation">
-            <PoleCards
-              warnings={animWarnings}
-              departures={animDepartures}
-              unjustifiedThisWeek={animUnjustifiedThisWeek}
-              unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
-              quotaMissingThisWeek={animQuotaMissingThisWeek}
-              quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
-              hasTwoWeekHistory={data.hasTwoWeekHistory}
-            />
+            <div ref={animExportRef}>
+              <PoleCards
+                warnings={animWarnings}
+                departures={animDepartures}
+                unjustifiedThisWeek={animUnjustifiedThisWeek}
+                unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
+                quotaMissingThisWeek={animQuotaMissingThisWeek}
+                quotaMissingTwoWeeks={animQuotaMissingTwoWeeks}
+                hasTwoWeekHistory={data.hasTwoWeekHistory}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="mj">
-            <PoleCards
-              warnings={mjWarnings}
-              departures={mjDepartures}
-              unjustifiedThisWeek={mjUnjustifiedThisWeek}
-              unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}
-              quotaMissingThisWeek={mjQuotaMissingThisWeek}
-              quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
-              hasTwoWeekHistory={data.hasTwoWeekHistory}
-            />
+            <div ref={mjExportRef}>
+              <PoleCards
+                warnings={mjWarnings}
+                departures={mjDepartures}
+                unjustifiedThisWeek={mjUnjustifiedThisWeek}
+                unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}
+                quotaMissingThisWeek={mjQuotaMissingThisWeek}
+                quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
+                hasTwoWeekHistory={data.hasTwoWeekHistory}
+              />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

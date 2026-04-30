@@ -179,10 +179,11 @@ export default function Bilan() {
   const handleExportImage = async () => {
     if (!exportRef.current) return
     setExporting(true)
+    await new Promise((resolve) => setTimeout(resolve, 50))
     try {
       const dataUrl = await toPng(exportRef.current, {
-        cacheBust: true,
         pixelRatio: 2,
+        skipFonts: true,
         backgroundColor: '#0A0B0F',
         filter: (node) => !(node instanceof HTMLElement && node.dataset.exportIgnore === 'true'),
       })

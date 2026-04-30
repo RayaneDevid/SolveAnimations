@@ -2,11 +2,11 @@ import { useRef, useState } from 'react'
 import { addDays, format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { toPng } from 'html-to-image'
-import { AlertTriangle, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarOff, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
-import { useWeeklyReview, useVillageStats, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
+import { useWeeklyReview, useVillageStats, type WeeklyReviewAbsence, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { cn } from '@/lib/utils/cn'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -37,6 +37,14 @@ function isEffectivelyMj(m: WeeklyReviewMember): boolean {
   if (m.pay_pole === 'mj') return true
   if (m.pay_pole === 'animation') return false
   return ['mj', 'mj_senior'].includes(m.role)
+}
+
+function isAbsenceEffectivelyMj(absence: WeeklyReviewAbsence): boolean {
+  const user = absence.user
+  if (!user) return false
+  if (user.pay_pole === 'mj') return true
+  if (user.pay_pole === 'animation') return false
+  return isMjRole(user.role)
 }
 
 function EmptyState() {
@@ -103,6 +111,46 @@ function WarningList({ warnings }: { warnings: WeeklyReviewWarning[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {warnings.map((warning) => <WarningBadge key={warning.id} warning={warning} />)}
+    </div>
+  )
+}
+
+function AbsenceBadge({ absence }: { absence: WeeklyReviewAbsence }) {
+  const user = absence.user
+  const title = [
+    user?.username ?? 'Membre inconnu',
+    user?.discord_username ? `Discord: @${user.discord_username}` : 'Discord inconnu',
+    user?.steam_id ? `SteamID: ${user.steam_id}` : null,
+    `Du ${formatShortDate(absence.from_date)} au ${formatShortDate(absence.to_date)}`,
+    absence.reason ? `Raison: ${absence.reason}` : null,
+    absence.declarer ? `Déclarée par: ${absence.declarer.username}` : null,
+  ].filter(Boolean).join('\n')
+
+  return (
+    <Link
+      to={user ? `/panel/casiers?user_id=${user.id}` : '#'}
+      title={title}
+      className="inline-flex max-w-full flex-col gap-0.5 rounded-lg border border-cyan-500/20 bg-cyan-500/[0.07] px-2.5 py-1.5 text-xs text-cyan-100/85 transition-colors hover:border-cyan-300/35 hover:bg-cyan-500/10"
+    >
+      <span className="flex items-center gap-1.5">
+        <UserAvatar avatarUrl={user?.avatar_url ?? null} username={user?.username ?? 'Membre'} size="xs" />
+        <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{user?.username ?? 'Membre inconnu'}</span>
+        <span className="ml-auto shrink-0 text-cyan-200/45">
+          {formatShortDate(absence.from_date)}
+        </span>
+      </span>
+      <p className="pl-5 text-[10px] leading-snug text-cyan-200/50 line-clamp-2">
+        {absence.reason ?? `${formatShortDate(absence.from_date)} → ${formatShortDate(absence.to_date)}`}
+      </p>
+    </Link>
+  )
+}
+
+function AbsenceList({ absences }: { absences: WeeklyReviewAbsence[] }) {
+  if (absences.length === 0) return <EmptyState />
+  return (
+    <div className="flex flex-wrap gap-2">
+      {absences.map((absence) => <AbsenceBadge key={absence.id} absence={absence} />)}
     </div>
   )
 }
@@ -253,6 +301,7 @@ function QuotaPieCard({ data }: { data: QuotaCompletion }) {
 
 function PoleCards({
   warnings,
+  justifiedAbsences,
   departures,
   unjustifiedThisWeek,
   unjustifiedTwoWeeks,
@@ -262,6 +311,7 @@ function PoleCards({
   quotaCompletion,
 }: {
   warnings: WeeklyReviewWarning[]
+  justifiedAbsences: WeeklyReviewAbsence[]
   departures: WeeklyReviewDeparture[]
   unjustifiedThisWeek: WeeklyReviewMember[]
   unjustifiedTwoWeeks: WeeklyReviewMember[]
@@ -291,6 +341,16 @@ function PoleCards({
           tone="red"
         >
           <DepartureList departures={departures} />
+        </ReviewCard>
+
+        <ReviewCard
+          title="Absences justifiées"
+          subtitle="Absences déclarées sur la semaine active"
+          icon={CalendarOff}
+          count={justifiedAbsences.length}
+          tone="cyan"
+        >
+          <AbsenceList absences={justifiedAbsences} />
         </ReviewCard>
 
         <ReviewCard
@@ -432,6 +492,9 @@ export default function Bilan() {
   const mjWarnings = data.warnings.filter((w) => isMjRole(w.user?.role ?? ''))
   const animDepartures = data.departures.filter((d) => !isMjRole(d.role))
   const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
+  const justifiedAbsencesThisWeek = data.justifiedAbsencesThisWeek ?? []
+  const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence))
+  const mjJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyMj)
 
   const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m))
   const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyMj)
@@ -514,6 +577,7 @@ export default function Bilan() {
               </div>
               <PoleCards
                 warnings={animWarnings}
+                justifiedAbsences={animJustifiedAbsences}
                 departures={animDepartures}
                 unjustifiedThisWeek={animUnjustifiedThisWeek}
                 unjustifiedTwoWeeks={animUnjustifiedTwoWeeks}
@@ -533,6 +597,7 @@ export default function Bilan() {
               </div>
               <PoleCards
                 warnings={mjWarnings}
+                justifiedAbsences={mjJustifiedAbsences}
                 departures={mjDepartures}
                 unjustifiedThisWeek={mjUnjustifiedThisWeek}
                 unjustifiedTwoWeeks={mjUnjustifiedTwoWeeks}

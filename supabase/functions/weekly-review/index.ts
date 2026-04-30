@@ -28,6 +28,31 @@ type ProfileRow = {
   steam_id?: string | null
 }
 
+type AbsenceProfileRow = ProfileRow & {
+  is_active: boolean
+}
+
+type AbsenceRow = {
+  id: string
+  user_id: string
+  declared_by: string | null
+  from_date: string
+  to_date: string
+  reason: string | null
+  created_at: string
+}
+
+type DeclarerRow = {
+  id: string
+  username: string
+  avatar_url: string | null
+}
+
+type WeeklyReviewAbsenceRow = AbsenceRow & {
+  user: ProfileRow
+  declarer: DeclarerRow | null
+}
+
 function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
   if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
@@ -88,7 +113,8 @@ Deno.serve(async (req) => {
 
   const currentQuota = await buildMissionCounts(db, currentStart, currentEnd)
   const previousQuota = hasTwoWeekHistory ? await buildMissionCounts(db, previousStart, previousEnd) : new Map<string, number>()
-  const currentAbsences = await buildAbsenceSet(db, currentStartDate, currentEndDate)
+  const currentAbsences = await buildAbsences(db, currentStartDate, currentEndDate)
+  const currentAbsenceIds = new Set(currentAbsences.map((absence) => absence.user_id))
   const previousAbsences = hasTwoWeekHistory ? await buildAbsenceSet(db, previousStartDate, previousEndDate) : new Set<string>()
 
   const quotaMissingThisWeek = quotaProfiles
@@ -108,14 +134,14 @@ Deno.serve(async (req) => {
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedThisWeek = quotaProfiles
-    .filter((p) => (currentQuota.get(p.id) ?? 0) === 0 && !currentAbsences.has(p.id))
+    .filter((p) => (currentQuota.get(p.id) ?? 0) === 0 && !currentAbsenceIds.has(p.id))
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
   const unjustifiedTwoWeeks = quotaProfiles
     .filter((p) => hasTwoWeekHistory &&
       (currentQuota.get(p.id) ?? 0) === 0 &&
       (previousQuota.get(p.id) ?? 0) === 0 &&
-      !currentAbsences.has(p.id) &&
+      !currentAbsenceIds.has(p.id) &&
       !previousAbsences.has(p.id)
     )
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
@@ -169,6 +195,7 @@ Deno.serve(async (req) => {
     hasTwoWeekHistory,
     firstWeekStartDate: PANEL_FIRST_WEEK_START_DATE,
     warnings: warnings ?? [],
+    justifiedAbsencesThisWeek: currentAbsences,
     departures: (departures ?? []).map((departure) => ({
       ...departure,
       deactivated_by_username: departure.deactivated_by
@@ -212,6 +239,64 @@ async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<
   }
 
   return counts
+}
+
+// deno-lint-ignore no-explicit-any
+async function buildAbsences(db: any, startDate: string, endDate: string): Promise<WeeklyReviewAbsenceRow[]> {
+  const { data: absences } = await db
+    .from('user_absences')
+    .select('id, user_id, declared_by, from_date, to_date, reason, created_at')
+    .lt('from_date', endDate)
+    .gt('to_date', startDate)
+    .order('from_date', { ascending: true })
+
+  const absenceRows = (absences ?? []) as AbsenceRow[]
+  const userIds = Array.from(new Set(absenceRows.map((absence) => absence.user_id)))
+  const declarerIds = Array.from(new Set(
+    absenceRows
+      .map((absence) => absence.declared_by)
+      .filter((id): id is string => typeof id === 'string'),
+  ))
+
+  const { data: absenceProfiles } = userIds.length > 0
+    ? await db
+      .from('profiles')
+      .select('id, username, avatar_url, role, pay_pole, discord_username, steam_id, is_active')
+      .in('id', userIds)
+    : { data: [] }
+
+  const { data: declarers } = declarerIds.length > 0
+    ? await db
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', declarerIds)
+    : { data: [] }
+
+  const profileMap = new Map((absenceProfiles ?? []).map((profile: AbsenceProfileRow) => [profile.id, profile]))
+  const declarerMap = new Map((declarers ?? []).map((declarer: DeclarerRow) => [declarer.id, declarer]))
+
+  return absenceRows
+    .map((absence): WeeklyReviewAbsenceRow | null => {
+      const absenceProfile = profileMap.get(absence.user_id)
+      if (!absenceProfile?.is_active) return null
+
+      const user = {
+        id: absenceProfile.id,
+        username: absenceProfile.username,
+        avatar_url: absenceProfile.avatar_url,
+        role: absenceProfile.role,
+        pay_pole: absenceProfile.pay_pole,
+        discord_username: absenceProfile.discord_username ?? null,
+        steam_id: absenceProfile.steam_id ?? null,
+      }
+
+      return {
+        ...absence,
+        user,
+        declarer: absence.declared_by ? declarerMap.get(absence.declared_by) ?? null : null,
+      }
+    })
+    .filter((absence): absence is WeeklyReviewAbsenceRow => absence !== null)
 }
 
 // deno-lint-ignore no-explicit-any

@@ -169,6 +169,26 @@ export interface WeeklyReviewWarning {
   creator: { id: string; username: string; avatar_url: string | null } | null
 }
 
+export interface WeeklyReviewAbsence {
+  id: string
+  user_id: string
+  declared_by: string | null
+  from_date: string
+  to_date: string
+  reason: string | null
+  created_at: string
+  user: {
+    id: string
+    username: string
+    avatar_url: string | null
+    role: string
+    pay_pole: 'animation' | 'mj' | null
+    discord_username: string | null
+    steam_id: string | null
+  } | null
+  declarer: { id: string; username: string; avatar_url: string | null } | null
+}
+
 export interface WeeklyReviewDeparture {
   id: string
   username: string
@@ -187,6 +207,7 @@ export interface WeeklyReview {
   hasTwoWeekHistory: boolean
   firstWeekStartDate: string
   warnings: WeeklyReviewWarning[]
+  justifiedAbsencesThisWeek: WeeklyReviewAbsence[]
   departures: WeeklyReviewDeparture[]
   unjustifiedThisWeek: WeeklyReviewMember[]
   unjustifiedTwoWeeks: WeeklyReviewMember[]

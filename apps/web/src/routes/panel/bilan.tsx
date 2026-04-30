@@ -7,11 +7,9 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useWeeklyReview, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { GlassCard } from '@/components/shared/GlassCard'
-import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { StaffRoleKey } from '@/lib/config/discord'
 
 function dateFromInput(value: string): Date {
   return new Date(`${value}T00:00:00`)
@@ -26,30 +24,29 @@ function formatWeekRange(startDate: string, endDate: string): string {
 }
 
 function EmptyState() {
-  return <p className="py-6 text-center text-sm text-white/25">Rien à signaler</p>
+  return <p className="py-3 text-sm text-white/25">Rien à signaler</p>
 }
 
-function MemberLine({ member }: { member: WeeklyReviewMember }) {
+function memberTitle(member: WeeklyReviewMember): string {
+  return [
+    member.username,
+    member.discord_username ? `Discord: @${member.discord_username}` : 'Discord inconnu',
+    member.steam_id ? `SteamID: ${member.steam_id}` : null,
+    `Quota: ${member.quota}/${member.quotaMax}`,
+    `Manquant: ${member.missing}`,
+  ].filter(Boolean).join('\n')
+}
+
+function MemberBadge({ member }: { member: WeeklyReviewMember }) {
   return (
     <Link
       to={`/panel/casiers?user_id=${member.id}`}
-      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-colors hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
+      title={memberTitle(member)}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-2 py-1 text-xs text-white/75 transition-colors hover:border-cyan-400/30 hover:bg-cyan-400/[0.06]"
     >
-      <UserAvatar avatarUrl={member.avatar_url} username={member.username} size="sm" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium text-white/85">{member.username}</p>
-          <RoleBadge role={member.role as StaffRoleKey} />
-        </div>
-        <p className="mt-0.5 truncate text-xs text-white/30">
-          {member.discord_username ? `@${member.discord_username}` : 'Discord inconnu'}
-          {member.steam_id ? ` · ${member.steam_id}` : ''}
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-semibold text-white/85">{member.quota}/{member.quotaMax}</p>
-        <p className="text-[10px] uppercase tracking-wide text-red-300/70">-{member.missing}</p>
-      </div>
+      <UserAvatar avatarUrl={member.avatar_url} username={member.username} size="xs" />
+      <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{member.username}</span>
+      <span className="shrink-0 text-white/35">{member.quota}/{member.quotaMax}</span>
     </Link>
   )
 }
@@ -57,63 +54,73 @@ function MemberLine({ member }: { member: WeeklyReviewMember }) {
 function MemberList({ members }: { members: WeeklyReviewMember[] }) {
   if (members.length === 0) return <EmptyState />
   return (
-    <div className="space-y-2">
-      {members.map((member) => <MemberLine key={member.id} member={member} />)}
+    <div className="flex flex-wrap gap-2">
+      {members.map((member) => <MemberBadge key={member.id} member={member} />)}
     </div>
   )
 }
 
-function WarningLine({ warning }: { warning: WeeklyReviewWarning }) {
+function WarningBadge({ warning }: { warning: WeeklyReviewWarning }) {
   const user = warning.user
+  const title = [
+    user?.username ?? 'Membre inconnu',
+    `Date: ${formatShortDate(warning.warning_date)}`,
+    `Raison: ${warning.reason}`,
+    warning.creator ? `Ajouté par: ${warning.creator.username}` : null,
+  ].filter(Boolean).join('\n')
+
   return (
-    <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3">
-      <div className="flex items-start gap-3">
-        <UserAvatar avatarUrl={user?.avatar_url ?? null} username={user?.username ?? 'Membre'} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {user ? (
-              <Link to={`/panel/casiers?user_id=${user.id}`} className="text-sm font-medium text-white/85 hover:text-cyan-300">
-                {user.username}
-              </Link>
-            ) : (
-              <p className="text-sm font-medium text-white/60">Membre inconnu</p>
-            )}
-            {user?.role && <RoleBadge role={user.role as StaffRoleKey} />}
-            <span className="text-xs text-white/35">{formatShortDate(warning.warning_date)}</span>
-          </div>
-          <p className="mt-1 text-sm text-white/65">{warning.reason}</p>
-          {warning.creator && (
-            <p className="mt-1 text-xs text-white/30">Ajouté par {warning.creator.username}</p>
-          )}
-        </div>
-      </div>
+    <Link
+      to={user ? `/panel/casiers?user_id=${user.id}` : '#'}
+      title={title}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.07] px-2 py-1 text-xs text-amber-100/85 transition-colors hover:border-amber-300/35 hover:bg-amber-500/10"
+    >
+      <UserAvatar avatarUrl={user?.avatar_url ?? null} username={user?.username ?? 'Membre'} size="xs" />
+      <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{user?.username ?? 'Membre inconnu'}</span>
+      <span className="shrink-0 text-amber-200/45">{formatShortDate(warning.warning_date)}</span>
+    </Link>
+  )
+}
+
+function WarningList({ warnings }: { warnings: WeeklyReviewWarning[] }) {
+  if (warnings.length === 0) return <EmptyState />
+  return (
+    <div className="flex flex-wrap gap-2">
+      {warnings.map((warning) => <WarningBadge key={warning.id} warning={warning} />)}
     </div>
   )
 }
 
-function DepartureLine({ departure }: { departure: WeeklyReviewDeparture }) {
+function DepartureBadge({ departure }: { departure: WeeklyReviewDeparture }) {
+  const title = [
+    departure.username,
+    departure.discord_username ? `Discord: @${departure.discord_username}` : 'Discord inconnu',
+    departure.steam_id ? `SteamID: ${departure.steam_id}` : null,
+    departure.deactivation_reason ? `Raison: ${departure.deactivation_reason}` : 'Raison: aucune raison renseignée',
+    departure.deactivated_by_username ? `Retiré par: ${departure.deactivated_by_username}` : null,
+  ].filter(Boolean).join('\n')
+
   return (
-    <div className="rounded-xl border border-red-500/15 bg-red-500/[0.04] p-3">
-      <div className="flex items-start gap-3">
-        <UserAvatar avatarUrl={departure.avatar_url} username={departure.username} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-white/80">{departure.username}</p>
-            <RoleBadge role={departure.role as StaffRoleKey} />
-            {departure.deactivated_at && (
-              <span className="text-xs text-white/35">
-                {format(new Date(departure.deactivated_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-white/65">{departure.deactivation_reason ?? 'Aucune raison renseignée'}</p>
-          <p className="mt-1 text-xs text-white/30">
-            {departure.discord_username ? `@${departure.discord_username}` : 'Discord inconnu'}
-            {departure.steam_id ? ` · ${departure.steam_id}` : ''}
-            {departure.deactivated_by_username ? ` · retiré par ${departure.deactivated_by_username}` : ''}
-          </p>
-        </div>
-      </div>
+    <span
+      title={title}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/[0.07] px-2 py-1 text-xs text-red-100/85"
+    >
+      <UserAvatar avatarUrl={departure.avatar_url} username={departure.username} size="xs" />
+      <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{departure.username}</span>
+      {departure.deactivated_at && (
+        <span className="shrink-0 text-red-200/45">
+          {format(new Date(departure.deactivated_at), 'dd/MM', { locale: fr })}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function DepartureList({ departures }: { departures: WeeklyReviewDeparture[] }) {
+  if (departures.length === 0) return <EmptyState />
+  return (
+    <div className="flex flex-wrap gap-2">
+      {departures.map((departure) => <DepartureBadge key={departure.id} departure={departure} />)}
     </div>
   )
 }
@@ -140,18 +147,18 @@ function ReviewCard({
   }
 
   return (
-    <GlassCard className="p-4">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${toneClasses[tone]}`}>
-            <Icon className="h-5 w-5" />
+    <GlassCard className="p-3">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${toneClasses[tone]}`}>
+            <Icon className="h-4 w-4" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-white">{title}</h2>
-            <p className="mt-0.5 text-xs text-white/35">{subtitle}</p>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-white">{title}</h2>
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">{subtitle}</p>
           </div>
         </div>
-        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs font-semibold text-white/60">
+        <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-xs font-semibold text-white/60">
           {count}
         </span>
       </div>
@@ -257,7 +264,7 @@ export default function Bilan() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
         <ReviewCard
           title="Avertissements"
           subtitle="Warns ajoutés sur la semaine active"
@@ -265,11 +272,7 @@ export default function Bilan() {
           count={data.warnings.length}
           tone="amber"
         >
-          {data.warnings.length === 0 ? <EmptyState /> : (
-            <div className="space-y-2">
-              {data.warnings.map((warning) => <WarningLine key={warning.id} warning={warning} />)}
-            </div>
-          )}
+          <WarningList warnings={data.warnings} />
         </ReviewCard>
 
         <ReviewCard
@@ -279,11 +282,7 @@ export default function Bilan() {
           count={data.departures.length}
           tone="red"
         >
-          {data.departures.length === 0 ? <EmptyState /> : (
-            <div className="space-y-2">
-              {data.departures.map((departure) => <DepartureLine key={departure.id} departure={departure} />)}
-            </div>
-          )}
+          <DepartureList departures={data.departures} />
         </ReviewCard>
 
         <ReviewCard

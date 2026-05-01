@@ -61,21 +61,37 @@ Deno.serve(async (req) => {
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
-    await db.from('animation_reports').upsert({
-      animation_id: id,
-      user_id: anim.creator_id,
-      pole: anim.pole === 'mj' ? 'mj' : 'animateur',
-      character_name: '—',
-      comments: null,
-      submitted_at: null,
-    }, { onConflict: 'animation_id,user_id' })
+    const { data: validatedParticipants } = await db
+      .from('animation_participants')
+      .select('user_id')
+      .eq('animation_id', id)
+      .eq('status', 'validated')
+
+    const reportUserIds = [
+      anim.creator_id,
+      ...((validatedParticipants ?? [])
+        .map((participant) => participant.user_id)
+        .filter((userId) => userId !== anim.creator_id)),
+    ]
+
+    await db.from('animation_reports').upsert(
+      reportUserIds.map((userId) => ({
+        animation_id: id,
+        user_id: userId,
+        pole: anim.pole === 'mj' ? 'mj' : 'animateur',
+        character_name: '—',
+        comments: null,
+        submitted_at: null,
+      })),
+      { onConflict: 'animation_id,user_id' },
+    )
 
     await db.from('audit_log').insert({
       actor_id: profile.id,
       action: 'animation.validate',
       target_type: 'animation',
       target_id: id,
-      metadata: { pastMission: true },
+      metadata: { pastMission: true, participantCount: reportUserIds.length - 1 },
     })
 
     await notifyBot('animation-validated', {
@@ -86,6 +102,7 @@ Deno.serve(async (req) => {
       plannedDurationMin: anim.planned_duration_min,
       prepTimeMin: anim.prep_time_min,
       requiredParticipants: anim.required_participants,
+      registrationsLocked: anim.registrations_locked,
       server: anim.server,
       village: anim.village,
       type: anim.type,
@@ -133,6 +150,7 @@ Deno.serve(async (req) => {
     plannedDurationMin: anim.planned_duration_min,
     prepTimeMin: anim.prep_time_min,
     requiredParticipants: anim.required_participants,
+    registrationsLocked: anim.registrations_locked,
     server: anim.server,
     village: anim.village,
     type: anim.type,

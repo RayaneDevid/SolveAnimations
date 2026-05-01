@@ -18,6 +18,7 @@ const bodySchema = z.object({
   documentUrl: z.string().optional(),
   creatorUsername: z.string(),
   requiredParticipants: z.number().int(),
+  registrationsLocked: z.boolean().optional().default(false),
 });
 
 export async function registerAnimationUpdated(app: FastifyInstance): Promise<void> {
@@ -38,7 +39,7 @@ export async function registerAnimationUpdated(app: FastifyInstance): Promise<vo
           if (announceChannel?.isTextBased()) {
             const msg = await (announceChannel as import('discord.js').TextChannel).messages.fetch(payload.publicMessageId);
             const embed = buildAnimationEmbed({ ...payload, status: 'open' });
-            await msg.edit({ embeds: [embed], components: [buildJoinRow(payload.animationId)] });
+            await msg.edit({ embeds: [embed], components: [buildJoinRow(payload.animationId, payload.registrationsLocked)] });
           }
         } catch (err) {
           console.warn('[animation-updated] Could not edit public message:', err);

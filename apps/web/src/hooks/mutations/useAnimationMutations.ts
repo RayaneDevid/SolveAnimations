@@ -272,6 +272,21 @@ export function useApplyParticipant() {
   })
 }
 
+export function useSetRegistrationsLocked() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ animationId, locked }: { animationId: string; locked: boolean }) =>
+      invokeEdge<{ animation: Animation }>('animations-update', {
+        id: animationId,
+        registrations_locked: locked,
+      }),
+    onSuccess: (data, { animationId }) => {
+      updateDetailCache(qc, animationId, data.animation)
+      invalidateAnimationCaches(qc, animationId)
+    },
+  })
+}
+
 export function useRemoveParticipant() {
   const qc = useQueryClient()
   return useMutation({
@@ -359,6 +374,7 @@ export function useUpdateAnimation() {
         ...(body.prepTimeMin !== undefined ? { prep_time_min: body.prepTimeMin } : {}),
         ...(body.village !== undefined ? { village: body.village } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.registrationsLocked !== undefined ? { registrations_locked: body.registrationsLocked } : {}),
       }),
     onSuccess: (_, { id }) => {
       invalidateAnimationCaches(qc, id)

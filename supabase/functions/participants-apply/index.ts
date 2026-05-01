@@ -18,13 +18,15 @@ Deno.serve(async (req) => {
 
   const { data: anim } = await db
     .from('animations')
-    .select('id, creator_id, status, scheduled_at')
+    .select('id, creator_id, status, scheduled_at, registrations_locked')
     .eq('id', animation_id)
     .single()
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
   if (!['pending_validation', 'open', 'preparing', 'running'].includes(anim.status))
     return errorResponse('CONFLICT', "L'animation n'est pas ouverte aux inscriptions")
+  if (anim.registrations_locked)
+    return errorResponse('CONFLICT', 'Les inscriptions sont verrouillées pour cette animation')
   if (anim.creator_id === profile.id)
     return errorResponse('FORBIDDEN', 'Le créateur ne peut pas se proposer sur sa propre animation')
 

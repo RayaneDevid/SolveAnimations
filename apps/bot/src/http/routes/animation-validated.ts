@@ -20,6 +20,7 @@ const bodySchema = z.object({
   creatorUsername: z.string(),
   creatorDiscordId: z.string(),
   requiredParticipants: z.number().int(),
+  registrationsLocked: z.boolean().optional().default(false),
   pingRoles: z.boolean().optional().default(true),
   adminMessageId: z.string().optional(),
   finishedPast: z.boolean().optional().default(false),
@@ -103,7 +104,7 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
         const message = await (announceChannel as import('discord.js').TextChannel).send({
           ...(ping ?? {}),
           embeds: [embed],
-          components: [buildJoinRow(payload.animationId)],
+          components: [buildJoinRow(payload.animationId, payload.registrationsLocked)],
         });
         publicMessageId = message.id;
       } catch (err) {
@@ -114,7 +115,9 @@ export async function registerAnimationValidated(app: FastifyInstance): Promise<
       // 3. DM the creator
       await sendDM(
         payload.creatorDiscordId,
-        `✅ Ton animation **${payload.title}** a été validée ! Elle est maintenant ouverte aux inscriptions.`,
+        payload.registrationsLocked
+          ? `✅ Ton animation **${payload.title}** a été validée ! Les inscriptions sont verrouillées.`
+          : `✅ Ton animation **${payload.title}** a été validée ! Elle est maintenant ouverte aux inscriptions.`,
       );
 
       return reply.send({ success: true, data: { publicMessageId } });

@@ -18,6 +18,7 @@ const bodySchema = z.object({
   documentUrl: z.string().optional(),
   creatorUsername: z.string(),
   requiredParticipants: z.number().int(),
+  registrationsLocked: z.boolean().optional().default(false),
   currentParticipants: z.number().int().default(0),
   status: z.string(),
   actualDurationMin: z.number().int().optional(),
@@ -46,7 +47,7 @@ export async function registerAnimationEmbedRefresh(app: FastifyInstance): Promi
 
           const embed = buildAnimationEmbed(payload);
           const components = ['open', 'preparing', 'running'].includes(payload.status)
-            ? [buildJoinRow(payload.animationId)]
+            ? [buildJoinRow(payload.animationId, payload.registrationsLocked)]
             : [];
           await msg.edit({ embeds: [embed], components });
         }

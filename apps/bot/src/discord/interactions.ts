@@ -88,7 +88,12 @@ function buildParticipantPingContent(pole: string | undefined): { content: strin
   };
 }
 
-async function refreshAnimationParticipantCount(animationId: string, messageId: string, requiredParticipants: number) {
+async function refreshAnimationParticipantCount(
+  animationId: string,
+  messageId: string,
+  requiredParticipants: number,
+  registrationsLocked = false,
+) {
   const { count } = await supabase
     .from('animation_participants')
     .select('id', { count: 'exact', head: true })
@@ -102,14 +107,14 @@ async function refreshAnimationParticipantCount(animationId: string, messageId: 
   const existingEmbed = msg.embeds[0];
   if (!existingEmbed) return;
 
-  const participantsLine = formatParticipantsLine(count ?? 0, requiredParticipants);
+  const participantsLine = formatParticipantsLine(count ?? 0, requiredParticipants, registrationsLocked);
   const updatedDesc = (existingEmbed.description ?? '').replace(
-    /👥  Participants : (?:\d+(?: \/ \d+| · ouvert à tous)|aucun participant demandé)/,
+    /👥  Participants : .+/,
     participantsLine,
   );
   const { EmbedBuilder } = await import('discord.js');
   const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(updatedDesc);
-  await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(animationId)] });
+  await msg.edit({ embeds: [updatedEmbed], components: [buildJoinRow(animationId, registrationsLocked)] });
 }
 
 export async function handleValidateButton(interaction: ButtonInteraction, animationId: string) {
@@ -164,21 +169,37 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
       return;
     }
 
-    await supabase.from('animation_reports').upsert({
-      animation_id: animationId,
-      user_id: anim.creator_id,
-      pole: anim.pole === 'mj' ? 'mj' : 'animateur',
-      character_name: '—',
-      comments: null,
-      submitted_at: null,
-    }, { onConflict: 'animation_id,user_id' });
+    const { data: validatedParticipants } = await supabase
+      .from('animation_participants')
+      .select('user_id')
+      .eq('animation_id', animationId)
+      .eq('status', 'validated');
+
+    const reportUserIds = [
+      anim.creator_id,
+      ...((validatedParticipants ?? [])
+        .map((participant) => participant.user_id)
+        .filter((userId) => userId !== anim.creator_id)),
+    ];
+
+    await supabase.from('animation_reports').upsert(
+      reportUserIds.map((userId) => ({
+        animation_id: animationId,
+        user_id: userId,
+        pole: anim.pole === 'mj' ? 'mj' : 'animateur',
+        character_name: '—',
+        comments: null,
+        submitted_at: null,
+      })),
+      { onConflict: 'animation_id,user_id' },
+    );
 
     await supabase.from('audit_log').insert({
       actor_id: profile.id,
       action: 'animation.validate',
       target_type: 'animation',
       target_id: animationId,
-      metadata: { via: 'discord_button', pastMission: true },
+      metadata: { via: 'discord_button', pastMission: true, participantCount: reportUserIds.length - 1 },
     });
 
     try {
@@ -233,6 +254,7 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
     documentUrl: anim.document_url,
     creatorUsername: anim.creator?.username ?? 'Inconnu',
     requiredParticipants: anim.required_participants,
+    registrationsLocked: anim.registrations_locked,
     currentParticipants: 0,
     status: 'open',
   });
@@ -243,7 +265,11 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
   try {
     const announceChannel = await client.channels.fetch(env.DISCORD_ANNOUNCE_CHANNEL_ID);
     if (announceChannel?.isTextBased()) {
-      const msg = await (announceChannel as TextChannel).send({ ...(ping ?? {}), embeds: [embed], components: [buildJoinRow(animationId)] });
+      const msg = await (announceChannel as TextChannel).send({
+        ...(ping ?? {}),
+        embeds: [embed],
+        components: [buildJoinRow(animationId, anim.registrations_locked)],
+      });
       publicMessageId = msg.id;
     }
   } catch (err) {
@@ -260,7 +286,9 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
   if (anim.creator?.discord_id) {
     await sendDM(
       anim.creator.discord_id,
-      `✅ Ton animation **${anim.title}** a été validée par ${profile.username} ! Elle est maintenant ouverte aux inscriptions.`,
+      anim.registrations_locked
+        ? `✅ Ton animation **${anim.title}** a été validée par ${profile.username} ! Les inscriptions sont verrouillées.`
+        : `✅ Ton animation **${anim.title}** a été validée par ${profile.username} ! Elle est maintenant ouverte aux inscriptions.`,
     );
   }
 
@@ -501,12 +529,16 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
   // Fetch animation
   const { data: anim } = await supabase
     .from('animations')
-    .select('id, title, status, scheduled_at, creator_id, required_participants, discord_message_id')
+    .select('id, title, status, scheduled_at, creator_id, required_participants, registrations_locked, discord_message_id')
     .eq('id', animationId)
     .single();
 
   if (!anim || !['open', 'preparing', 'running'].includes(anim.status)) {
     await interaction.editReply({ content: '❌ Cette animation n\'accepte plus d\'inscriptions.' });
+    return;
+  }
+  if (anim.registrations_locked) {
+    await interaction.editReply({ content: '🔒 Les inscriptions sont verrouillées pour cette animation.' });
     return;
   }
 
@@ -579,7 +611,7 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
   // Update embed participant count (validated only)
   if (anim.discord_message_id) {
     try {
-      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants);
+      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants, anim.registrations_locked);
     } catch {
       // Non-blocking — the embed update failing doesn't affect the inscription
     }
@@ -606,7 +638,7 @@ export async function handleAnimLeaveButton(interaction: ButtonInteraction, anim
 
   const { data: anim } = await supabase
     .from('animations')
-    .select('id, title, status, required_participants, discord_message_id')
+    .select('id, title, status, required_participants, registrations_locked, discord_message_id')
     .eq('id', animationId)
     .single();
 
@@ -644,7 +676,7 @@ export async function handleAnimLeaveButton(interaction: ButtonInteraction, anim
 
   if (anim.discord_message_id) {
     try {
-      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants);
+      await refreshAnimationParticipantCount(animationId, anim.discord_message_id, anim.required_participants, anim.registrations_locked);
     } catch {
       // Non-blocking — the embed update failing doesn't affect the désinscription
     }

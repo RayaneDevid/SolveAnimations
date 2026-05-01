@@ -1,13 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History, Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, type Village, type AnimationPole, type MissionKind } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
+import { useMemberDirectory } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
+import { UserAvatar } from '@/components/shared/UserAvatar'
+import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -61,8 +64,9 @@ const POLE_CONFIG: Record<AnimationPole, { label: string; description: string; c
 
 export default function NewAnimation() {
   const navigate = useNavigate()
-  const { permissionRoles } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const { mutateAsync, isPending } = useCreateAnimation()
+  const [participantSearch, setParticipantSearch] = useState('')
 
   const {
     register,
@@ -80,6 +84,8 @@ export default function NewAnimation() {
       plannedDurationMin: 60,
       requestValidation: false,
       pingRoles: false,
+      registrationsLocked: false,
+      pastParticipantIds: [],
       spontaneous: false,
     },
   })
@@ -92,6 +98,25 @@ export default function NewAnimation() {
   const requiredParticipants = watch('requiredParticipants')
   const isClassicPastDate = missionKind === 'classique' && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
   const isPastFutureDate = isPastMission && scheduledAt instanceof Date && scheduledAt.getTime() > Date.now()
+  const selectedPastParticipantIds = watch('pastParticipantIds') ?? []
+  const { data: memberDirectory = [], isLoading: membersLoading } = useMemberDirectory(isPastMission)
+
+  const availablePastParticipants = useMemo(() => {
+    const search = participantSearch.trim().toLowerCase()
+    return memberDirectory
+      .filter((member) => member.id !== user.id)
+      .filter((member) =>
+        !search ||
+        member.username.toLowerCase().includes(search) ||
+        member.role.toLowerCase().includes(search),
+      )
+  }, [memberDirectory, participantSearch, user.id])
+
+  const togglePastParticipant = (memberId: string) => {
+    const current = new Set(selectedPastParticipantIds)
+    current.has(memberId) ? current.delete(memberId) : current.add(memberId)
+    setValue('pastParticipantIds', [...current], { shouldValidate: true })
+  }
 
   useEffect(() => {
     if (isInstantMission) {
@@ -103,12 +128,16 @@ export default function NewAnimation() {
       setValue('pole', 'animation', { shouldValidate: true })
       setValue('requestValidation', false)
       setValue('pingRoles', false)
+      setValue('pastParticipantIds', [], { shouldValidate: true })
       return
     }
 
     if (isPastMission) {
       setValue('requestValidation', !canSelfValidatePastMission)
       setValue('pingRoles', false)
+      setValue('registrationsLocked', true)
+    } else {
+      setValue('pastParticipantIds', [], { shouldValidate: true })
     }
 
     if (requiredParticipants == null) {
@@ -130,6 +159,8 @@ export default function NewAnimation() {
         type: instantMission ? 'moyenne' : data.type,
         pole: instantMission ? 'animation' : data.pole,
         description: data.description,
+        registrationsLocked: pastMission ? true : data.registrationsLocked,
+        pastParticipantIds: pastMission ? data.pastParticipantIds : [],
         requestValidation: pastMission ? !canSelfValidatePastMission : instantMission ? false : data.requestValidation,
         pingRoles: pastMission || instantMission ? false : data.pingRoles,
       })
@@ -311,6 +342,109 @@ export default function NewAnimation() {
             )}
           </div>
 
+        </GlassCard>}
+
+        {isPastMission && (
+          <GlassCard className="p-5 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Participants présents</h2>
+              <p className="mt-1 text-xs text-white/40">
+                Sélectionne les membres qui ont participé à cette mission passée.
+              </p>
+            </div>
+
+            <Input
+              value={participantSearch}
+              onChange={(event) => setParticipantSearch(event.target.value)}
+              placeholder="Rechercher un membre..."
+            />
+
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.05]">
+              {membersLoading ? (
+                <p className="p-3 text-xs text-white/40">Chargement...</p>
+              ) : availablePastParticipants.length === 0 ? (
+                <p className="p-3 text-xs text-white/40">Aucun membre trouvé</p>
+              ) : (
+                availablePastParticipants.map((member) => {
+                  const checked = selectedPastParticipantIds.includes(member.id)
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => togglePastParticipant(member.id)}
+                      className={cn(
+                        'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
+                        checked ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]',
+                      )}
+                    >
+                      <div className={cn(
+                        'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all',
+                        checked ? 'border-cyan-500/60 bg-cyan-500/30' : 'border-white/20 bg-white/[0.04]',
+                      )}>
+                        {checked && (
+                          <svg className="h-2.5 w-2.5 text-cyan-400" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <UserAvatar avatarUrl={member.avatarUrl} username={member.username} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/90">{member.username}</span>
+                      <RoleBadge role={member.role} size="sm" />
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            <p className="text-xs text-cyan-400/80">
+              {selectedPastParticipantIds.length} participant{selectedPastParticipantIds.length > 1 ? 's' : ''} sélectionné{selectedPastParticipantIds.length > 1 ? 's' : ''}
+            </p>
+          </GlassCard>
+        )}
+
+        {/* Registrations */}
+        {!isPastMission && <GlassCard className="p-5">
+          <Controller
+            name="registrationsLocked"
+            control={control}
+            render={({ field }) => (
+              <button
+                type="button"
+                onClick={() => field.onChange(!field.value)}
+                className="flex items-start gap-4 w-full text-left"
+              >
+                <div className={cn(
+                  'mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border transition-all',
+                  field.value
+                    ? 'bg-orange-500/20 border-orange-500/50'
+                    : 'bg-white/[0.04] border-white/[0.15]',
+                )}>
+                  {field.value && (
+                    <svg className="h-3 w-3 text-orange-400" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {field.value
+                      ? <Lock className="h-4 w-4 text-orange-400" />
+                      : <Unlock className="h-4 w-4 text-white/30" />
+                    }
+                    <span className="text-sm font-semibold text-white/80">
+                      Bloquer les inscriptions
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">
+                    {field.value
+                      ? "Personne ne pourra s'inscrire tant que les inscriptions restent verrouillées."
+                      : "Les membres pourront s'inscrire quand la mission sera ouverte."
+                    }
+                  </p>
+                </div>
+              </button>
+            )}
+          />
         </GlassCard>}
 
         {/* Server */}

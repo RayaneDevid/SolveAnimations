@@ -23,6 +23,8 @@ Deno.serve(async (req) => {
   const {
     title, scheduledAt, plannedDurationMin, requiredParticipants,
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
+    registrationsLocked = false,
+    pastParticipantIds = [],
     requestValidation = true, pingRoles = true, spontaneous = false, missionKind = 'classique',
   } = body
   const isInstantMission = spontaneous === true || missionKind === 'spontanee_bdm'
@@ -34,6 +36,15 @@ Deno.serve(async (req) => {
   const resolvedPole = isInstantMission ? 'animation' : pole
   const resolvedPrepTimeMin = isInstantMission ? 0 : prepTimeMin
   const shouldPingRoles = isInstantMission ? false : pingRoles
+  const shouldLockRegistrations = registrationsLocked === true
+  if (pastParticipantIds !== undefined && !Array.isArray(pastParticipantIds))
+    return errorResponse('VALIDATION_ERROR', 'Participants passés invalides')
+  const selectedPastParticipantIds = isPastMission
+    ? [...new Set((pastParticipantIds as unknown[]).filter((id): id is string => typeof id === 'string'))]
+        .filter((id) => id !== profile.id)
+    : []
+  if (selectedPastParticipantIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id)))
+    return errorResponse('VALIDATION_ERROR', 'Participants passés invalides')
 
   // Basic validation
   if (!MISSION_KINDS.includes(missionKind))
@@ -72,6 +83,18 @@ Deno.serve(async (req) => {
   const actualDurationMin = Math.max(1, Number(resolvedPlannedDurationMin))
   const actualPrepTimeMin = Math.max(0, Number(resolvedPrepTimeMin ?? 0))
 
+  if (selectedPastParticipantIds.length > 0) {
+    const { data: selectedProfiles, error: selectedProfilesError } = await db
+      .from('profiles')
+      .select('id')
+      .eq('is_active', true)
+      .in('id', selectedPastParticipantIds)
+
+    if (selectedProfilesError) return errorResponse('INTERNAL_ERROR', selectedProfilesError.message)
+    if ((selectedProfiles ?? []).length !== selectedPastParticipantIds.length)
+      return errorResponse('VALIDATION_ERROR', 'Un participant sélectionné est invalide')
+  }
+
   const { data: animation, error } = await db
     .from('animations')
     .insert({
@@ -85,6 +108,7 @@ Deno.serve(async (req) => {
       prep_time_min: resolvedPrepTimeMin,
       village,
       description: description?.trim() || null,
+      registrations_locked: shouldLockRegistrations,
       creator_id: profile.id,
       status: autoFinishPastMission ? 'finished' : isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
       ...(isPastMission ? {
@@ -109,22 +133,45 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', 'Erreur lors de la création')
   }
 
+  if (selectedPastParticipantIds.length > 0) {
+    const { error: participantsError } = await db.from('animation_participants').insert(
+      selectedPastParticipantIds.map((userId) => ({
+        animation_id: animation.id,
+        user_id: userId,
+        character_name: null,
+        status: 'validated',
+        applied_at: now,
+        decided_at: now,
+        decided_by: profile.id,
+      })),
+    )
+
+    if (participantsError) {
+      console.error('animations-create participants error:', participantsError)
+      return errorResponse('INTERNAL_ERROR', 'Erreur lors de l\'ajout des participants')
+    }
+  }
+
   if (autoFinishPastMission) {
-    await db.from('animation_reports').upsert({
-      animation_id: animation.id,
-      user_id: profile.id,
-      pole: animation.pole === 'mj' ? 'mj' : 'animateur',
-      character_name: '—',
-      comments: null,
-      submitted_at: null,
-    }, { onConflict: 'animation_id,user_id' })
+    const reportUserIds = [profile.id, ...selectedPastParticipantIds]
+    await db.from('animation_reports').upsert(
+      reportUserIds.map((userId) => ({
+        animation_id: animation.id,
+        user_id: userId,
+        pole: animation.pole === 'mj' ? 'mj' : 'animateur',
+        character_name: '—',
+        comments: null,
+        submitted_at: null,
+      })),
+      { onConflict: 'animation_id,user_id' },
+    )
 
     await db.from('audit_log').insert({
       actor_id: profile.id,
       action: 'animation.validate',
       target_type: 'animation',
       target_id: animation.id,
-      metadata: { pastMission: true, selfValidated: true },
+      metadata: { pastMission: true, selfValidated: true, participantCount: selectedPastParticipantIds.length },
     })
   } else if (autoValidate) {
     const botRes = await notifyBot<{ data: { publicMessageId: string } }>('animation-validated', {
@@ -135,6 +182,7 @@ Deno.serve(async (req) => {
       plannedDurationMin: animation.planned_duration_min,
       prepTimeMin: animation.prep_time_min,
       requiredParticipants: animation.required_participants,
+      registrationsLocked: animation.registrations_locked,
       server: animation.server,
       village: animation.village,
       type: animation.type,
@@ -156,6 +204,7 @@ Deno.serve(async (req) => {
       plannedDurationMin: animation.planned_duration_min,
       prepTimeMin: animation.prep_time_min,
       requiredParticipants: animation.required_participants,
+      registrationsLocked: animation.registrations_locked,
       server: animation.server,
       village: animation.village,
       type: animation.type,

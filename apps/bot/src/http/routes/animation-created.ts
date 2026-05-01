@@ -19,6 +19,7 @@ const bodySchema = z.object({
   creatorUsername: z.string(),
   creatorDiscordId: z.string(),
   requiredParticipants: z.number().int(),
+  registrationsLocked: z.boolean().optional().default(false),
 });
 
 export async function registerAnimationCreated(app: FastifyInstance): Promise<void> {

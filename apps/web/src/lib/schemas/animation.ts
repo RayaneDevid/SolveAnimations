@@ -47,6 +47,8 @@ export const createAnimationSchema = z
       .default(0),
     village: z.enum(VILLAGES, { required_error: 'Village requis' }),
     description: z.string().trim().max(2000).optional(),
+    registrationsLocked: z.boolean().default(false),
+    pastParticipantIds: z.array(z.string().uuid()).default([]),
     requestValidation: z.boolean().default(true),
     pingRoles: z.boolean().default(true),
   })

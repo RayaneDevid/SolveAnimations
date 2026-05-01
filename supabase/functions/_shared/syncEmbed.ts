@@ -30,6 +30,7 @@ export async function syncEmbed(db: any, animationId: string): Promise<void> {
     documentUrl: anim.document_url,
     creatorUsername: anim.creator?.username ?? 'Inconnu',
     requiredParticipants: anim.required_participants,
+    registrationsLocked: anim.registrations_locked,
     currentParticipants: count ?? 0,
     status: anim.status,
     actualDurationMin: anim.actual_duration_min ?? undefined,

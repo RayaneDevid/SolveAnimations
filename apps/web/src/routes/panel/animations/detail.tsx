@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
   Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2, Send,
+  Lock, Unlock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation, useMembers } from '@/hooks/queries/useAnimations'
@@ -12,6 +13,7 @@ import {
   useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation, useAddParticipantToFinished, useRequestTimeCorrection,
+  useSetRegistrationsLocked,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -500,13 +502,11 @@ function AddParticipantToFinishedDialog({ animationId, existingUserIds, open, on
                     key={m.id}
                     type="button"
                     onClick={() => toggle(m.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                      checked ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]'
-                    }`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${checked ? 'bg-cyan-500/10' : 'hover:bg-white/[0.04]'
+                      }`}
                   >
-                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-all ${
-                      checked ? 'bg-cyan-500/30 border-cyan-500/60' : 'border-white/20 bg-white/[0.04]'
-                    }`}>
+                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-all ${checked ? 'bg-cyan-500/30 border-cyan-500/60' : 'border-white/20 bg-white/[0.04]'
+                      }`}>
                       {checked && (
                         <svg className="h-2.5 w-2.5 text-cyan-400" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -551,6 +551,7 @@ export default function AnimationDetail() {
   const { mutate: deleteAnim, isPending: deleting } = useDeleteAnimation()
   const { mutate: requestDeletion, isPending: requestingDeletion } = useRequestDeletion()
   const { mutateAsync: apply, isPending: applying } = useApplyParticipant()
+  const { mutateAsync: setRegistrationsLocked, isPending: togglingRegistrationsLock } = useSetRegistrationsLocked()
 
   if (isLoading) {
     return (
@@ -569,14 +570,21 @@ export default function AnimationDetail() {
   const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
   const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
   const scheduledAtHasPassed = new Date(animation.scheduled_at).getTime() <= Date.now()
+  const canManageRegistrations =
+    (isCreator || isResponsable) &&
+    ['pending_validation', 'open', 'preparing', 'running'].includes(animation.status)
+  const isParticipant = participants.some(
+    (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
+  )
+  const canShowRegistrationCta =
+    ['pending_validation', 'open', 'preparing', 'running'].includes(animation.status) &&
+    !isCreator &&
+    !isParticipant
   const canRequestTimeCorrection =
     isCreator &&
     ['open', 'preparing', 'running', 'finished'].includes(animation.status) &&
     (scheduledAtHasPassed || ['preparing', 'running', 'finished'].includes(animation.status)) &&
     !(animation.status === 'finished' && canCorrectFinished)
-  const isParticipant = participants.some(
-    (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
-  )
 
   const validated = participants.filter((p) => p.status === 'validated')
   const pending = participants.filter((p) => p.status === 'pending')
@@ -661,6 +669,16 @@ export default function AnimationDetail() {
     }
   }
 
+  const handleToggleRegistrationsLock = async () => {
+    const locked = !animation.registrations_locked
+    try {
+      await setRegistrationsLocked({ animationId: animation.id, locked })
+      toast.success(locked ? 'Inscriptions verrouillées.' : 'Inscriptions rouvertes.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
@@ -731,6 +749,12 @@ export default function AnimationDetail() {
               ? `${validated.length}/${animation.required_participants}`
               : 'Aucun participant demandé'}
           </div>
+          {animation.registrations_locked && (
+            <div className="flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-300">
+              <Lock className="h-3.5 w-3.5" />
+              Inscriptions verrouillées
+            </div>
+          )}
           {animation.description && (
             <div className="w-full basis-full pt-1">
               <p className={`text-sm leading-relaxed text-white/60 whitespace-pre-wrap break-words ${descriptionExpanded ? '' : 'line-clamp-2'}`}>
@@ -750,6 +774,9 @@ export default function AnimationDetail() {
         </div>
         <Progress value={participantProgress} className="mt-3" />
       </GlassCard>
+
+      {/* Chat */}
+      <AnimationChat animationId={animation.id} currentUserId={user.id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Participants */}
@@ -806,19 +833,30 @@ export default function AnimationDetail() {
           )}
 
           {/* Apply CTA */}
-          {['pending_validation', 'open', 'preparing', 'running'].includes(animation.status) && !isCreator && !isParticipant && (
+          {canShowRegistrationCta && (
             <GlassCard className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-white/80">Se proposer</h2>
+                  <h2 className="text-sm font-semibold text-white/80">
+                    {animation.registrations_locked ? 'Inscriptions verrouillées' : 'Se proposer'}
+                  </h2>
                   <p className="text-xs text-white/40 mt-0.5">
-                    Rejoins cette animation en tant que participant
+                    {animation.registrations_locked
+                      ? "Le créateur a fermé les inscriptions pour cette animation."
+                      : 'Rejoins cette animation en tant que participant'
+                    }
                   </p>
                 </div>
-                <Button onClick={handleApply} disabled={applying} className="gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  {applying ? 'Envoi...' : 'S\'inscrire'}
-                </Button>
+                {animation.registrations_locked ? (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-orange-500/25 bg-orange-500/10 text-orange-300">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <Button onClick={handleApply} disabled={applying} className="gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    {applying ? 'Envoi...' : 'S\'inscrire'}
+                  </Button>
+                )}
               </div>
             </GlassCard>
           )}
@@ -858,6 +896,25 @@ export default function AnimationDetail() {
                 Contrôle
               </h2>
               <div className="space-y-4">
+                {canManageRegistrations && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Inscriptions</p>
+                    <Button
+                      onClick={handleToggleRegistrationsLock}
+                      disabled={togglingRegistrationsLock}
+                      variant={animation.registrations_locked ? 'secondary' : 'outline'}
+                      className="w-full gap-2"
+                    >
+                      {animation.registrations_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      {togglingRegistrationsLock
+                        ? 'Mise à jour...'
+                        : animation.registrations_locked
+                          ? 'Rouvrir les inscriptions'
+                          : 'Verrouiller les inscriptions'
+                      }
+                    </Button>
+                  </div>
+                )}
 
                 {/* ── Débrief (indépendant) ── */}
                 {canControlTimers && animation.prep_time_min > 0 && ['open', 'preparing'].includes(animation.status) && (
@@ -1003,10 +1060,6 @@ export default function AnimationDetail() {
           )}
         </div>
       </div>
-
-      {/* Chat */}
-      <AnimationChat animationId={animation.id} currentUserId={user.id} />
-
     </div>
   )
 }

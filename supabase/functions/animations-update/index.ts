@@ -109,6 +109,39 @@ Deno.serve(async (req) => {
   // ── Responsable editing the schedule of an open animation ────────────────
   const isCreator = anim.creator_id === profile.id
   const isResponsable = isResponsableRole(profile)
+  const onlyRegistrationsLockUpdate = Object.keys(updates).every((key) => key === 'registrations_locked')
+
+  if ('registrations_locked' in updates && onlyRegistrationsLockUpdate) {
+    if (!isCreator && !isResponsable)
+      return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut modifier les inscriptions')
+    if (!['pending_validation', 'open', 'preparing', 'running'].includes(anim.status))
+      return errorResponse('CONFLICT', 'Impossible de modifier les inscriptions dans cet état')
+    if (typeof updates.registrations_locked !== 'boolean')
+      return errorResponse('VALIDATION_ERROR', 'Verrouillage des inscriptions invalide')
+
+    const { data: updated, error } = await db
+      .from('animations')
+      .update({ registrations_locked: updates.registrations_locked })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return errorResponse('INTERNAL_ERROR', error.message)
+
+    await db.from('audit_log').insert({
+      actor_id: profile.id,
+      action: updates.registrations_locked ? 'animation.registrations_lock' : 'animation.registrations_unlock',
+      target_type: 'animation',
+      target_id: id,
+      metadata: { registrations_locked: updates.registrations_locked },
+    })
+
+    if (anim.discord_message_id) {
+      await syncEmbed(db, id)
+    }
+
+    return jsonResponse({ animation: updated })
+  }
 
   if (!isCreator && isResponsable && anim.status === 'open') {
     if (!('scheduled_at' in updates))
@@ -164,7 +197,7 @@ Deno.serve(async (req) => {
 
   const allowed = [
     'title', 'scheduled_at', 'planned_duration_min', 'required_participants',
-    'server', 'type', 'prep_time_min', 'village', 'description', 'document_url', 'creator_character_name',
+    'server', 'type', 'prep_time_min', 'village', 'description', 'registrations_locked', 'document_url', 'creator_character_name',
   ]
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {

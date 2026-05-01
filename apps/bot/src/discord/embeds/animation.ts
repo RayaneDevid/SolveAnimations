@@ -1,13 +1,14 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { env } from '../../config/env.js';
 
-export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilder> {
+export function buildJoinRow(animationId: string, registrationsLocked = false): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`anim-join:${animationId}`)
-      .setLabel("S'inscrire")
+      .setLabel(registrationsLocked ? 'Inscriptions fermées' : "S'inscrire")
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('✋'),
+      .setEmoji(registrationsLocked ? '🔒' : '✋')
+      .setDisabled(registrationsLocked),
     new ButtonBuilder()
       .setCustomId(`anim-leave:${animationId}`)
       .setLabel('Se désinscrire')
@@ -16,10 +17,11 @@ export function buildJoinRow(animationId: string): ActionRowBuilder<ButtonBuilde
   );
 }
 
-export function formatParticipantsLine(currentParticipants: number, requiredParticipants: number): string {
-  return requiredParticipants > 0
+export function formatParticipantsLine(currentParticipants: number, requiredParticipants: number, registrationsLocked = false): string {
+  const base = requiredParticipants > 0
     ? `👥  Participants : ${currentParticipants} / ${requiredParticipants}`
     : '👥  Participants : aucun participant demandé';
+  return registrationsLocked ? `${base} · inscriptions verrouillées` : base;
 }
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -129,6 +131,7 @@ export interface AnimationEmbedData {
   documentUrl?: string;
   creatorUsername: string;
   requiredParticipants: number;
+  registrationsLocked?: boolean;
   currentParticipants?: number;
   status: string;
   actualDurationMin?: number;
@@ -148,6 +151,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     documentUrl,
     creatorUsername,
     requiredParticipants,
+    registrationsLocked = false,
     currentParticipants = 0,
     status,
     actualDurationMin,
@@ -166,7 +170,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     status === 'finished' && actualDurationMin != null
       ? `⏱️  Durée réelle : ${formatDuration(actualDurationMin)}`
       : `⏱️  Durée prévue : ${formatDuration(plannedDurationMin)}${prepTimeMin > 0 ? ` · Prépa : ${formatDuration(prepTimeMin)}` : ''}`;
-  const participantsLine = formatParticipantsLine(currentParticipants, requiredParticipants);
+  const participantsLine = formatParticipantsLine(currentParticipants, requiredParticipants, registrationsLocked);
 
   const embed = new EmbedBuilder()
     .setColor(color)

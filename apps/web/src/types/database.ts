@@ -43,6 +43,7 @@ export interface Animation {
   prep_time_min: number
   village: Village
   description: string | null
+  registrations_locked: boolean
   pole: 'animation' | 'mj' | 'les_deux'
   creator_id: string
   status: AnimationStatus
@@ -252,7 +253,7 @@ export interface MemberDirectoryEntry {
   id: string
   username: string
   avatarUrl: string | null
-  role: string
+  role: StaffRoleKey
 }
 
 export interface PaiesEntry {

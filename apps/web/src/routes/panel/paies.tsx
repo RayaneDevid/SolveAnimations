@@ -181,15 +181,15 @@ function PayDetailLine({
 
 function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
   const { tiers, rawPay } = computeAnimationTierDetails(entry.totalMin)
-  const quotaMin = entry.quotaMin ?? 4 * 60
 
   return (
     <>
       <PayDetailLine
         label="Quota"
-        value={`${entry.animationsCount}/${entry.quotaMax ?? 5} anims · ${formatMin(entry.totalMin)}/${formatMin(quotaMin)}`}
+        value={`${entry.animationsCount}/${entry.quotaMax ?? 5} anims`}
         muted={!entry.quotaFilled}
       />
+      <PayDetailLine label="Temps compté" value={formatMin(entry.totalMin)} muted={entry.totalMin === 0} />
       {entry.quotaFilled ? (
         <>
           {tiers.map((tier) => (
@@ -410,9 +410,7 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           </div>
           {!entry.quotaFilled && entry.quotaMax !== null && (
             <span className="text-[10px] text-red-400/60">
-              {isAnimationPay
-                ? `quota ${entry.animationsCount}/${entry.quotaMax} · ${formatMin(entry.totalMin)}/4h`
-                : `quota ${entry.animationsCount}/${entry.quotaMax}`}
+              quota {entry.animationsCount}/{entry.quotaMax}
             </span>
           )}
           {isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
@@ -577,7 +575,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Quota 5 anims + 4h, heures = animation + prépa
+              Quota 5 anims, heures = animation + prépa
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400" />

@@ -5,6 +5,48 @@ import { requireAuth } from '../_shared/auth.ts'
 import { isResponsableRole, requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
+import { notifyBot } from '../_shared/bot.ts'
+
+function hasScheduleChanged(currentScheduledAt: string, nextScheduledAt: unknown): nextScheduledAt is string {
+  if (typeof nextScheduledAt !== 'string') return false
+  const currentTime = new Date(currentScheduledAt).getTime()
+  const nextTime = new Date(nextScheduledAt).getTime()
+  return !Number.isFinite(nextTime) || nextTime !== currentTime
+}
+
+function validateFutureSchedule(nextScheduledAt: string): Response | null {
+  const nextTime = new Date(nextScheduledAt).getTime()
+  if (!Number.isFinite(nextTime)) {
+    return errorResponse('VALIDATION_ERROR', 'Date invalide')
+  }
+  if (nextTime <= Date.now()) {
+    return errorResponse('VALIDATION_ERROR', 'La nouvelle date doit être dans le futur')
+  }
+  return null
+}
+
+// deno-lint-ignore no-explicit-any
+async function removeParticipantsForReschedule(db: any, animationId: string, actorId: string): Promise<string[]> {
+  const { data: participants } = await db
+    .from('animation_participants')
+    .select('user_id, user:profiles!animation_participants_user_id_fkey(discord_id)')
+    .eq('animation_id', animationId)
+    .in('status', ['pending', 'validated'])
+
+  const formerDiscordIds = (participants ?? [])
+    .map((p: { user?: { discord_id?: string | null } }) => p.user?.discord_id)
+    .filter((discordId: string | null | undefined): discordId is string => typeof discordId === 'string' && discordId.length > 0)
+
+  if ((participants ?? []).length > 0) {
+    await db
+      .from('animation_participants')
+      .update({ status: 'removed', decided_at: new Date().toISOString(), decided_by: actorId })
+      .eq('animation_id', animationId)
+      .in('status', ['pending', 'validated'])
+  }
+
+  return formerDiscordIds
+}
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -72,17 +114,43 @@ Deno.serve(async (req) => {
     if (!('scheduled_at' in updates))
       return errorResponse('VALIDATION_ERROR', 'Date et heure requises')
 
+    const shouldReschedule = hasScheduleChanged(anim.scheduled_at, updates.scheduled_at)
+    if (shouldReschedule) {
+      const scheduleError = validateFutureSchedule(updates.scheduled_at)
+      if (scheduleError) return scheduleError
+    }
+
     const { data: updated, error } = await db
       .from('animations')
-      .update({ scheduled_at: updates.scheduled_at, reminder_15min_sent_at: null })
+      .update({
+        scheduled_at: updates.scheduled_at,
+        reminder_15min_sent_at: null,
+        ...(shouldReschedule ? {
+          postponed_from: anim.scheduled_at,
+          postpone_count: (anim.postpone_count ?? 0) + 1,
+        } : {}),
+      })
       .eq('id', id)
       .select()
       .single()
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
+    const formerDiscordIds = shouldReschedule
+      ? await removeParticipantsForReschedule(db, id, profile.id)
+      : []
+
     if (anim.discord_message_id) {
       await syncEmbed(db, id)
+    }
+
+    if (shouldReschedule) {
+      await notifyBot('animation-postponed', {
+        animationId: id,
+        newScheduledAt: updates.scheduled_at,
+        title: updated.title,
+        formerParticipantDiscordIds: formerDiscordIds,
+      })
     }
 
     return jsonResponse({ animation: updated })
@@ -102,6 +170,14 @@ Deno.serve(async (req) => {
   for (const key of allowed) {
     if (key in updates) patch[key] = updates[key]
   }
+  let rescheduledAt: string | null = null
+  if (anim.status === 'open' && hasScheduleChanged(anim.scheduled_at, patch.scheduled_at)) {
+    rescheduledAt = patch.scheduled_at
+    const scheduleError = validateFutureSchedule(rescheduledAt)
+    if (scheduleError) return scheduleError
+    patch.postponed_from = anim.scheduled_at
+    patch.postpone_count = (anim.postpone_count ?? 0) + 1
+  }
   if ('scheduled_at' in patch) patch.reminder_15min_sent_at = null
 
   if (Object.keys(patch).length === 0)
@@ -116,8 +192,21 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
+  const formerDiscordIds = rescheduledAt
+    ? await removeParticipantsForReschedule(db, id, profile.id)
+    : []
+
   if (anim.discord_message_id) {
     await syncEmbed(db, id)
+  }
+
+  if (rescheduledAt) {
+    await notifyBot('animation-postponed', {
+      animationId: id,
+      newScheduledAt: rescheduledAt,
+      title: updated.title,
+      formerParticipantDiscordIds: formerDiscordIds,
+    })
   }
 
   return jsonResponse({ animation: updated })

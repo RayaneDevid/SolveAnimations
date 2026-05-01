@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Minus, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, type Village } from '@/lib/schemas/animation'
 import { useAnimation } from '@/hooks/queries/useAnimations'
@@ -45,10 +45,21 @@ export default function EditAnimation() {
   })
 
   const requiredParticipants = watch('requiredParticipants')
+  const scheduledAt = watch('scheduledAt')
   const animation = data?.animation
   const isCreator = animation?.creator_id === user.id
   const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
   const scheduleOnly = !!animation && !isCreator && isResponsable && animation.status === 'open'
+  const activeParticipantsCount = (data?.participants ?? [])
+    .filter((participant) => ['pending', 'validated'].includes(participant.status))
+    .length
+  const scheduleChanged = !!animation &&
+    scheduledAt instanceof Date &&
+    scheduledAt.getTime() !== new Date(animation.scheduled_at).getTime()
+  const willRemoveParticipants = !!animation &&
+    animation.status === 'open' &&
+    scheduleChanged &&
+    activeParticipantsCount > 0
 
   useEffect(() => {
     if (!data?.animation) return
@@ -68,6 +79,12 @@ export default function EditAnimation() {
   }, [data, reset])
 
   const onSubmit = async (formData: CreateAnimationInput) => {
+    if (willRemoveParticipants && !confirm(
+      `${activeParticipantsCount} participant${activeParticipantsCount > 1 ? 's' : ''} seront retiré${activeParticipantsCount > 1 ? 's' : ''} et devront se réinscrire. Continuer ?`,
+    )) {
+      return
+    }
+
     try {
       await mutateAsync(scheduleOnly
         ? { id: id!, scheduledAt: formData.scheduledAt }
@@ -138,6 +155,16 @@ export default function EditAnimation() {
               )}
             />
           </div>
+
+          {willRemoveParticipants && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="text-xs text-amber-300/85">
+                Changer la date ou l'heure d'une animation ouverte retirera les participants actuels.
+                Ils devront se réinscrire sur la nouvelle date.
+              </p>
+            </div>
+          )}
 
           {!scheduleOnly && (
             <div className="space-y-1.5">

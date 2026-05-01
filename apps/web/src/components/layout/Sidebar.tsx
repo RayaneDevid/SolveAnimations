@@ -64,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Anim. Senior / MJ Senior',
     minRole: 'senior',
     items: [
+      { to: '/panel/validation', label: 'Validation', icon: CheckSquare },
       { to: '/panel/recrutement', label: 'Recrutement', icon: UserPlus },
       { to: '/panel/formation',   label: 'Formation',   icon: GraduationCap },
       { to: '/panel/team-reports', label: 'Rapports équipe', icon: FileText },
@@ -74,7 +75,6 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Responsables',
     minRole: 'responsable',
     items: [
-      { to: '/panel/validation', label: 'Validation',          icon: CheckSquare },
       { to: '/panel/members',    label: 'Membres',             icon: Users },
       { to: '/panel/casiers',    label: 'Casiers',             icon: FolderOpen },
       { to: '/panel/paies',      label: 'Paies',               icon: Banknote },

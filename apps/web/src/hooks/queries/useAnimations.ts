@@ -62,10 +62,11 @@ export function useAnimation(id: string) {
   })
 }
 
-export function useDeletionRequests() {
+export function useDeletionRequests(enabled = true) {
   return useQuery({
     queryKey: ['deletion-requests'],
     queryFn: () => invokeEdge<{ requests: DeletionRequest[] }>('deletion-requests-list'),
+    enabled,
   })
 }
 

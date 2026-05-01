@@ -63,7 +63,7 @@ export default function App() {
           <Route
             path="validation"
             element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
                 <Validation />
               </RoleGate>
             }

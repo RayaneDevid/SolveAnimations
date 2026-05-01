@@ -17,6 +17,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime, formatDuration } from '@/lib/utils/format'
 import type { Animation } from '@/types/database'
+import { useRequiredAuth } from '@/hooks/useAuth'
+import { hasPermissionRole } from '@/lib/config/discord'
+
+function isPastMissionForSeniorValidation(animation: Animation): boolean {
+  return animation.status === 'pending_validation' &&
+    animation.actual_duration_min != null &&
+    new Date(animation.scheduled_at).getTime() <= Date.now()
+}
 
 function RejectModal({
   animation,
@@ -81,10 +89,10 @@ function RejectModal({
   )
 }
 
-function ValidationCard({ animation }: { animation: Animation }) {
+function ValidationCard({ animation, canReject }: { animation: Animation; canReject: boolean }) {
   const [rejectOpen, setRejectOpen] = useState(false)
   const { mutateAsync: validate, isPending: validating } = useValidateAnimation()
-  const isPastMission = animation.status === 'pending_validation' && animation.actual_duration_min != null
+  const isPastMission = isPastMissionForSeniorValidation(animation)
 
   const handleValidate = async () => {
     try {
@@ -156,15 +164,22 @@ function ValidationCard({ animation }: { animation: Animation }) {
               <Check className="h-3.5 w-3.5" />
               Valider
             </Button>
-            <Button
-              onClick={() => setRejectOpen(true)}
-              variant="destructive"
-              size="sm"
-              className="flex-1 gap-2"
-            >
-              <X className="h-3.5 w-3.5" />
-              Refuser
-            </Button>
+            {canReject && (
+              <Button
+                onClick={() => setRejectOpen(true)}
+                variant="destructive"
+                size="sm"
+                className="flex-1 gap-2"
+              >
+                <X className="h-3.5 w-3.5" />
+                Refuser
+              </Button>
+            )}
+            {!canReject && isPastMission && (
+              <span className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-center text-xs text-white/35">
+                Refus réservé aux responsables
+              </span>
+            )}
           </div>
         )}
       </GlassCard>
@@ -241,6 +256,8 @@ function DeletionRequestCard({ request }: { request: DeletionRequest }) {
 }
 
 export default function Validation() {
+  const { permissionRoles } = useRequiredAuth()
+  const canManageFullValidation = hasPermissionRole(permissionRoles, 'responsable')
   const [tab, setTab] = useState<'pending' | 'open' | 'rejected' | 'deletion'>('pending')
 
   const statusMap: Record<'pending' | 'open' | 'rejected', AnimationStatus> = {
@@ -252,9 +269,12 @@ export default function Validation() {
   const { data, isLoading } = useAnimations(
     tab !== 'deletion' ? { status: statusMap[tab as 'pending' | 'open' | 'rejected'] } : {},
   )
-  const { data: deletionData, isLoading: deletionLoading } = useDeletionRequests()
+  const { data: deletionData, isLoading: deletionLoading } = useDeletionRequests(canManageFullValidation)
 
   const animations = tab !== 'deletion' ? (data?.animations ?? []) : []
+  const visibleAnimations = canManageFullValidation
+    ? animations
+    : animations.filter(isPastMissionForSeniorValidation)
   const deletionRequests = deletionData?.requests ?? []
 
   return (
@@ -267,51 +287,61 @@ export default function Validation() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="pending">En attente</TabsTrigger>
-          <TabsTrigger value="open">Validées récemment</TabsTrigger>
-          <TabsTrigger value="rejected">Refusées</TabsTrigger>
-          <TabsTrigger value="deletion" className="relative">
-            Supp. demandées
-            {deletionRequests.length > 0 && (
-              <span className="ml-1.5 rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 leading-none">
-                {deletionRequests.length}
-              </span>
-            )}
-          </TabsTrigger>
+          {canManageFullValidation && (
+            <>
+              <TabsTrigger value="open">Validées récemment</TabsTrigger>
+              <TabsTrigger value="rejected">Refusées</TabsTrigger>
+              <TabsTrigger value="deletion" className="relative">
+                Supp. demandées
+                {deletionRequests.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 leading-none">
+                    {deletionRequests.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
-        {(['pending', 'open', 'rejected'] as const).map((t) => (
+        {(canManageFullValidation ? (['pending', 'open', 'rejected'] as const) : (['pending'] as const)).map((t) => (
           <TabsContent key={t} value={t}>
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48" />)}
               </div>
-            ) : animations.length === 0 ? (
+            ) : visibleAnimations.length === 0 ? (
               <GlassCard className="p-12 text-center">
-                <p className="text-white/30 text-sm">Aucune animation</p>
+                <p className="text-white/30 text-sm">
+                  {canManageFullValidation ? 'Aucune animation' : 'Aucune mission passée à valider'}
+                </p>
               </GlassCard>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {animations.map((a) => <ValidationCard key={a.id} animation={a} />)}
+                {visibleAnimations.map((a) => (
+                  <ValidationCard key={a.id} animation={a} canReject={canManageFullValidation} />
+                ))}
               </div>
             )}
           </TabsContent>
         ))}
 
-        <TabsContent value="deletion">
-          {deletionLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-48" />)}
-            </div>
-          ) : deletionRequests.length === 0 ? (
-            <GlassCard className="p-12 text-center">
-              <p className="text-white/30 text-sm">Aucune demande de suppression</p>
-            </GlassCard>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {deletionRequests.map((r) => <DeletionRequestCard key={r.id} request={r} />)}
-            </div>
-          )}
-        </TabsContent>
+        {canManageFullValidation && (
+          <TabsContent value="deletion">
+            {deletionLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-48" />)}
+              </div>
+            ) : deletionRequests.length === 0 ? (
+              <GlassCard className="p-12 text-center">
+                <p className="text-white/30 text-sm">Aucune demande de suppression</p>
+              </GlassCard>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {deletionRequests.map((r) => <DeletionRequestCard key={r.id} request={r} />)}
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

@@ -2,7 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
-import { requireResponsable } from '../_shared/guards.ts'
+import { requireResponsable, requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -12,9 +12,6 @@ Deno.serve(async (req) => {
 
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
-
-  const guard = requireResponsable(profile)
-  if (guard) return guard
 
   const { id } = await req.json()
   if (!id) return errorResponse('VALIDATION_ERROR', 'id requis')
@@ -35,6 +32,9 @@ Deno.serve(async (req) => {
   const validatedAt = new Date().toISOString()
 
   if (isPastMission) {
+    const guard = requireRole(profile, 'senior')
+    if (guard) return guard
+
     const scheduledAt = new Date(anim.scheduled_at)
     const actualDurationMin = Math.max(1, Number(anim.actual_duration_min))
     const actualPrepTimeMin = Math.max(0, Number(anim.actual_prep_time_min ?? anim.prep_time_min ?? 0))
@@ -99,6 +99,9 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ animation: updated })
   }
+
+  const guard = requireResponsable(profile)
+  if (guard) return guard
 
   const { data: updated, error } = await db
     .from('animations')

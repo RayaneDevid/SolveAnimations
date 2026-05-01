@@ -45,6 +45,22 @@ async function getResponsableProfile(discordId: string) {
   return data;
 }
 
+async function getValidationProfile(discordId: string) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, role, username')
+    .eq('discord_id', discordId)
+    .single();
+  if (!data) return null;
+  const allowedRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'senior', 'mj_senior'];
+  if (!allowedRoles.includes(data.role)) return null;
+  return data;
+}
+
+function isResponsableValidationRole(role: string): boolean {
+  return ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(role);
+}
+
 async function fetchAnimation(animationId: string) {
   const { data } = await supabase
     .from('animations')
@@ -99,7 +115,7 @@ async function refreshAnimationParticipantCount(animationId: string, messageId: 
 export async function handleValidateButton(interaction: ButtonInteraction, animationId: string) {
   await interaction.deferReply({ ephemeral: true });
 
-  const profile = await getResponsableProfile(interaction.user.id);
+  const profile = await getValidationProfile(interaction.user.id);
   if (!profile) {
     await interaction.editReply({ content: '❌ Tu n\'as pas les droits pour valider une animation.' });
     return;
@@ -113,6 +129,11 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
 
   const now = new Date().toISOString();
   const isPastMission = anim.actual_duration_min != null && new Date(anim.scheduled_at).getTime() <= Date.now();
+
+  if (!isPastMission && !isResponsableValidationRole(profile.role)) {
+    await interaction.editReply({ content: '❌ Seuls les Responsables peuvent valider une animation classique.' });
+    return;
+  }
 
   if (isPastMission) {
     const scheduledAt = new Date(anim.scheduled_at);

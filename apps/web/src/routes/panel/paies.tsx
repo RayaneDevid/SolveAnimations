@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { usePaies } from '@/hooks/queries/useAnimations'
@@ -38,6 +38,67 @@ function formatMin(min: number): string {
 
 function formatMoney(n: number): string {
   return `${new Intl.NumberFormat('fr-FR').format(n)} crédits`
+}
+
+function csvCell(value: string | number | boolean | null | undefined): string {
+  const normalized = value == null ? '' : String(value)
+  return `"${normalized.replace(/"/g, '""')}"`
+}
+
+function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: string): string {
+  const header = [
+    'Rang',
+    'Membre',
+    'Role',
+    'Pole paie',
+    'Animations',
+    'Trames',
+    'Moyennes',
+    'Grandes',
+    'Temps animation (min)',
+    'Temps preparation (min)',
+    'Temps total (min)',
+    'Quota',
+    'Quota atteint',
+    'Remuneration',
+    'Plafonne',
+  ]
+
+  const rows = entries.map((entry, index) => [
+    index + 1,
+    entry.username,
+    entry.role,
+    poleLabel,
+    entry.animationsCount,
+    entry.trameReportsCount ?? 0,
+    entry.moyenne,
+    entry.grande,
+    entry.animationMin,
+    entry.prepMin,
+    entry.totalMin,
+    entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`,
+    entry.quotaFilled ? 'Oui' : 'Non',
+    entry.remuneration,
+    entry.remunerationCapped ? 'Oui' : 'Non',
+  ])
+
+  return [
+    ['Paies', poleLabel, weekLabel].map(csvCell).join(';'),
+    header.map(csvCell).join(';'),
+    ...rows.map((row) => row.map(csvCell).join(';')),
+  ].join('\n')
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 // ─── Table row ──────────────────────────────────────────────────────────────
@@ -204,6 +265,13 @@ export default function Paies() {
   }, [data])
 
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} – ${format(bounds.end, 'dd/MM', { locale: fr })}`
+  const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
+
+  const handleExportCsv = (entries: PaiesEntry[], pole: 'animation' | 'mj') => {
+    const poleLabel = pole === 'mj' ? 'MJ' : 'Animation'
+    const csv = buildPaiesCsv(entries, poleLabel, weekLabel)
+    downloadCsv(`paies-${pole}-${weekFileLabel}.csv`, csv)
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
@@ -339,8 +407,20 @@ export default function Paies() {
             ...(showMj   ? [{ key: 'mj',        entries: poleMj   }] : []),
           ].map(({ key, entries }) => {
             const poleTotal = entries.reduce((s, e) => s + e.remuneration, 0)
+            const poleLabel = key === 'mj' ? 'MJ' : 'Animation'
             return (
               <TabsContent key={key} value={key}>
+                <div className="mb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleExportCsv(entries, key as 'animation' | 'mj')}
+                    disabled={entries.length === 0}
+                    className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/85 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Exporter CSV {poleLabel}
+                  </button>
+                </div>
                 <GlassCard className="overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">

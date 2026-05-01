@@ -61,8 +61,8 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     'Animations creees',
     'Participations',
     'Trames',
-    'Inscriptions moyennes',
-    'Inscriptions grandes',
+    'Part. + creations moyennes',
+    'Part. + creations grandes',
     'Temps animation (min)',
     'Temps preparation (min)',
     'Temps total (min)',
@@ -240,12 +240,12 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
         muted={!entry.quotaFilled}
       />
       <PayDetailLine
-        label={`Inscriptions moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
+        label={`Part. + créations moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
         value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
       <PayDetailLine
-        label={`Inscriptions grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
+        label={`Part. + créations grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
         value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />

@@ -169,6 +169,8 @@ Deno.serve(async (req) => {
     entry.createdAnimationsCount++
     entry.animationMin += a.actual_duration_min ?? 0
     entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
+    if (a.type === 'moyenne' || a.type === 'petite') entry.moyenne++
+    else if (a.type === 'grande') entry.grande++
     map.set(a.creator_id, entry)
   }
 

@@ -51,6 +51,24 @@ function csvCell(value: string | number | boolean | null | undefined): string {
   return `"${normalized.replace(/"/g, '""')}"`
 }
 
+function buildAnimCommentaire(entry: PaiesEntry): string {
+  if (!entry.quotaFilled) return 'Quota non atteint'
+  const tiers = [
+    { label: `0-4h à 1 000/h`, min: Math.min(entry.totalMin, 4 * 60), rate: 1_000 },
+    { label: `4-14h à 800/h`, min: Math.min(Math.max(entry.totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
+    { label: `14h+ à 1 250/h`, min: Math.max(entry.totalMin - 14 * 60, 0), rate: 1_250 },
+  ].filter((t) => t.min > 0)
+  const parts: string[] = tiers.map((t) => {
+    const pay = Math.round(t.min * (t.rate / 60))
+    return `${t.label} (${formatMin(t.min)}): ${pay}`
+  })
+  if (entry.remunerationCapped) parts.push(`Plafonné à ${ANIMATION_TIME_CAP}`)
+  if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
+  if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
+  if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
+  return parts.join(' | ')
+}
+
 function buildMjCommentaire(entry: PaiesEntry): string {
   if (!entry.quotaFilled) return 'Quota non atteint'
   const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
@@ -69,7 +87,7 @@ function buildMjCommentaire(entry: PaiesEntry): string {
   return parts.join(' | ')
 }
 
-function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj', weekLabel: string): string {
+function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj'): string {
   if (pole === 'mj') {
     const header = ['discord_id', 'steam_id', 'grade', 'moyenne', 'grande', 'total_animations', 'total_heures', 'commentaire', 'montant']
     const rows = entries.map((entry) => [
@@ -89,39 +107,19 @@ function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj', weekLabe
     ].join('\n')
   }
 
-  const header = [
-    'Rang', 'Membre', 'Role', 'Animations total', 'Animations creees', 'Participations', 'Trames',
-    'Part. + creations moyennes', 'Part. + creations grandes',
-    'Temps animation (min)', 'Temps preparation (min)', 'Temps total (min)',
-    'Quota', 'Quota atteint', 'Paie temps',
-    'Prime podium heures', 'Prime podium creations', 'Prime podium participations', 'Prime podium total',
-    'Remuneration', 'Plafonne',
-  ]
-  const rows = entries.map((entry, index) => [
-    index + 1,
-    entry.username,
-    entry.role,
-    entry.animationsCount,
-    entry.createdAnimationsCount,
-    entry.participationsCount,
-    entry.trameReportsCount ?? 0,
+  const header = ['discord_id', 'steam_id', 'grade', 'moyenne', 'grande', 'total_animations', 'total_heures', 'commentaire', 'montant']
+  const rows = entries.map((entry) => [
+    entry.discordId,
+    entry.steamId ?? '',
+    entry.payRole,
     entry.moyenne,
     entry.grande,
-    entry.animationMin,
-    entry.prepMin,
-    entry.totalMin,
-    `${entry.animationsCount}/${entry.quotaMax ?? 5} anims - ${entry.totalMin}/${entry.quotaMin ?? 240} min`,
-    entry.quotaFilled ? 'Oui' : 'Non',
-    entry.timePay,
-    entry.hoursPodiumBonus,
-    entry.createdPodiumBonus,
-    entry.participationPodiumBonus,
-    entry.podiumBonus,
+    entry.animationsCount,
+    formatMin(entry.totalMin),
+    buildAnimCommentaire(entry),
     entry.remuneration,
-    entry.remunerationCapped ? 'Oui' : 'Non',
   ])
   return [
-    ['Paies Animation', weekLabel].map(csvCell).join(';'),
     header.map(csvCell).join(';'),
     ...rows.map((row) => row.map(csvCell).join(';')),
   ].join('\n')
@@ -484,7 +482,7 @@ export default function Paies() {
   const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
 
   const handleExportCsv = (entries: PaiesEntry[], pole: 'animation' | 'mj') => {
-    const csv = buildPaiesCsv(entries, pole, weekLabel)
+    const csv = buildPaiesCsv(entries, pole)
     downloadCsv(`paies-${pole}-${weekFileLabel}.csv`, csv)
   }
 

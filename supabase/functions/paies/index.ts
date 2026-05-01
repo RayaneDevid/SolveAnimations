@@ -12,7 +12,7 @@ const BASE_PAY: Record<string, number> = {
   mj_senior:  5_000,
 }
 
-const REMUNERATION_CAP = 15_000
+
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_QUOTA_MIN = 4 * 60
 const ANIMATION_TIME_CAP = 17_000
@@ -233,30 +233,37 @@ Deno.serve(async (req) => {
       participationPodiumBonus: 0,
       remuneration: isAnimationPay
         ? (quotaFilled ? animationTimePay.pay : 0)
-        : Math.min(rawMjRemuneration, REMUNERATION_CAP),
-      remunerationCapped: isAnimationPay ? quotaFilled && animationTimePay.capped : rawMjRemuneration > REMUNERATION_CAP,
+        : rawMjRemuneration,
+      remunerationCapped: isAnimationPay ? quotaFilled && animationTimePay.capped : false,
     }
   })
 
   const animationEntries = baseEntries.filter((entry) => entry.payPole === 'animation' && entry.quotaFilled)
-  const hoursPodium = topThreeIds(animationEntries, (entry) => entry.totalMin)
-  const createdPodium = topThreeIds(animationEntries, (entry) => entry.createdAnimationsCount)
-  const participationPodium = topThreeIds(animationEntries, (entry) => entry.participationsCount)
+  const animHoursPodium = topThreeIds(animationEntries, (entry) => entry.totalMin)
+  const animCreatedPodium = topThreeIds(animationEntries, (entry) => entry.createdAnimationsCount)
+  const animParticipationPodium = topThreeIds(animationEntries, (entry) => entry.participationsCount)
+
+  const mjEntries = baseEntries.filter((entry) => entry.payPole === 'mj' && entry.quotaFilled)
+  const mjHoursPodium = topThreeIds(mjEntries, (entry) => entry.totalMin)
+  const mjCreatedPodium = topThreeIds(mjEntries, (entry) => entry.createdAnimationsCount)
+  const mjParticipationPodium = topThreeIds(mjEntries, (entry) => entry.participationsCount)
 
   const result = baseEntries.map((entry) => {
-    if (entry.payPole !== 'animation') return entry
-    const hoursPodiumBonus = hoursPodium.has(entry.id) ? PODIUM_BONUS : 0
-    const createdPodiumBonus = createdPodium.has(entry.id) ? PODIUM_BONUS : 0
-    const participationPodiumBonus = participationPodium.has(entry.id) ? PODIUM_BONUS : 0
-    const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
-    return {
-      ...entry,
-      hoursPodiumBonus,
-      createdPodiumBonus,
-      participationPodiumBonus,
-      podiumBonus,
-      remuneration: entry.remuneration + podiumBonus,
+    if (entry.payPole === 'animation') {
+      const hoursPodiumBonus = animHoursPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const createdPodiumBonus = animCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const participationPodiumBonus = animParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
+      return { ...entry, hoursPodiumBonus, createdPodiumBonus, participationPodiumBonus, podiumBonus, remuneration: entry.remuneration + podiumBonus }
     }
+    if (entry.payPole === 'mj') {
+      const hoursPodiumBonus = mjHoursPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const createdPodiumBonus = mjCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const participationPodiumBonus = mjParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
+      return { ...entry, hoursPodiumBonus, createdPodiumBonus, participationPodiumBonus, podiumBonus, remuneration: entry.remuneration + podiumBonus }
+    }
+    return entry
   })
 
   const uniqueAnimationsCount = (anims ?? []).length

@@ -21,7 +21,7 @@ const ANIMATION_TIME_CAP = 17_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
 const MJ_GRANDE_REGISTRATION_BONUS = 300
-const MJ_PAY_CAP = 15_000
+
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
@@ -219,9 +219,6 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
   const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
   const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
   const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const registrationBonus = moyenneBonus + grandeBonus
-  const rawPay = entry.quotaFilled ? basePay + rawTimePay + registrationBonus : 0
-
   return (
     <>
       <PayDetailLine
@@ -249,11 +246,14 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
-      {entry.remunerationCapped && (
-        <>
-          <PayDetailLine label="Sous-total" value={formatMoney(rawPay)} muted />
-          <PayDetailLine label="Plafond" value={formatMoney(MJ_PAY_CAP)} />
-        </>
+      {entry.hoursPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium heures" value={`+${formatMoney(entry.hoursPodiumBonus)}`} />
+      )}
+      {entry.createdPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium créations" value={`+${formatMoney(entry.createdPodiumBonus)}`} />
+      )}
+      {entry.participationPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium participations" value={`+${formatMoney(entry.participationPodiumBonus)}`} />
       )}
       <PayDetailLine label="Total" value={formatMoney(entry.remuneration)} highlight />
     </>
@@ -350,23 +350,19 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
       </td>
 
       <td className="py-3 pr-4 text-center tabular-nums">
-        {isAnimationPay ? (
-          <span className="text-xs text-white/20">—</span>
-        ) : (
-          <div className="flex items-center justify-center gap-1.5">
-            {entry.moyenne > 0 && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-cyan-400/10 text-cyan-400">
-                <span className="text-cyan-400/60">M</span>{entry.moyenne}
-              </span>
-            )}
-            {entry.grande > 0 && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-400/10 text-amber-400">
-                <span className="text-amber-400/60">G</span>{entry.grande}
-              </span>
-            )}
-            {entry.animationsCount === 0 && <span className="text-xs text-white/20">—</span>}
-          </div>
-        )}
+        <div className="flex items-center justify-center gap-1.5">
+          {entry.moyenne > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-cyan-400/10 text-cyan-400">
+              <span className="text-cyan-400/60">M</span>{entry.moyenne}
+            </span>
+          )}
+          {entry.grande > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-400/10 text-amber-400">
+              <span className="text-amber-400/60">G</span>{entry.grande}
+            </span>
+          )}
+          {entry.moyenne === 0 && entry.grande === 0 && <span className="text-xs text-white/20">—</span>}
+        </div>
       </td>
 
       <td className="py-3 pr-4 text-center tabular-nums text-sm text-white/70">
@@ -582,7 +578,7 @@ export default function Paies() {
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />
-          Plafonds : Anim 17 000 hors primes · MJ 15 000
+          Plafond Anim : 17 000 hors primes
         </div>
       </div>
 

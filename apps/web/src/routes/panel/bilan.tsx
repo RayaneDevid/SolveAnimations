@@ -28,6 +28,12 @@ function formatWeekRange(startDate: string, endDate: string): string {
 }
 
 const MJ_ROLES = ['mj', 'mj_senior', 'responsable_mj']
+const QUOTA_COLORS = {
+  filled: '#22c55e',
+  missing: '#f97316',
+} as const
+
+type MemberBadgeVariant = 'default' | 'quotaMissing'
 
 function isMjRole(role: string): boolean {
   return MJ_ROLES.includes(role)
@@ -61,25 +67,39 @@ function memberTitle(member: WeeklyReviewMember): string {
   ].filter(Boolean).join('\n')
 }
 
-function MemberBadge({ member }: { member: WeeklyReviewMember }) {
+function MemberBadge({ member, variant = 'default' }: { member: WeeklyReviewMember; variant?: MemberBadgeVariant }) {
+  const variantClasses = {
+    default: {
+      badge: 'border-white/[0.08] bg-white/[0.035] text-white/75 hover:border-cyan-400/30 hover:bg-cyan-400/[0.06]',
+      meta: 'text-white/35',
+    },
+    quotaMissing: {
+      badge: 'border-orange-500/25 bg-orange-500/[0.08] text-orange-100/90 hover:border-orange-400/40 hover:bg-orange-500/[0.12]',
+      meta: 'text-orange-200/55',
+    },
+  }
+
   return (
     <Link
       to={`/panel/casiers?user_id=${member.id}`}
       title={memberTitle(member)}
-      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-2 py-1 text-xs text-white/75 transition-colors hover:border-cyan-400/30 hover:bg-cyan-400/[0.06]"
+      className={cn(
+        'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors',
+        variantClasses[variant].badge,
+      )}
     >
       <UserAvatar avatarUrl={member.avatar_url} username={member.username} size="xs" />
       <span className="max-w-[150px] truncate whitespace-nowrap font-medium">{member.username}</span>
-      <span className="shrink-0 text-white/35">{member.quota}/{member.quotaMax}</span>
+      <span className={cn('shrink-0', variantClasses[variant].meta)}>{member.quota}/{member.quotaMax}</span>
     </Link>
   )
 }
 
-function MemberList({ members }: { members: WeeklyReviewMember[] }) {
+function MemberList({ members, variant = 'default' }: { members: WeeklyReviewMember[]; variant?: MemberBadgeVariant }) {
   if (members.length === 0) return <EmptyState />
   return (
     <div className="flex flex-wrap gap-2">
-      {members.map((member) => <MemberBadge key={member.id} member={member} />)}
+      {members.map((member) => <MemberBadge key={member.id} member={member} variant={variant} />)}
     </div>
   )
 }
@@ -205,7 +225,7 @@ function ReviewCard({
   subtitle: string
   icon: LucideIcon
   count: number
-  tone: 'amber' | 'red' | 'cyan'
+  tone: 'amber' | 'red' | 'cyan' | 'orange'
   className?: string
   children: React.ReactNode
 }) {
@@ -213,6 +233,7 @@ function ReviewCard({
     amber: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
     red: 'border-red-500/20 bg-red-500/10 text-red-300',
     cyan: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+    orange: 'border-orange-500/20 bg-orange-500/10 text-orange-300',
   }
 
   return (
@@ -227,7 +248,12 @@ function ReviewCard({
             <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/35">{subtitle}</p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-xs font-semibold text-white/60">
+        <span className={cn(
+          'shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold',
+          tone === 'orange'
+            ? 'border-orange-500/25 bg-orange-500/[0.08] text-orange-200/75'
+            : 'border-white/[0.08] bg-white/[0.04] text-white/60',
+        )}>
           {count}
         </span>
       </div>
@@ -255,46 +281,47 @@ function QuotaTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   )
 }
 
-function QuotaPieCard({ data }: { data: QuotaCompletion }) {
+function QuotaPieSummary({ data }: { data?: QuotaCompletion }) {
+  if (!data) return null
+
   const chartData = [
-    { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: '#22c55e' },
-    { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: '#f97316' },
+    { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: QUOTA_COLORS.filled },
+    { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: QUOTA_COLORS.missing },
   ].filter((entry) => entry.count > 0)
 
-  if (data.total === 0) return null
+  if (data.total === 0) {
+    return <p className="mb-3 border-b border-white/[0.06] pb-3 text-sm text-white/25">Aucun membre avec quota</p>
+  }
 
   return (
-    <GlassCard className="p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">Taux de complétion quota</p>
-      <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-        <ResponsiveContainer width="100%" height={140}>
-          <PieChart>
-            <Pie data={chartData} cx="50%" cy="50%" innerRadius={36} outerRadius={60} paddingAngle={3} dataKey="value">
-              {chartData.map((entry) => (
-                <Cell key={entry.name} fill={entry.color} opacity={0.9} />
-              ))}
-            </Pie>
-            <Tooltip content={<QuotaTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="space-y-2">
-          <div>
-            <p className="text-2xl font-bold text-white">{data.filledPercent.toFixed(1)}%</p>
-            <p className="text-[11px] text-white/35">ont rempli leur quota</p>
+    <div className="mb-3 grid grid-cols-[112px_1fr] items-center gap-3 border-b border-white/[0.06] pb-3">
+      <ResponsiveContainer width="100%" height={112}>
+        <PieChart>
+          <Pie data={chartData} cx="50%" cy="50%" innerRadius={30} outerRadius={48} paddingAngle={3} dataKey="value">
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} opacity={0.9} />
+            ))}
+          </Pie>
+          <Tooltip content={<QuotaTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="space-y-2">
+        <div>
+          <p className="text-2xl font-bold text-white">{data.missingPercent.toFixed(1)}%</p>
+          <p className="text-[11px] text-orange-200/55">n'ont pas rempli leur quota</p>
+        </div>
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-white/55"><span className="h-2 w-2 rounded-sm bg-emerald-500" />Rempli</span>
+            <span className="font-medium text-white/75">{data.filled}/{data.total}</span>
           </div>
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-white/55"><span className="h-2 w-2 rounded-sm bg-emerald-500" />Rempli</span>
-              <span className="font-medium text-white/75">{data.filled}/{data.total}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-white/55"><span className="h-2 w-2 rounded-sm bg-orange-500" />Non rempli</span>
-              <span className="font-medium text-white/75">{data.missing}/{data.total}</span>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-orange-100/70"><span className="h-2 w-2 rounded-sm bg-orange-500" />Non rempli</span>
+            <span className="font-medium text-orange-100/80">{data.missing}/{data.total}</span>
           </div>
         </div>
       </div>
-    </GlassCard>
+    </div>
   )
 }
 
@@ -379,10 +406,11 @@ function PoleCards({
           subtitle="Membres sous quota sur la semaine active"
           icon={Target}
           count={quotaMissingThisWeek.length}
-          tone="amber"
-          className={!hasTwoWeekHistory ? 'col-span-full' : ''}
+          tone="orange"
+          className={!hasTwoWeekHistory ? 'col-span-full' : quotaCompletion ? 'sm:col-span-2' : undefined}
         >
-          <MemberList members={quotaMissingThisWeek} />
+          <QuotaPieSummary data={quotaCompletion} />
+          <MemberList members={quotaMissingThisWeek} variant="quotaMissing" />
         </ReviewCard>
 
         {hasTwoWeekHistory && (
@@ -391,14 +419,12 @@ function PoleCards({
             subtitle="Membres sous quota sur 2 semaines"
             icon={AlertTriangle}
             count={quotaMissingTwoWeeks.length}
-            tone="amber"
+            tone="orange"
           >
-            <MemberList members={quotaMissingTwoWeeks} />
+            <MemberList members={quotaMissingTwoWeeks} variant="quotaMissing" />
           </ReviewCard>
         )}
       </div>
-
-      {quotaCompletion && <QuotaPieCard data={quotaCompletion} />}
     </div>
   )
 }

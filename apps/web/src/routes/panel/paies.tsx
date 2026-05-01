@@ -10,12 +10,15 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils/cn'
 import { hasOwnedRole } from '@/lib/config/discord'
 import type { PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
+const ANIMATION_TIME_CAP = 17_000
+const MJ_PAY_CAP = 10_000
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
@@ -51,7 +54,9 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     'Membre',
     'Role',
     'Pole paie',
-    'Animations',
+    'Animations total',
+    'Animations creees',
+    'Participations',
     'Trames',
     'Moyennes',
     'Grandes',
@@ -60,6 +65,11 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     'Temps total (min)',
     'Quota',
     'Quota atteint',
+    'Paie temps',
+    'Prime podium heures',
+    'Prime podium creations',
+    'Prime podium participations',
+    'Prime podium total',
     'Remuneration',
     'Plafonne',
   ]
@@ -70,14 +80,23 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     entry.role,
     poleLabel,
     entry.animationsCount,
+    entry.createdAnimationsCount,
+    entry.participationsCount,
     entry.trameReportsCount ?? 0,
     entry.moyenne,
     entry.grande,
     entry.animationMin,
     entry.prepMin,
     entry.totalMin,
-    entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`,
+    entry.payPole === 'animation'
+      ? `${entry.animationsCount}/${entry.quotaMax ?? 5} anims - ${entry.totalMin}/${entry.quotaMin ?? 240} min`
+      : entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`,
     entry.quotaFilled ? 'Oui' : 'Non',
+    entry.timePay,
+    entry.hoursPodiumBonus,
+    entry.createdPodiumBonus,
+    entry.participationPodiumBonus,
+    entry.podiumBonus,
     entry.remuneration,
     entry.remunerationCapped ? 'Oui' : 'Non',
   ])
@@ -101,10 +120,160 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url)
 }
 
+function computeAnimationTierDetails(totalMin: number) {
+  const tiers = [
+    { label: '0-4h à 1 000/h', min: Math.min(totalMin, 4 * 60), rate: 1_000 },
+    { label: '4-14h à 800/h', min: Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
+    { label: '14h+ à 1 250/h', min: Math.max(totalMin - 14 * 60, 0), rate: 1_250 },
+  ].filter((tier) => tier.min > 0)
+
+  const rawPay = Math.round(tiers.reduce((sum, tier) => sum + tier.min * (tier.rate / 60), 0))
+  return {
+    tiers: tiers.map((tier) => ({
+      ...tier,
+      pay: Math.round(tier.min * (tier.rate / 60)),
+    })),
+    rawPay,
+  }
+}
+
+function PayDetailLine({
+  label,
+  value,
+  highlight,
+  muted,
+}: {
+  label: string
+  value: string
+  highlight?: boolean
+  muted?: boolean
+}) {
+  return (
+    <div className={cn(
+      'flex items-center justify-between gap-4',
+      muted && 'text-white/45',
+      highlight && 'border-t border-white/[0.08] pt-1.5 text-white',
+    )}>
+      <span>{label}</span>
+      <span className={cn('shrink-0 font-medium tabular-nums', highlight ? 'text-emerald-300' : 'text-white/80')}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
+  const { tiers, rawPay } = computeAnimationTierDetails(entry.totalMin)
+  const quotaMin = entry.quotaMin ?? 4 * 60
+
+  return (
+    <>
+      <PayDetailLine
+        label="Quota"
+        value={`${entry.animationsCount}/${entry.quotaMax ?? 5} anims · ${formatMin(entry.totalMin)}/${formatMin(quotaMin)}`}
+        muted={!entry.quotaFilled}
+      />
+      {entry.quotaFilled ? (
+        <>
+          {tiers.map((tier) => (
+            <PayDetailLine
+              key={tier.label}
+              label={tier.label}
+              value={`${formatMin(tier.min)} = ${formatMoney(tier.pay)}`}
+            />
+          ))}
+          {entry.remunerationCapped && (
+            <>
+              <PayDetailLine label="Sous-total temps" value={formatMoney(rawPay)} muted />
+              <PayDetailLine label="Plafond temps" value={formatMoney(ANIMATION_TIME_CAP)} />
+            </>
+          )}
+          <PayDetailLine label="Paie temps" value={formatMoney(entry.timePay)} />
+          {entry.hoursPodiumBonus > 0 && (
+            <PayDetailLine label="Prime podium heures" value={`+${formatMoney(entry.hoursPodiumBonus)}`} />
+          )}
+          {entry.createdPodiumBonus > 0 && (
+            <PayDetailLine label="Prime podium créations" value={`+${formatMoney(entry.createdPodiumBonus)}`} />
+          )}
+          {entry.participationPodiumBonus > 0 && (
+            <PayDetailLine label="Prime podium participations" value={`+${formatMoney(entry.participationPodiumBonus)}`} />
+          )}
+        </>
+      ) : (
+        <PayDetailLine label="Paie temps" value={formatMoney(0)} muted />
+      )}
+      <PayDetailLine label="Total" value={formatMoney(entry.remuneration)} highlight />
+    </>
+  )
+}
+
+function MjPayDetails({ entry }: { entry: PaiesEntry }) {
+  const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
+  const moyennePay = entry.moyenne * 350
+  const grandePay = entry.grande * 500
+  const rawPay = (entry.quotaFilled ? basePay : 0) + moyennePay + grandePay
+
+  return (
+    <>
+      <PayDetailLine
+        label="Quota"
+        value={entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label="Base quota"
+        value={entry.quotaFilled ? formatMoney(basePay) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine label={`Moyennes (${entry.moyenne} × 350)`} value={formatMoney(moyennePay)} />
+      <PayDetailLine label={`Grandes (${entry.grande} × 500)`} value={formatMoney(grandePay)} />
+      {entry.remunerationCapped && (
+        <>
+          <PayDetailLine label="Sous-total" value={formatMoney(rawPay)} muted />
+          <PayDetailLine label="Plafond" value={formatMoney(MJ_PAY_CAP)} />
+        </>
+      )}
+      <PayDetailLine label="Total" value={formatMoney(entry.remuneration)} highlight />
+    </>
+  )
+}
+
+function PayAmount({ entry }: { entry: PaiesEntry }) {
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>
+        <span className={cn(
+          'cursor-help text-sm font-semibold underline decoration-dotted underline-offset-4 decoration-white/20',
+          !entry.quotaFilled ? 'text-red-400' :
+          entry.remunerationCapped ? 'text-amber-400' : 'text-emerald-400',
+        )}>
+          {entry.remuneration === 0 ? '—' : formatMoney(entry.remuneration)}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" align="end" className="w-80 space-y-2 p-3">
+        <div>
+          <p className="text-xs font-semibold text-white/90">Détail paie {entry.payPole === 'mj' ? 'MJ' : 'Animation'}</p>
+          <p className="text-[11px] text-white/40">{entry.username}</p>
+        </div>
+        <div className="space-y-1.5 text-[11px] text-white/60">
+          {entry.payPole === 'animation' ? <AnimationPayDetails entry={entry} /> : <MjPayDetails entry={entry} />}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── Table row ──────────────────────────────────────────────────────────────
 
 function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
   const hasActivity = entry.animationsCount > 0
+  const isAnimationPay = entry.payPole === 'animation'
+  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafonné à 10 000 crédits'
+  const podiumLabels = [
+    entry.hoursPodiumBonus > 0 ? 'Heures' : null,
+    entry.createdPodiumBonus > 0 ? 'Créations' : null,
+    entry.participationPodiumBonus > 0 ? 'Participations' : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <tr className={cn(
@@ -114,10 +283,8 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         : 'bg-red-500/[0.04] hover:bg-red-500/[0.07]',
       !hasActivity && !entry.quotaFilled && 'opacity-70',
     )}>
-      {/* Rank */}
       <td className="py-3 pl-4 pr-2 text-xs text-white/30 w-8 tabular-nums">{rank}</td>
 
-      {/* User */}
       <td className="py-3 pr-4">
         <div className="flex items-center gap-3">
           <UserAvatar avatarUrl={entry.avatarUrl} username={entry.username} size="sm" />
@@ -138,12 +305,18 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         </div>
       </td>
 
-      {/* Nb animations */}
       <td className="py-3 pr-4 text-center tabular-nums">
         <span className="text-sm text-white/80">{entry.animationsCount}</span>
       </td>
 
-      {/* Nb rapports trames */}
+      <td className="py-3 pr-4 text-center tabular-nums">
+        <span className="text-sm text-white/70">{entry.createdAnimationsCount}</span>
+      </td>
+
+      <td className="py-3 pr-4 text-center tabular-nums">
+        <span className="text-sm text-white/70">{entry.participationsCount}</span>
+      </td>
+
       <td className="py-3 pr-4 text-center tabular-nums">
         {entry.trameReportsCount != null && entry.trameReportsCount > 0 ? (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-violet-500/10 text-violet-400">
@@ -154,65 +327,74 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         )}
       </td>
 
-      {/* Moyenne / Grande */}
       <td className="py-3 pr-4 text-center tabular-nums">
-        <div className="flex items-center justify-center gap-1.5">
-          {entry.moyenne > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-cyan-400/10 text-cyan-400">
-              <span className="text-cyan-400/60">M</span>{entry.moyenne}
-            </span>
-          )}
-          {entry.grande > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-400/10 text-amber-400">
-              <span className="text-amber-400/60">G</span>{entry.grande}
-            </span>
-          )}
-          {entry.animationsCount === 0 && <span className="text-xs text-white/20">—</span>}
-        </div>
+        {isAnimationPay ? (
+          <span className="text-xs text-white/20">—</span>
+        ) : (
+          <div className="flex items-center justify-center gap-1.5">
+            {entry.moyenne > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-cyan-400/10 text-cyan-400">
+                <span className="text-cyan-400/60">M</span>{entry.moyenne}
+              </span>
+            )}
+            {entry.grande > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-400/10 text-amber-400">
+                <span className="text-amber-400/60">G</span>{entry.grande}
+              </span>
+            )}
+            {entry.animationsCount === 0 && <span className="text-xs text-white/20">—</span>}
+          </div>
+        )}
       </td>
 
-      {/* Temps anim */}
       <td className="py-3 pr-4 text-center tabular-nums text-sm text-white/70">
         {formatMin(entry.animationMin)}
       </td>
 
-      {/* Temps prépa */}
       <td className="py-3 pr-4 text-center tabular-nums text-sm text-white/70">
         {formatMin(entry.prepMin)}
       </td>
 
-      {/* Temps total */}
       <td className="py-3 pr-4 text-center tabular-nums">
         <span className="text-sm font-medium text-white/90">{formatMin(entry.totalMin)}</span>
       </td>
 
-      {/* Rémunération */}
+      <td className="py-3 pr-4 text-center tabular-nums">
+        {entry.podiumBonus > 0 ? (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-sm font-medium text-cyan-300">+{formatMoney(entry.podiumBonus)}</span>
+            {podiumLabels && <span className="text-[10px] text-cyan-300/45">{podiumLabels}</span>}
+          </div>
+        ) : (
+          <span className="text-xs text-white/20">—</span>
+        )}
+      </td>
+
       <td className="py-3 pr-4 text-right tabular-nums">
         <div className="flex flex-col items-end gap-0.5">
           <div className="flex items-center gap-1.5">
             {entry.remunerationCapped && (
-              <span title="Plafonné à 10 000 crédits" className="text-amber-400">
+              <span title={capTitle} className="text-amber-400">
                 <AlertTriangle className="h-3 w-3" />
               </span>
             )}
-            <span className={cn(
-              'text-sm font-semibold',
-              !entry.quotaFilled ? 'text-red-400' :
-              entry.remunerationCapped ? 'text-amber-400' : 'text-emerald-400',
-            )}>
-              {entry.remuneration === 0 ? '—' : formatMoney(entry.remuneration)}
-            </span>
+            <PayAmount entry={entry} />
           </div>
           {!entry.quotaFilled && entry.quotaMax !== null && (
             <span className="text-[10px] text-red-400/60">
-              quota {entry.animationsCount}/{entry.quotaMax}
+              {isAnimationPay
+                ? `quota ${entry.animationsCount}/${entry.quotaMax} · ${formatMin(entry.totalMin)}/4h`
+                : `quota ${entry.animationsCount}/${entry.quotaMax}`}
             </span>
           )}
-          {entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
+          {isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              +{(['mj', 'mj_senior'].includes(entry.payRole)
-                ? (entry.payRole === 'mj_senior' ? '5 000' : '4 000')
-                : '1 000')} base
+              temps {formatMoney(entry.timePay)}
+            </span>
+          )}
+          {!isAnimationPay && entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
+            <span className="text-[10px] text-emerald-400/40">
+              +{entry.payRole === 'mj_senior' ? '5 000' : '4 000'} base
             </span>
           )}
         </div>
@@ -362,23 +544,23 @@ export default function Paies() {
       <div className="flex items-center gap-4 text-xs text-white/30 flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          Base quota atteint : Anim 1 000 · MJ 4 000 · MJS 5 000 crédits
+          Anim : quota 5 anims + 4h, heures = animation + prépa
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400" />
-          Moyenne × 350 crédits
+          Anim : 0-4h × 1 000/h · 4-14h × 800/h · 14h+ × 1 250/h
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
-          Grande × 500 crédits
+          Primes Anim : +1 000 crédits par podium top 3
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-400" />
-          Quota non atteint
+          MJ : Moyenne × 350 · Grande × 500 · base quota atteint
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />
-          Plafonné à 10 000 crédits
+          Plafonds : Anim 17 000 hors primes · MJ 10 000
         </div>
       </div>
 
@@ -428,19 +610,22 @@ export default function Paies() {
                         <tr className="border-b border-white/[0.06]">
                           <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Animations</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Créées</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Part.</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Trames</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">M / G</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Temps</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Primes</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-right">Rémunération</th>
                         </tr>
                       </thead>
                       <tbody>
                         {entries.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="px-4 py-12 text-center text-sm text-white/20">
+                            <td colSpan={12} className="px-4 py-12 text-center text-sm text-white/20">
                               Aucune activité cette semaine
                             </td>
                           </tr>
@@ -455,7 +640,7 @@ export default function Paies() {
                           <tr className="border-t border-white/[0.08] bg-white/[0.01]">
                             <td />
                             <td className="py-3 pr-4 text-xs font-medium text-white/50">Total</td>
-                            <td colSpan={6} />
+                            <td colSpan={9} />
                             <td className="py-3 pr-4 text-right text-sm font-bold text-emerald-400">
                               {formatMoney(poleTotal)}
                             </td>

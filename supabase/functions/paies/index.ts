@@ -17,6 +17,10 @@ const REMUNERATION: Record<string, number> = {
   grande:  500,
 }
 const REMUNERATION_CAP = 10_000
+const ANIMATION_QUOTA_COUNT = 5
+const ANIMATION_QUOTA_MIN = 4 * 60
+const ANIMATION_TIME_CAP = 17_000
+const PODIUM_BONUS = 1_000
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction:      null,
@@ -41,6 +45,31 @@ function inferPayPole(role: string): PayPole | null {
 function resolvePayRole(role: string, payPole: PayPole): PayRole {
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
   return role === 'mj_senior' ? 'mj_senior' : 'mj'
+}
+
+function computeAnimationTimePay(totalMin: number): { pay: number; capped: boolean } {
+  const firstTierMin = Math.min(totalMin, 4 * 60)
+  const secondTierMin = Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60)
+  const thirdTierMin = Math.max(totalMin - 14 * 60, 0)
+  const raw =
+    firstTierMin * (1_000 / 60) +
+    secondTierMin * (800 / 60) +
+    thirdTierMin * (1_250 / 60)
+  const rounded = Math.round(raw)
+  return { pay: Math.min(rounded, ANIMATION_TIME_CAP), capped: rounded > ANIMATION_TIME_CAP }
+}
+
+function topThreeIds<T extends { id: string; username: string }>(
+  entries: T[],
+  metric: (entry: T) => number,
+): Set<string> {
+  return new Set(
+    [...entries]
+      .filter((entry) => metric(entry) > 0)
+      .sort((a, b) => metric(b) - metric(a) || a.username.localeCompare(b.username))
+      .slice(0, 3)
+      .map((entry) => entry.id),
+  )
 }
 
 Deno.serve(async (req) => {
@@ -83,6 +112,7 @@ Deno.serve(async (req) => {
     }>
 
   const profileIds = eligibleProfiles.map((p) => p.id)
+  const profileIdSet = new Set(profileIds)
 
   // Finished animations this week with type + durations
   const { data: anims } = await db
@@ -109,6 +139,8 @@ Deno.serve(async (req) => {
   // Aggregate per user
   const map = new Map<string, {
     animationsCount: number
+    createdAnimationsCount: number
+    participationsCount: number
     animationMin: number
     prepMin: number
     moyenne: number
@@ -116,13 +148,22 @@ Deno.serve(async (req) => {
   }>()
 
   const getEntry = (userId: string) =>
-    map.get(userId) ?? { animationsCount: 0, animationMin: 0, prepMin: 0, moyenne: 0, grande: 0 }
+    map.get(userId) ?? {
+      animationsCount: 0,
+      createdAnimationsCount: 0,
+      participationsCount: 0,
+      animationMin: 0,
+      prepMin: 0,
+      moyenne: 0,
+      grande: 0,
+    }
 
   // Created animations
   for (const a of anims ?? []) {
-    if (!profileIds.includes(a.creator_id)) continue
+    if (!profileIdSet.has(a.creator_id)) continue
     const entry = getEntry(a.creator_id)
     entry.animationsCount++
+    entry.createdAnimationsCount++
     entry.animationMin += a.actual_duration_min ?? 0
     entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
     if (a.type === 'moyenne' || a.type === 'petite') entry.moyenne++
@@ -136,6 +177,7 @@ Deno.serve(async (req) => {
     if (!anim || anim.creator_id === p.user_id) continue
     const entry = getEntry(p.user_id)
     entry.animationsCount++
+    entry.participationsCount++
     entry.animationMin += anim.actual_duration_min ?? 0
     entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
     if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
@@ -143,19 +185,25 @@ Deno.serve(async (req) => {
     map.set(p.user_id, entry)
   }
 
-  const result = eligibleProfiles.map((p) => {
+  const baseEntries = eligibleProfiles.map((p) => {
     const s = map.get(p.id) ?? {
-      animationsCount: 0, animationMin: 0, prepMin: 0,
+      animationsCount: 0, createdAnimationsCount: 0, participationsCount: 0,
+      animationMin: 0, prepMin: 0,
       moyenne: 0, grande: 0,
     }
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
-    const quotaFilled = quotaMax === null || s.animationsCount >= quotaMax
+    const totalMin = s.animationMin + s.prepMin
+    const isAnimationPay = p.payPole === 'animation'
+    const quotaFilled = isAnimationPay
+      ? s.animationsCount >= ANIMATION_QUOTA_COUNT && totalMin >= ANIMATION_QUOTA_MIN
+      : quotaMax === null || s.animationsCount >= quotaMax
 
     const animPay =
       s.moyenne * REMUNERATION.moyenne +
       s.grande  * REMUNERATION.grande
     const basePay = BASE_PAY[p.payRole] ?? 0
-    const rawRemuneration = (quotaFilled ? basePay : 0) + animPay
+    const animationTimePay = computeAnimationTimePay(totalMin)
+    const rawMjRemuneration = (quotaFilled ? basePay : 0) + animPay
     return {
       id: p.id,
       username: p.username,
@@ -164,20 +212,54 @@ Deno.serve(async (req) => {
       payPole: p.payPole,
       payRole: p.payRole,
       animationsCount: s.animationsCount,
+      createdAnimationsCount: s.createdAnimationsCount,
+      participationsCount: s.participationsCount,
       animationMin: s.animationMin,
       prepMin: s.prepMin,
-      totalMin: s.animationMin + s.prepMin,
+      totalMin,
       moyenne: s.moyenne,
       grande: s.grande,
-      quotaMax,
+      quotaMax: isAnimationPay ? ANIMATION_QUOTA_COUNT : quotaMax,
+      quotaMin: isAnimationPay ? ANIMATION_QUOTA_MIN : null,
       quotaFilled,
-      remuneration: Math.min(rawRemuneration, REMUNERATION_CAP),
-      remunerationCapped: rawRemuneration > REMUNERATION_CAP,
+      timePay: isAnimationPay && quotaFilled ? animationTimePay.pay : 0,
+      podiumBonus: 0,
+      hoursPodiumBonus: 0,
+      createdPodiumBonus: 0,
+      participationPodiumBonus: 0,
+      remuneration: isAnimationPay
+        ? (quotaFilled ? animationTimePay.pay : 0)
+        : Math.min(rawMjRemuneration, REMUNERATION_CAP),
+      remunerationCapped: isAnimationPay ? quotaFilled && animationTimePay.capped : rawMjRemuneration > REMUNERATION_CAP,
+    }
+  })
+
+  const animationEntries = baseEntries.filter((entry) => entry.payPole === 'animation' && entry.quotaFilled)
+  const hoursPodium = topThreeIds(animationEntries, (entry) => entry.totalMin)
+  const createdPodium = topThreeIds(animationEntries, (entry) => entry.createdAnimationsCount)
+  const participationPodium = topThreeIds(animationEntries, (entry) => entry.participationsCount)
+
+  const result = baseEntries.map((entry) => {
+    if (entry.payPole !== 'animation') return entry
+    const hoursPodiumBonus = hoursPodium.has(entry.id) ? PODIUM_BONUS : 0
+    const createdPodiumBonus = createdPodium.has(entry.id) ? PODIUM_BONUS : 0
+    const participationPodiumBonus = participationPodium.has(entry.id) ? PODIUM_BONUS : 0
+    const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
+    return {
+      ...entry,
+      hoursPodiumBonus,
+      createdPodiumBonus,
+      participationPodiumBonus,
+      podiumBonus,
+      remuneration: entry.remuneration + podiumBonus,
     }
   })
 
   const uniqueAnimationsCount = (anims ?? []).length
-  const uniqueAnimationsTotalMin = (anims ?? []).reduce((s, a) => s + (a.actual_duration_min ?? 0), 0)
+  const uniqueAnimationsTotalMin = (anims ?? []).reduce(
+    (s, a) => s + (a.actual_duration_min ?? 0) + (a.actual_prep_time_min ?? a.prep_time_min ?? 0),
+    0,
+  )
 
   return jsonResponse({
     entries: result,

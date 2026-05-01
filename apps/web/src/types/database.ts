@@ -263,13 +263,21 @@ export interface PaiesEntry {
   payPole: 'animation' | 'mj'
   payRole: 'animateur' | 'senior' | 'mj' | 'mj_senior'
   animationsCount: number
+  createdAnimationsCount: number
+  participationsCount: number
   animationMin: number
   prepMin: number
   totalMin: number
   moyenne: number
   grande: number
   quotaMax: number | null
+  quotaMin: number | null
   quotaFilled: boolean
+  timePay: number
+  podiumBonus: number
+  hoursPodiumBonus: number
+  createdPodiumBonus: number
+  participationPodiumBonus: number
   remuneration: number
   remunerationCapped: boolean
   trameReportsCount?: number

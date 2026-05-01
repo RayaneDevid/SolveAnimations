@@ -259,6 +259,8 @@ export interface PaiesEntry {
   id: string
   username: string
   avatarUrl: string | null
+  discordId: string
+  steamId: string | null
   role: StaffRoleKey
   payPole: 'animation' | 'mj'
   payRole: 'animateur' | 'senior' | 'mj' | 'mj_senior'

@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
-    .select('id, username, avatar_url, role, pay_pole')
+    .select('id, username, avatar_url, role, pay_pole, discord_id, steam_id')
     .eq('is_active', true)
     .order('username', { ascending: true })
 
@@ -112,6 +112,8 @@ Deno.serve(async (req) => {
       pay_pole: PayPole | null
       payPole: PayPole
       payRole: PayRole
+      discord_id: string
+      steam_id: string | null
     }>
 
   const profileIds = eligibleProfiles.map((p) => p.id)
@@ -212,6 +214,8 @@ Deno.serve(async (req) => {
       id: p.id,
       username: p.username,
       avatarUrl: p.avatar_url,
+      discordId: p.discord_id,
+      steamId: p.steam_id,
       role: p.role,
       payPole: p.payPole,
       payRole: p.payRole,

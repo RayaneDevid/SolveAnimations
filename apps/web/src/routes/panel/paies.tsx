@@ -51,38 +51,57 @@ function csvCell(value: string | number | boolean | null | undefined): string {
   return `"${normalized.replace(/"/g, '""')}"`
 }
 
-function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: string): string {
-  const header = [
-    'Rang',
-    'Membre',
-    'Role',
-    'Pole paie',
-    'Animations total',
-    'Animations creees',
-    'Participations',
-    'Trames',
-    'Part. + creations moyennes',
-    'Part. + creations grandes',
-    'Temps animation (min)',
-    'Temps preparation (min)',
-    'Temps total (min)',
-    'Quota',
-    'Quota atteint',
-    'Paie temps',
-    'Bonus inscriptions MJ',
-    'Prime podium heures',
-    'Prime podium creations',
-    'Prime podium participations',
-    'Prime podium total',
-    'Remuneration',
-    'Plafonne',
+function buildMjCommentaire(entry: PaiesEntry): string {
+  if (!entry.quotaFilled) return 'Quota non atteint'
+  const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
+  const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
+  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
+  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+  const parts: string[] = [
+    `Base quota: ${basePay}`,
+    `Temps (${formatMin(entry.totalMin)} x ${MJ_HOURLY_RATE}/h): ${rawTimePay}`,
+    `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
+    `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
   ]
+  if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
+  if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
+  if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
+  return parts.join(' | ')
+}
 
+function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj', weekLabel: string): string {
+  if (pole === 'mj') {
+    const header = ['discord_id', 'steam_id', 'grade', 'moyenne', 'grande', 'total_animations', 'total_heures', 'commentaire', 'montant']
+    const rows = entries.map((entry) => [
+      entry.discordId,
+      entry.steamId ?? '',
+      entry.payRole,
+      entry.moyenne,
+      entry.grande,
+      entry.animationsCount,
+      formatMin(entry.totalMin),
+      buildMjCommentaire(entry),
+      entry.remuneration,
+    ])
+    return [
+      ['Paies MJ', weekLabel].map(csvCell).join(';'),
+      header.map(csvCell).join(';'),
+      ...rows.map((row) => row.map(csvCell).join(';')),
+    ].join('\n')
+  }
+
+  const header = [
+    'Rang', 'Membre', 'Role', 'Animations total', 'Animations creees', 'Participations', 'Trames',
+    'Part. + creations moyennes', 'Part. + creations grandes',
+    'Temps animation (min)', 'Temps preparation (min)', 'Temps total (min)',
+    'Quota', 'Quota atteint', 'Paie temps',
+    'Prime podium heures', 'Prime podium creations', 'Prime podium participations', 'Prime podium total',
+    'Remuneration', 'Plafonne',
+  ]
   const rows = entries.map((entry, index) => [
     index + 1,
     entry.username,
     entry.role,
-    poleLabel,
     entry.animationsCount,
     entry.createdAnimationsCount,
     entry.participationsCount,
@@ -92,14 +111,9 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     entry.animationMin,
     entry.prepMin,
     entry.totalMin,
-    entry.payPole === 'animation'
-      ? `${entry.animationsCount}/${entry.quotaMax ?? 5} anims - ${entry.totalMin}/${entry.quotaMin ?? 240} min`
-      : entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`,
+    `${entry.animationsCount}/${entry.quotaMax ?? 5} anims - ${entry.totalMin}/${entry.quotaMin ?? 240} min`,
     entry.quotaFilled ? 'Oui' : 'Non',
     entry.timePay,
-    entry.payPole === 'mj' && entry.quotaFilled
-      ? entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS + entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-      : 0,
     entry.hoursPodiumBonus,
     entry.createdPodiumBonus,
     entry.participationPodiumBonus,
@@ -107,9 +121,8 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     entry.remuneration,
     entry.remunerationCapped ? 'Oui' : 'Non',
   ])
-
   return [
-    ['Paies', poleLabel, weekLabel].map(csvCell).join(';'),
+    ['Paies Animation', weekLabel].map(csvCell).join(';'),
     header.map(csvCell).join(';'),
     ...rows.map((row) => row.map(csvCell).join(';')),
   ].join('\n')
@@ -472,8 +485,7 @@ export default function Paies() {
   const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
 
   const handleExportCsv = (entries: PaiesEntry[], pole: 'animation' | 'mj') => {
-    const poleLabel = pole === 'mj' ? 'MJ' : 'Animation'
-    const csv = buildPaiesCsv(entries, poleLabel, weekLabel)
+    const csv = buildPaiesCsv(entries, pole, weekLabel)
     downloadCsv(`paies-${pole}-${weekFileLabel}.csv`, csv)
   }
 

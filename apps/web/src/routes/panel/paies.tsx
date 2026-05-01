@@ -84,7 +84,6 @@ function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj', weekLabe
       entry.remuneration,
     ])
     return [
-      ['Paies MJ', weekLabel].map(csvCell).join(';'),
       header.map(csvCell).join(';'),
       ...rows.map((row) => row.map(csvCell).join(';')),
     ].join('\n')

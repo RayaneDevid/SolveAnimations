@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     .from('profiles')
     .select('id, username, avatar_url, role')
     .eq('is_active', true)
-    .in('role', SENIOR_ROLES)
+    .overlaps('available_roles', SENIOR_ROLES)
     .order('username', { ascending: true })
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)

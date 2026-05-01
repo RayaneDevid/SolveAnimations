@@ -16,7 +16,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { cn } from '@/lib/utils/cn'
 import type { FormationSession, SeniorProfile, RecentRecruit } from '@/types/database'
 
-// ─── Multi-select seniors (shared pattern) ────────────────────────────────────
+// ─── Multi-select members with search ─────────────────────────────────────────
 
 function SeniorsMultiSelect({
   seniors,
@@ -30,15 +30,19 @@ function SeniorsMultiSelect({
   placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id])
   const selectedProfiles = seniors.filter((s) => selected.includes(s.id))
+  const filtered = search.trim()
+    ? seniors.filter((s) => s.username.toLowerCase().includes(search.toLowerCase()))
+    : seniors
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); setSearch('') }}
         className="w-full flex items-center justify-between gap-2 min-h-10 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-sm text-white/70 hover:border-white/20 transition-colors"
       >
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -62,25 +66,39 @@ function SeniorsMultiSelect({
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="absolute z-50 top-full mt-1 w-full bg-[#13141A] border border-white/[0.10] rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto"
+            className="absolute z-50 top-full mt-1 w-full bg-[#13141A] border border-white/[0.10] rounded-xl shadow-2xl overflow-hidden"
           >
-            {seniors.map((s) => {
-              const checked = selected.includes(s.id)
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggle(s.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/[0.05] transition-colors"
-                >
-                  <div className={cn('h-4 w-4 rounded border flex items-center justify-center shrink-0', checked ? 'bg-cyan-400 border-cyan-400' : 'border-white/20')}>
-                    {checked && <Check className="h-3 w-3 text-black" />}
-                  </div>
-                  <UserAvatar avatarUrl={s.avatar_url} username={s.username} size="xs" />
-                  <span className="text-sm text-white/80">{s.username}</span>
-                </button>
-              )
-            })}
+            <div className="p-2 border-b border-white/[0.08]">
+              <input
+                autoFocus
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher..."
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-1.5 text-sm text-white/80 placeholder:text-white/25 outline-none focus:border-white/20"
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-4 text-center text-sm text-white/25">Aucun résultat</p>
+              ) : filtered.map((s) => {
+                const checked = selected.includes(s.id)
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggle(s.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/[0.05] transition-colors"
+                  >
+                    <div className={cn('h-4 w-4 rounded border flex items-center justify-center shrink-0', checked ? 'bg-cyan-400 border-cyan-400' : 'border-white/20')}>
+                      {checked && <Check className="h-3 w-3 text-black" />}
+                    </div>
+                    <UserAvatar avatarUrl={s.avatar_url} username={s.username} size="xs" />
+                    <span className="text-sm text-white/80">{s.username}</span>
+                  </button>
+                )
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -178,11 +196,6 @@ function TraineeRow({
 
 // ─── Create form ──────────────────────────────────────────────────────────────
 
-const POLE_ROLES: Record<'mj' | 'animation', string[]> = {
-  mj: ['mj_senior', 'responsable_mj', 'gerance', 'direction'],
-  animation: ['senior', 'responsable', 'gerance', 'direction'],
-}
-
 function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
   const { user } = useRequiredAuth()
   const { data: seniors = [] } = useSeniors()
@@ -194,7 +207,6 @@ function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
   const [trainees, setTrainees] = useState<{ steam_id: string; name: string }[]>([{ steam_id: '', name: '' }])
 
   const { data: recruits = [] } = useRecentRecruits(pole)
-  const filteredSeniors = seniors.filter((s) => POLE_ROLES[pole].includes(s.role))
 
   useEffect(() => {
     setTrainees((prev) => {
@@ -250,7 +262,7 @@ function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="space-y-2">
         <Label>Formateurs</Label>
         <SeniorsMultiSelect
-          seniors={filteredSeniors}
+          seniors={seniors}
           selected={trainerIds}
           onChange={setTrainerIds}
           placeholder="Sélectionner des formateurs..."

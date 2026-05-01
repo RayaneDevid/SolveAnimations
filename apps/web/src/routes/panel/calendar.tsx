@@ -5,6 +5,7 @@ import { addDays, format, isSameDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAnimations, useCalendarAvailability } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { WeekGrid } from '@/components/calendar/WeekGrid'
 import { WeekNavigator } from '@/components/calendar/WeekNavigator'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -15,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { rpDayFromDate } from '@/lib/utils/calendar'
 
 type CalendarMode = 'week' | 'day'
+type PoleFilter = 'all' | 'animation' | 'mj'
 
 function dateInputValue(date: Date): string {
   return format(date, 'yyyy-MM-dd')
@@ -38,8 +40,10 @@ function rpDayBounds(day: Date): { start: Date; end: Date } {
 }
 
 export default function Calendar() {
+  const { user } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
-  const [mode, setMode] = useState<CalendarMode>('week')
+  const [mode, setMode] = useState<CalendarMode>('day')
+  const [poleFilter, setPoleFilter] = useState<PoleFilter>(() => user.pay_pole ?? 'all')
   const [selectedDay, setSelectedDay] = useState(() => dateInputValue(rpDayFromDate(new Date())))
   const [availabilityAt, setAvailabilityAt] = useState(() => minuteISOString())
 
@@ -59,7 +63,11 @@ export default function Calendar() {
     pageSize: 100,
   })
 
-  const animations = data?.animations ?? []
+  const allAnimations = data?.animations ?? []
+  const animations = useMemo(() => {
+    if (poleFilter === 'all') return allAnimations
+    return allAnimations.filter((a) => a.pole === poleFilter || a.pole === 'les_deux')
+  }, [allAnimations, poleFilter])
   const todayRpDay = rpDayFromDate(new Date())
   const isSelectedToday = isSameDay(selectedDayDate, todayRpDay)
   const availabilityAtDate = new Date(availabilityAt)
@@ -115,6 +123,18 @@ export default function Calendar() {
               </div>
             ))}
           </div>
+
+          <Tabs value={poleFilter} onValueChange={(v) => setPoleFilter(v as PoleFilter)}>
+            <TabsList>
+              <TabsTrigger value="all">Tous</TabsTrigger>
+              <TabsTrigger value="animation">
+                <Swords className="h-3.5 w-3.5 mr-1" />Anim
+              </TabsTrigger>
+              <TabsTrigger value="mj">
+                <Dice5 className="h-3.5 w-3.5 mr-1" />MJ
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           <Tabs value={mode} onValueChange={(value) => setMode(value as CalendarMode)}>
             <TabsList>

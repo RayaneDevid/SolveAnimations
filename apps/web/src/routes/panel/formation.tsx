@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useFormations, useSeniors, useRecentRecruits } from '@/hooks/queries/useAnimations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { useCreateFormation, type FormationInput } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -183,10 +184,11 @@ const POLE_ROLES: Record<'mj' | 'animation', string[]> = {
 }
 
 function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
+  const { user } = useRequiredAuth()
   const { data: seniors = [] } = useSeniors()
   const { mutateAsync, isPending } = useCreateFormation()
 
-  const [pole, setPole] = useState<'mj' | 'animation'>('animation')
+  const [pole, setPole] = useState<'mj' | 'animation'>(() => user.pay_pole === 'mj' ? 'mj' : 'animation')
   const [trainerIds, setTrainerIds] = useState<string[]>([])
   const [count, setCount] = useState(1)
   const [trainees, setTrainees] = useState<{ steam_id: string; name: string }[]>([{ steam_id: '', name: '' }])

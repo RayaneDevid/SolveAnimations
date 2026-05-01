@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Trophy, Clock, Sword, Users } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useLeaderboard } from '@/hooks/queries/useAnimations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -136,9 +137,10 @@ const ANIM_ROLES = ['direction', 'gerance', 'responsable', 'senior', 'animateur'
 const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
 
 export default function Leaderboard() {
+  const { user } = useRequiredAuth()
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [metric, setMetric] = useState<'byHours' | 'byAnimations' | 'byParticipations'>('byHours')
-  const [pole, setPole] = useState<'anim' | 'mj'>('anim')
+  const [pole, setPole] = useState<'anim' | 'mj'>(() => user.pay_pole === 'mj' ? 'mj' : 'anim')
   const { data, isLoading } = useLeaderboard(period)
 
   const rawEntries = data?.[metric] ?? []

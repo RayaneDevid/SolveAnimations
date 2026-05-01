@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useWeeklyReview, useVillageStats, type WeeklyReviewAbsence, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { cn } from '@/lib/utils/cn'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -430,11 +431,12 @@ function PoleCards({
 }
 
 export default function Bilan() {
+  const { user } = useRequiredAuth()
   const { data, isLoading } = useWeeklyReview()
   const { data: villageStats } = useVillageStats()
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>('animation')
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => user.pay_pole === 'mj' ? 'mj' : 'animation')
   const [exporting, setExporting] = useState(false)
 
   const exportFileName = data

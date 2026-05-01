@@ -21,7 +21,7 @@ const ANIMATION_TIME_CAP = 17_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
 const MJ_GRANDE_REGISTRATION_BONUS = 300
-const MJ_PAY_CAP = 10_000
+const MJ_PAY_CAP = 15_000
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
@@ -290,7 +290,7 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
 function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
   const hasActivity = entry.animationsCount > 0
   const isAnimationPay = entry.payPole === 'animation'
-  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafonné à 10 000 crédits'
+  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafonné à 15 000 crédits'
   const podiumLabels = [
     entry.hoursPodiumBonus > 0 ? 'Heures' : null,
     entry.createdPodiumBonus > 0 ? 'Créations' : null,
@@ -582,7 +582,7 @@ export default function Paies() {
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />
-          Plafonds : Anim 17 000 hors primes · MJ 10 000
+          Plafonds : Anim 17 000 hors primes · MJ 15 000
         </div>
       </div>
 

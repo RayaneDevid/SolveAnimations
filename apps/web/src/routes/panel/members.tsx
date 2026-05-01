@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, CheckCircle2, CircleAlert } from 'lucide-react'
+import { Users, UserX, CalendarOff, AlertTriangle, History, RotateCcw, Gamepad2, CalendarDays, CheckCircle2, CircleAlert, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { useMembers, useFormerMembers } from '@/hooks/queries/useAnimations'
-import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPayPole, useUpdateMemberPerms, useUpdateMemberPrimaryRole } from '@/hooks/mutations/useAnimationMutations'
+import { useRemoveMemberAccess, useReactivateMember, useUpdateMemberPayPole, useUpdateMemberPerms, useUpdateMemberPrimaryRole, useUpdateMemberProfile } from '@/hooks/mutations/useAnimationMutations'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -475,6 +475,88 @@ function PayPoleCell({
   )
 }
 
+// ─── Edit profile modal ───────────────────────────────────────────────────────
+
+function EditProfileModal({ member, open, onClose }: { member: MemberEntry; open: boolean; onClose: () => void }) {
+  const { mutateAsync, isPending } = useUpdateMemberProfile()
+  const [steamId, setSteamId] = useState(member.steamId ?? '')
+  const [arrivalDate, setArrivalDate] = useState(member.arrivalDate ?? '')
+  const [gender, setGender] = useState<'homme' | 'femme' | 'autre' | ''>(member.gender ?? '')
+
+  const handleSubmit = async (e: { preventDefault(): void }) => {
+    e.preventDefault()
+    try {
+      await mutateAsync({
+        userId: member.id,
+        steamId: steamId.trim() || null,
+        arrivalDate: arrivalDate || null,
+        gender: gender || null,
+      })
+      toast.success('Profil mis à jour')
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-cyan-400" />
+            Modifier le profil de {member.username}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50">Steam ID</label>
+            <input
+              value={steamId}
+              onChange={(e) => setSteamId(e.target.value)}
+              placeholder="17 chiffres"
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50">Date d'arrivée</label>
+            <input
+              type="date"
+              value={arrivalDate}
+              onChange={(e) => setArrivalDate(e.target.value)}
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50">Genre</label>
+            <div className="flex gap-2">
+              {(['homme', 'femme', 'autre', ''] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGender(g)}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${gender === g
+                    ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-300'
+                    : 'border-white/[0.08] bg-white/[0.03] text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  {g === '' ? 'Non défini' : g.charAt(0).toUpperCase() + g.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+            <Button type="submit" size="sm" disabled={isPending}>
+              {isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Active member table ──────────────────────────────────────────────────────
 
 function MemberTable({
@@ -484,6 +566,7 @@ function MemberTable({
   onChangeRole,
   canManagePayPole,
   onChangePayPole,
+  onEditProfile,
 }: {
   members: MemberEntry[]
   onRemove: (m: MemberEntry) => void
@@ -491,6 +574,7 @@ function MemberTable({
   onChangeRole: (m: MemberEntry) => void
   canManagePayPole: boolean
   onChangePayPole: (m: MemberEntry) => void
+  onEditProfile: (m: MemberEntry) => void
 }) {
   if (members.length === 0) {
     return <p className="text-center text-white/30 text-sm py-12">Aucun membre</p>
@@ -601,10 +685,15 @@ function MemberTable({
                     <span className="text-xs text-white/20">—</span>
                   )}
                 </td>
-                <td className="w-14 px-3 py-3 text-right whitespace-nowrap">
-                  <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="h-7 w-8 shrink-0 px-0">
-                    <UserX className="h-3 w-3" />
-                  </Button>
+                <td className="w-20 px-3 py-3 text-right whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => onEditProfile(m)} className="h-7 w-8 shrink-0 px-0 text-white/40 hover:text-white/80">
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => onRemove(m)} className="h-7 w-8 shrink-0 px-0">
+                      <UserX className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </td>
               </motion.tr>
             )
@@ -751,6 +840,7 @@ export default function Members() {
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
   const [roleMember, setRoleMember] = useState<MemberEntry | null>(null)
   const [payPoleMember, setPayPoleMember] = useState<MemberEntry | null>(null)
+  const [editProfileMember, setEditProfileMember] = useState<MemberEntry | null>(null)
   const [sortMode, setSortMode] = useState<MemberSortMode>('role')
   const canManagePrimaryRole = hasPermissionRole(permissionRoles, 'responsable')
   const canManagePayPole = hasPermissionRole(permissionRoles, 'responsable')
@@ -844,6 +934,7 @@ export default function Members() {
                 onChangeRole={setRoleMember}
                 canManagePayPole={canManagePayPole}
                 onChangePayPole={setPayPoleMember}
+                onEditProfile={setEditProfileMember}
               />
             </GlassCard>
           </TabsContent>
@@ -857,6 +948,7 @@ export default function Members() {
                 onChangeRole={setRoleMember}
                 canManagePayPole={canManagePayPole}
                 onChangePayPole={setPayPoleMember}
+                onEditProfile={setEditProfileMember}
               />
             </GlassCard>
           </TabsContent>
@@ -870,6 +962,7 @@ export default function Members() {
                 onChangeRole={setRoleMember}
                 canManagePayPole={canManagePayPole}
                 onChangePayPole={setPayPoleMember}
+                onEditProfile={setEditProfileMember}
               />
             </GlassCard>
           </TabsContent>
@@ -883,6 +976,7 @@ export default function Members() {
                 onChangeRole={setRoleMember}
                 canManagePayPole={canManagePayPole}
                 onChangePayPole={setPayPoleMember}
+                onEditProfile={setEditProfileMember}
               />
             </GlassCard>
           </TabsContent>
@@ -922,6 +1016,14 @@ export default function Members() {
           member={payPoleMember}
           open={!!payPoleMember}
           onClose={() => setPayPoleMember(null)}
+        />
+      )}
+
+      {editProfileMember && (
+        <EditProfileModal
+          member={editProfileMember}
+          open={!!editProfileMember}
+          onClose={() => setEditProfileMember(null)}
         />
       )}
     </div>

@@ -478,6 +478,20 @@ export function useUpdateProfile() {
   })
 }
 
+export function useUpdateMemberProfile() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { userId: string; steamId?: string | null; arrivalDate?: string | null; gender?: 'homme' | 'femme' | 'autre' | null }) =>
+      invokeEdge<{ profile: Profile }>('members-update-profile', {
+        user_id: body.userId,
+        steam_id: body.steamId,
+        arrival_date: body.arrivalDate,
+        gender: body.gender,
+      }),
+    onSuccess: () => invalidateMemberCaches(qc),
+  })
+}
+
 export function useRemoveMemberAccess() {
   const qc = useQueryClient()
   return useMutation({

@@ -12,7 +12,7 @@ const BASE_PAY: Record<string, number> = {
   mj_senior:  5_000,
 }
 
-const REMUNERATION_CAP = 10_000
+const REMUNERATION_CAP = 15_000
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_QUOTA_MIN = 4 * 60
 const ANIMATION_TIME_CAP = 17_000

@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   const quotaMissingThisWeek = quotaProfiles
     .filter((p) => {
       const count = currentQuota.get(p.id) ?? 0
-      return count > 0 && count < p.quotaMax
+      return count > 0 && count < p.quotaMax && !currentAbsenceIds.has(p.id)
     })
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 
@@ -129,7 +129,8 @@ Deno.serve(async (req) => {
       if (!hasTwoWeekHistory) return false
       const cur = currentQuota.get(p.id) ?? 0
       const prev = previousQuota.get(p.id) ?? 0
-      return cur > 0 && cur < p.quotaMax && prev > 0 && prev < p.quotaMax
+      return cur > 0 && cur < p.quotaMax && !currentAbsenceIds.has(p.id) &&
+        prev > 0 && prev < p.quotaMax && !previousAbsences.has(p.id)
     })
     .map((p) => profileSummary(p, currentQuota.get(p.id) ?? 0, p.quotaMax))
 

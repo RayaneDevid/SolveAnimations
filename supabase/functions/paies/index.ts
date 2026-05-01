@@ -15,6 +15,7 @@ const BASE_PAY: Record<string, number> = {
 
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_TIME_CAP = 17_000
+const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
 const MJ_GRANDE_REGISTRATION_BONUS = 300
@@ -45,11 +46,12 @@ function resolvePayRole(role: string, payPole: PayPole): PayRole {
   return role === 'mj_senior' ? 'mj_senior' : 'mj'
 }
 
-function computeAnimationTimePay(totalMin: number): { pay: number; capped: boolean } {
+function computeAnimationTimePay(totalMin: number, base = 0): { pay: number; capped: boolean } {
   const firstTierMin = Math.min(totalMin, 4 * 60)
   const secondTierMin = Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60)
   const thirdTierMin = Math.max(totalMin - 14 * 60, 0)
   const raw =
+    base +
     firstTierMin * (1_000 / 60) +
     secondTierMin * (800 / 60) +
     thirdTierMin * (1_250 / 60)
@@ -203,7 +205,8 @@ Deno.serve(async (req) => {
       : quotaMax === null || s.animationsCount >= quotaMax
 
     const basePay = BASE_PAY[p.payRole] ?? 0
-    const animationTimePay = computeAnimationTimePay(totalMin)
+    const seniorBase = isAnimationPay && p.payRole === 'senior' && quotaFilled ? SENIOR_BASE_PAY : 0
+    const animationTimePay = computeAnimationTimePay(totalMin, seniorBase)
     const mjTimePay = computeHourlyPay(totalMin, MJ_HOURLY_RATE)
     const mjRegistrationBonus =
       s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
@@ -229,6 +232,7 @@ Deno.serve(async (req) => {
       quotaMax: isAnimationPay ? ANIMATION_QUOTA_COUNT : quotaMax,
       quotaMin: null,
       quotaFilled,
+      seniorBase,
       timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
       podiumBonus: 0,
       hoursPodiumBonus: 0,

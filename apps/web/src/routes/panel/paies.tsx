@@ -58,9 +58,11 @@ function buildAnimCommentaire(entry: PaiesEntry): string {
     { label: `4-14h à 800/h`, min: Math.min(Math.max(entry.totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
     { label: `14h+ à 1 250/h`, min: Math.max(entry.totalMin - 14 * 60, 0), rate: 1_250 },
   ].filter((t) => t.min > 0)
-  const parts: string[] = tiers.map((t) => {
+  const parts: string[] = []
+  if (entry.seniorBase > 0) parts.push(`Base Senior: ${entry.seniorBase}`)
+  tiers.forEach((t) => {
     const pay = Math.round(t.min * (t.rate / 60))
-    return `${t.label} (${formatMin(t.min)}): ${pay}`
+    parts.push(`${t.label} (${formatMin(t.min)}): ${pay}`)
   })
   if (entry.remunerationCapped) parts.push(`Plafonné à ${ANIMATION_TIME_CAP}`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
@@ -137,14 +139,14 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url)
 }
 
-function computeAnimationTierDetails(totalMin: number) {
+function computeAnimationTierDetails(totalMin: number, base = 0) {
   const tiers = [
     { label: '0-4h à 1 000/h', min: Math.min(totalMin, 4 * 60), rate: 1_000 },
     { label: '4-14h à 800/h', min: Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
     { label: '14h+ à 1 250/h', min: Math.max(totalMin - 14 * 60, 0), rate: 1_250 },
   ].filter((tier) => tier.min > 0)
 
-  const rawPay = Math.round(tiers.reduce((sum, tier) => sum + tier.min * (tier.rate / 60), 0))
+  const rawPay = Math.round(base + tiers.reduce((sum, tier) => sum + tier.min * (tier.rate / 60), 0))
   return {
     tiers: tiers.map((tier) => ({
       ...tier,
@@ -180,7 +182,7 @@ function PayDetailLine({
 }
 
 function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
-  const { tiers, rawPay } = computeAnimationTierDetails(entry.totalMin)
+  const { tiers, rawPay } = computeAnimationTierDetails(entry.totalMin, entry.seniorBase)
 
   return (
     <>
@@ -192,6 +194,9 @@ function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
       <PayDetailLine label="Temps compté" value={formatMin(entry.totalMin)} muted={entry.totalMin === 0} />
       {entry.quotaFilled ? (
         <>
+          {entry.seniorBase > 0 && (
+            <PayDetailLine label="Base Senior" value={formatMoney(entry.seniorBase)} />
+          )}
           {tiers.map((tier) => (
             <PayDetailLine
               key={tier.label}

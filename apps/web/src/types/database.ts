@@ -276,6 +276,7 @@ export interface PaiesEntry {
   quotaMax: number | null
   quotaMin: number | null
   quotaFilled: boolean
+  seniorBase: number
   timePay: number
   podiumBonus: number
   hoursPodiumBonus: number

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5 } from 'lucide-react'
 import { addDays, format, isSameDay } from 'date-fns'
@@ -24,6 +24,12 @@ function dateFromInput(value: string): Date {
   return new Date(`${value}T00:00:00`)
 }
 
+function minuteISOString(date = new Date()): string {
+  const rounded = new Date(date)
+  rounded.setSeconds(0, 0)
+  return rounded.toISOString()
+}
+
 function rpDayBounds(day: Date): { start: Date; end: Date } {
   const start = new Date(day)
   start.setHours(4, 0, 0, 0)
@@ -35,6 +41,12 @@ export default function Calendar() {
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const [mode, setMode] = useState<CalendarMode>('week')
   const [selectedDay, setSelectedDay] = useState(() => dateInputValue(rpDayFromDate(new Date())))
+  const [availabilityAt, setAvailabilityAt] = useState(() => minuteISOString())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setAvailabilityAt(minuteISOString()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   const selectedDayDate = useMemo(() => dateFromInput(selectedDay), [selectedDay])
   const dayBounds = useMemo(() => rpDayBounds(selectedDayDate), [selectedDayDate])
@@ -50,17 +62,15 @@ export default function Calendar() {
   const animations = data?.animations ?? []
   const todayRpDay = rpDayFromDate(new Date())
   const isSelectedToday = isSameDay(selectedDayDate, todayRpDay)
-  const availabilityDayDate = mode === 'day'
-    ? selectedDayDate
-    : isCurrentWeek()
-      ? todayRpDay
-      : rpDayFromDate(bounds.start)
+  const availabilityAtDate = new Date(availabilityAt)
+  const availabilityDayDate = todayRpDay
   const availabilityBounds = rpDayBounds(availabilityDayDate)
   const availabilityDay = dateInputValue(availabilityDayDate)
   const { data: availability, isLoading: availabilityLoading } = useCalendarAvailability({
     day: availabilityDay,
     from: availabilityBounds.start.toISOString(),
     to: availabilityBounds.end.toISOString(),
+    at: availabilityAt,
   })
 
   const goPrevDay = () => setSelectedDay(dateInputValue(addDays(selectedDayDate, -1)))
@@ -79,7 +89,7 @@ export default function Calendar() {
         <div className="flex items-center gap-3 flex-wrap justify-end">
           <div
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-2"
-            title={`${availability?.activeAnimationCount ?? 0} animation(s) ouverte(s), en débrief ou en cours sur la session du ${format(availabilityDayDate, 'dd/MM/yyyy', { locale: fr })}`}
+            title={`${availability?.activeAnimationCount ?? 0} animation(s) occupante(s) à ${format(availabilityAtDate, 'HH:mm')} le ${format(availabilityDayDate, 'dd/MM/yyyy', { locale: fr })}`}
           >
             <Users className="h-4 w-4 text-cyan-400" />
             {[

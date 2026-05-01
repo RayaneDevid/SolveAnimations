@@ -2,6 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
+import { hasEffectiveRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -65,8 +66,11 @@ Deno.serve(async (req) => {
   if (!isInstantMission && !isPastMission && scheduledTime < Date.now())
     return errorResponse('VALIDATION_ERROR', 'Une mission classique ne peut pas être antidatée')
 
-  // Normal and past missions share the same insert path; past missions stay pending until a Responsable validates them.
+  const canSelfValidatePastMission = isPastMission && hasEffectiveRole(profile, 'senior')
   const autoValidate = isInstantMission || (!isPastMission && requestValidation === false)
+  const autoFinishPastMission = isPastMission && canSelfValidatePastMission
+  const actualDurationMin = Math.max(1, Number(resolvedPlannedDurationMin))
+  const actualPrepTimeMin = Math.max(0, Number(resolvedPrepTimeMin ?? 0))
 
   const { data: animation, error } = await db
     .from('animations')
@@ -82,12 +86,20 @@ Deno.serve(async (req) => {
       village,
       description: description?.trim() || null,
       creator_id: profile.id,
-      status: isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
+      status: autoFinishPastMission ? 'finished' : isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
       ...(isPastMission ? {
-        actual_duration_min: resolvedPlannedDurationMin,
-        actual_prep_time_min: resolvedPrepTimeMin,
+        actual_duration_min: actualDurationMin,
+        actual_prep_time_min: actualPrepTimeMin,
       } : {}),
-      ...(autoValidate ? { validated_by: profile.id, validated_at: now } : {}),
+      ...(autoValidate || autoFinishPastMission ? { validated_by: profile.id, validated_at: now } : {}),
+      ...(autoFinishPastMission ? {
+        started_at: scheduledDate.toISOString(),
+        ended_at: new Date(scheduledTime + actualDurationMin * 60_000).toISOString(),
+        ...(actualPrepTimeMin > 0 ? {
+          prep_started_at: new Date(scheduledTime - actualPrepTimeMin * 60_000).toISOString(),
+          prep_ended_at: scheduledDate.toISOString(),
+        } : {}),
+      } : {}),
     })
     .select(`*, creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)`)
     .single()
@@ -97,7 +109,24 @@ Deno.serve(async (req) => {
     return errorResponse('INTERNAL_ERROR', 'Erreur lors de la création')
   }
 
-  if (autoValidate) {
+  if (autoFinishPastMission) {
+    await db.from('animation_reports').upsert({
+      animation_id: animation.id,
+      user_id: profile.id,
+      pole: animation.pole === 'mj' ? 'mj' : 'animateur',
+      character_name: '—',
+      comments: null,
+      submitted_at: null,
+    }, { onConflict: 'animation_id,user_id' })
+
+    await db.from('audit_log').insert({
+      actor_id: profile.id,
+      action: 'animation.validate',
+      target_type: 'animation',
+      target_id: animation.id,
+      metadata: { pastMission: true, selfValidated: true },
+    })
+  } else if (autoValidate) {
     const botRes = await notifyBot<{ data: { publicMessageId: string } }>('animation-validated', {
       animationId: animation.id,
       creatorDiscordId: profile.discord_id,

@@ -6,6 +6,7 @@ import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History } from 'l
 import { toast } from 'sonner'
 import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, type Village, type AnimationPole, type MissionKind } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { cn } from '@/lib/utils/cn'
+import { hasPermissionRole } from '@/lib/config/discord'
 
 const TYPE_LABELS_FULL = { moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
@@ -59,6 +61,7 @@ const POLE_CONFIG: Record<AnimationPole, { label: string; description: string; c
 
 export default function NewAnimation() {
   const navigate = useNavigate()
+  const { permissionRoles } = useRequiredAuth()
   const { mutateAsync, isPending } = useCreateAnimation()
 
   const {
@@ -85,6 +88,7 @@ export default function NewAnimation() {
   const missionKind = watch('missionKind')
   const isInstantMission = missionKind === 'spontanee_bdm'
   const isPastMission = missionKind === 'passee'
+  const canSelfValidatePastMission = hasPermissionRole(permissionRoles, 'senior')
   const requiredParticipants = watch('requiredParticipants')
   const isClassicPastDate = missionKind === 'classique' && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
   const isPastFutureDate = isPastMission && scheduledAt instanceof Date && scheduledAt.getTime() > Date.now()
@@ -103,14 +107,14 @@ export default function NewAnimation() {
     }
 
     if (isPastMission) {
-      setValue('requestValidation', true)
+      setValue('requestValidation', !canSelfValidatePastMission)
       setValue('pingRoles', false)
     }
 
     if (requiredParticipants == null) {
       setValue('requiredParticipants', 4, { shouldValidate: true })
     }
-  }, [isInstantMission, isPastMission, requiredParticipants, setValue])
+  }, [canSelfValidatePastMission, isInstantMission, isPastMission, requiredParticipants, setValue])
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
@@ -126,7 +130,7 @@ export default function NewAnimation() {
         type: instantMission ? 'moyenne' : data.type,
         pole: instantMission ? 'animation' : data.pole,
         description: data.description,
-        requestValidation: pastMission ? true : instantMission ? false : data.requestValidation,
+        requestValidation: pastMission ? !canSelfValidatePastMission : instantMission ? false : data.requestValidation,
         pingRoles: pastMission || instantMission ? false : data.pingRoles,
       })
       toast.success('Animation créée avec succès !')
@@ -172,6 +176,9 @@ export default function NewAnimation() {
                   {MISSION_KINDS.map((kind) => {
                     const config = MISSION_KIND_CONFIG[kind]
                     const selected = field.value === kind
+                    const description = kind === 'passee' && canSelfValidatePastMission
+                      ? 'Animation déjà jouée, auto-validée pour les Seniors et +.'
+                      : config.description
                     return (
                       <button
                         key={kind}
@@ -187,7 +194,7 @@ export default function NewAnimation() {
                         <span className={cn('block text-sm font-bold', selected ? 'text-cyan-300' : 'text-white')}>
                           {config.label}
                         </span>
-                        <span className="block text-xs text-white/40 mt-1">{config.description}</span>
+                        <span className="block text-xs text-white/40 mt-1">{description}</span>
                       </button>
                     )
                   })}
@@ -231,7 +238,10 @@ export default function NewAnimation() {
                 <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <History className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300/80">
-                    La mission sera créée en attente de validation Responsable, puis ajoutée comme terminée après validation.
+                    {canSelfValidatePastMission
+                      ? 'La mission sera directement auto-validée et ajoutée comme terminée.'
+                      : 'La mission sera créée en attente de validation Responsable, puis ajoutée comme terminée après validation.'
+                    }
                   </p>
                 </div>
               )}
@@ -440,11 +450,14 @@ export default function NewAnimation() {
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-cyan-400" />
                 <span className="text-sm font-semibold text-white/80">
-                  Validation Responsable obligatoire
+                  {canSelfValidatePastMission ? 'Auto-validation Senior' : 'Validation Responsable obligatoire'}
                 </span>
               </div>
               <p className="text-xs text-white/40 mt-1">
-                La mission passée restera en attente tant qu'un Responsable ne l'aura pas validée.
+                {canSelfValidatePastMission
+                  ? 'Avec ton rôle actuel, la mission passée sera validée automatiquement à la création.'
+                  : "La mission passée restera en attente tant qu'un Responsable ne l'aura pas validée."
+                }
               </p>
             </div>
           </div>

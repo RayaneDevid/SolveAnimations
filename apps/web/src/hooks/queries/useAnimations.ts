@@ -36,6 +36,7 @@ export function useAnimations(filters: AnimationFilters = {}) {
 
 export interface CalendarAvailability {
   day: string
+  at: string
   occupiedCount: number
   presentCount: number
   absentCount: number
@@ -47,9 +48,9 @@ export interface CalendarAvailability {
   }
 }
 
-export function useCalendarAvailability(params: { day: string; from: string; to: string }) {
+export function useCalendarAvailability(params: { day: string; from: string; to: string; at?: string }) {
   return useQuery({
-    queryKey: queryKeys.calendar.availability(params.day),
+    queryKey: queryKeys.calendar.availability(params.day, params.at),
     queryFn: () => invokeEdge<CalendarAvailability>('calendar-availability', params),
   })
 }

@@ -6,12 +6,58 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const ACTIVE_STATUSES = ['open', 'preparing', 'running']
 type Pole = 'animation' | 'mj'
+type ActiveAnimation = {
+  id: string
+  creator_id: string | null
+  scheduled_at: string
+  planned_duration_min: number | null
+  prep_time_min: number | null
+  status: string
+  started_at: string | null
+  ended_at: string | null
+  prep_started_at: string | null
+  prep_ended_at: string | null
+}
 
 function inferPole(role: string | null, payPole: Pole | null): Pole | null {
   if (payPole) return payPole
   if (['direction', 'gerance', 'responsable', 'senior', 'animateur'].includes(role ?? '')) return 'animation'
   if (['responsable_mj', 'mj_senior', 'mj'].includes(role ?? '')) return 'mj'
   return null
+}
+
+function timestamp(value: string | null | undefined): number | null {
+  if (!value) return null
+  const time = Date.parse(value)
+  return Number.isFinite(time) ? time : null
+}
+
+function isAnimationActiveAt(animation: ActiveAnimation, atTime: number): boolean {
+  const scheduledAt = timestamp(animation.scheduled_at)
+  if (scheduledAt == null) return false
+
+  const plannedDurationMs = Math.max(1, Number(animation.planned_duration_min ?? 0)) * 60_000
+  const prepTimeMs = Math.max(0, Number(animation.prep_time_min ?? 0)) * 60_000
+
+  if (animation.status === 'running') {
+    const startedAt = timestamp(animation.started_at) ?? scheduledAt
+    const endedAt = timestamp(animation.ended_at)
+    return atTime >= startedAt && (endedAt == null || atTime < endedAt)
+  }
+
+  if (animation.status === 'preparing') {
+    const prepStartedAt = timestamp(animation.prep_started_at) ?? scheduledAt - prepTimeMs
+    const prepEndedAt = timestamp(animation.prep_ended_at)
+    return atTime >= prepStartedAt && (prepEndedAt == null || atTime < prepEndedAt)
+  }
+
+  if (animation.status === 'open') {
+    const startsAt = scheduledAt - prepTimeMs
+    const endsAt = scheduledAt + plannedDurationMs
+    return atTime >= startsAt && atTime < endsAt
+  }
+
+  return false
 }
 
 Deno.serve(async (req) => {
@@ -22,13 +68,17 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body = await req.json().catch(() => ({}))
-  const { day, from, to } = body as { day?: string; from?: string; to?: string }
+  const { day, from, to, at } = body as { day?: string; from?: string; to?: string; at?: string }
 
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     return errorResponse('VALIDATION_ERROR', 'day doit être au format YYYY-MM-DD')
   }
   if (!from || Number.isNaN(Date.parse(from)) || !to || Number.isNaN(Date.parse(to))) {
     return errorResponse('VALIDATION_ERROR', 'from/to doivent être des dates ISO valides')
+  }
+  const referenceAt = at ? new Date(at) : new Date()
+  if (Number.isNaN(referenceAt.getTime())) {
+    return errorResponse('VALIDATION_ERROR', 'at doit être une date ISO valide')
   }
 
   const db = getServiceClient()
@@ -49,6 +99,7 @@ Deno.serve(async (req) => {
       absentCount: 0,
       totalUsers: 0,
       activeAnimationCount: 0,
+      at: referenceAt.toISOString(),
       byPole: {
         animation: { occupiedCount: 0, presentCount: 0 },
         mj: { occupiedCount: 0, presentCount: 0 },
@@ -76,18 +127,18 @@ Deno.serve(async (req) => {
 
   const { data: animations, error: animationsError } = await db
     .from('animations')
-    .select('id, creator_id')
+    .select('id, creator_id, scheduled_at, planned_duration_min, prep_time_min, status, started_at, ended_at, prep_started_at, prep_ended_at')
     .in('status', ACTIVE_STATUSES)
-    .gte('scheduled_at', from)
-    .lt('scheduled_at', to)
 
   if (animationsError) return errorResponse('INTERNAL_ERROR', animationsError.message)
 
-  const animationIds = (animations ?? []).map((animation) => animation.id as string)
+  const activeAnimations = ((animations ?? []) as ActiveAnimation[])
+    .filter((animation) => isAnimationActiveAt(animation, referenceAt.getTime()))
+  const animationIds = activeAnimations.map((animation) => animation.id)
   const occupiedIds = new Set<string>()
 
-  for (const animation of animations ?? []) {
-    const creatorId = animation.creator_id as string | null
+  for (const animation of activeAnimations) {
+    const creatorId = animation.creator_id
     if (creatorId && presentIds.has(creatorId)) occupiedIds.add(creatorId)
   }
 
@@ -113,6 +164,7 @@ Deno.serve(async (req) => {
     absentCount: absentIds.size,
     totalUsers: profileIds.length,
     activeAnimationCount: animationIds.length,
+    at: referenceAt.toISOString(),
     byPole: {
       animation: {
         occupiedCount: Array.from(occupiedIds).filter((id) => profilePoleMap.get(id) === 'animation').length,

@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Check, X, Calendar, Clock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAnimations, useDeletionRequests } from '@/hooks/queries/useAnimations'
-import { useValidateAnimation, useRejectAnimation, useApproveDeletion, useDenyDeletion } from '@/hooks/mutations/useAnimationMutations'
-import type { AnimationStatus, DeletionRequest } from '@/types/database'
+import { useAnimations, useDeletionRequests, useTimeCorrectionRequests } from '@/hooks/queries/useAnimations'
+import {
+  useValidateAnimation, useRejectAnimation, useApproveDeletion, useDenyDeletion,
+  useApproveTimeCorrection, useDenyTimeCorrection,
+} from '@/hooks/mutations/useAnimationMutations'
+import type { AnimationStatus, DeletionRequest, TimeCorrectionRequest } from '@/types/database'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
@@ -255,10 +258,97 @@ function DeletionRequestCard({ request }: { request: DeletionRequest }) {
   )
 }
 
+function TimeCorrectionRequestCard({ request }: { request: TimeCorrectionRequest }) {
+  const { mutate: approve, isPending: approving } = useApproveTimeCorrection()
+  const { mutate: deny, isPending: denying } = useDenyTimeCorrection()
+  const anim = request.animation
+
+  const handleApprove = () => {
+    if (!confirm(`Appliquer la correction de temps pour "${anim?.title ?? 'cette animation'}" ?`)) return
+    approve(request.id, {
+      onSuccess: () => toast.success('Correction de temps appliquée.'),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
+  }
+
+  const handleDeny = () => {
+    deny(request.id, {
+      onSuccess: () => toast.success('Demande refusée.'),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Erreur'),
+    })
+  }
+
+  return (
+    <GlassCard className="p-5 border-amber-500/10">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          {anim ? (
+            <Link to={`/panel/animations/${anim.id}`} className="text-sm font-semibold text-white/90 hover:text-cyan-400 transition-colors">
+              {anim.title}
+            </Link>
+          ) : (
+            <span className="text-sm font-semibold text-white/90">Animation inconnue</span>
+          )}
+          {request.requester && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <UserAvatar avatarUrl={request.requester.avatar_url} username={request.requester.username} size="xs" />
+              <span className="text-xs text-white/40">Demandé par {request.requester.username}</span>
+            </div>
+          )}
+        </div>
+        {anim && <StatusBadge status={anim.status} />}
+      </div>
+
+      {anim && (
+        <div className="flex items-center gap-3 flex-wrap mb-3">
+          <div className="flex items-center gap-1.5 text-xs text-white/50">
+            <Calendar className="h-3.5 w-3.5 text-cyan-400" />
+            {formatDateTime(anim.scheduled_at)}
+          </div>
+          <ServerBadge server={anim.server} />
+          <VillageBadge village={anim.village} />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-3">
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
+          <p className="text-white/35 uppercase tracking-wider font-semibold mb-2">Actuel</p>
+          <p className="text-white/60">Début : {anim?.started_at ? formatDateTime(anim.started_at) : anim ? formatDateTime(anim.scheduled_at) : '—'}</p>
+          <p className="text-white/60">Animation : {formatDuration(anim?.actual_duration_min ?? anim?.planned_duration_min ?? 0)}</p>
+          <p className="text-white/60">Préparation : {formatDuration(anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)}</p>
+        </div>
+        <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3">
+          <p className="text-cyan-300 uppercase tracking-wider font-semibold mb-2">Demandé</p>
+          <p className="text-white/75">Début : {formatDateTime(request.requested_started_at)}</p>
+          <p className="text-white/75">Animation : {formatDuration(request.requested_actual_duration_min)}</p>
+          <p className="text-white/75">Préparation : {formatDuration(request.requested_actual_prep_time_min)}</p>
+        </div>
+      </div>
+
+      {request.reason && (
+        <p className="text-xs text-white/50 mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+          {request.reason}
+        </p>
+      )}
+
+      <div className="flex gap-2 pt-3 border-t border-white/[0.06]">
+        <Button onClick={handleApprove} disabled={approving || denying} variant="success" size="sm" className="flex-1 gap-2">
+          <Check className="h-3.5 w-3.5" />
+          {approving ? 'Application...' : 'Approuver'}
+        </Button>
+        <Button onClick={handleDeny} disabled={approving || denying} variant="outline" size="sm" className="flex-1 gap-2">
+          <X className="h-3.5 w-3.5" />
+          {denying ? 'Refus...' : 'Refuser'}
+        </Button>
+      </div>
+    </GlassCard>
+  )
+}
+
 export default function Validation() {
   const { permissionRoles } = useRequiredAuth()
   const canManageFullValidation = hasPermissionRole(permissionRoles, 'responsable')
-  const [tab, setTab] = useState<'pending' | 'open' | 'rejected' | 'deletion'>('pending')
+  const [tab, setTab] = useState<'pending' | 'open' | 'rejected' | 'deletion' | 'time'>('pending')
 
   const statusMap: Record<'pending' | 'open' | 'rejected', AnimationStatus> = {
     pending: 'pending_validation',
@@ -267,15 +357,17 @@ export default function Validation() {
   }
 
   const { data, isLoading } = useAnimations(
-    tab !== 'deletion' ? { status: statusMap[tab as 'pending' | 'open' | 'rejected'] } : {},
+    tab !== 'deletion' && tab !== 'time' ? { status: statusMap[tab as 'pending' | 'open' | 'rejected'] } : {},
   )
   const { data: deletionData, isLoading: deletionLoading } = useDeletionRequests(canManageFullValidation)
+  const { data: timeCorrectionData, isLoading: timeCorrectionLoading } = useTimeCorrectionRequests(canManageFullValidation)
 
-  const animations = tab !== 'deletion' ? (data?.animations ?? []) : []
+  const animations = tab !== 'deletion' && tab !== 'time' ? (data?.animations ?? []) : []
   const visibleAnimations = canManageFullValidation
     ? animations
     : animations.filter(isPastMissionForSeniorValidation)
   const deletionRequests = deletionData?.requests ?? []
+  const timeCorrectionRequests = timeCorrectionData?.requests ?? []
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -296,6 +388,14 @@ export default function Validation() {
                 {deletionRequests.length > 0 && (
                   <span className="ml-1.5 rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 leading-none">
                     {deletionRequests.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="time" className="relative">
+                Temps
+                {timeCorrectionRequests.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-amber-500/20 text-amber-300 text-xs px-1.5 py-0.5 leading-none">
+                    {timeCorrectionRequests.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -338,6 +438,26 @@ export default function Validation() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {deletionRequests.map((r) => <DeletionRequestCard key={r.id} request={r} />)}
+              </div>
+            )}
+          </TabsContent>
+        )}
+
+        {canManageFullValidation && (
+          <TabsContent value="time">
+            {timeCorrectionLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56" />)}
+              </div>
+            ) : timeCorrectionRequests.length === 0 ? (
+              <GlassCard className="p-12 text-center">
+                <p className="text-white/30 text-sm">Aucune demande de correction de temps</p>
+              </GlassCard>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {timeCorrectionRequests.map((request) => (
+                  <TimeCorrectionRequestCard key={request.id} request={request} />
+                ))}
               </div>
             )}
           </TabsContent>

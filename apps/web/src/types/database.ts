@@ -80,6 +80,37 @@ export interface DeletionRequest {
   requester?: Profile
 }
 
+export interface TimeCorrectionRequest {
+  id: string
+  animation_id: string
+  requested_by: string
+  requested_at: string
+  requested_started_at: string
+  requested_actual_duration_min: number
+  requested_actual_prep_time_min: number
+  reason: string | null
+  status: 'pending' | 'approved' | 'denied'
+  decided_by: string | null
+  decided_at: string | null
+  animation?: Pick<
+    Animation,
+    | 'id'
+    | 'title'
+    | 'status'
+    | 'scheduled_at'
+    | 'started_at'
+    | 'ended_at'
+    | 'planned_duration_min'
+    | 'actual_duration_min'
+    | 'prep_time_min'
+    | 'actual_prep_time_min'
+    | 'server'
+    | 'village'
+    | 'type'
+  >
+  requester?: Profile
+}
+
 export interface AnimationParticipant {
   id: string
   animation_id: string

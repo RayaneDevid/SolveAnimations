@@ -17,6 +17,8 @@ Deno.serve(async (req) => {
     server,
     village,
     type,
+    title,
+    member_id,
     creator_id,
     from,
     to,
@@ -27,6 +29,9 @@ Deno.serve(async (req) => {
   } = body
   const safePage = Math.max(1, Number.isFinite(Number(page)) ? Math.floor(Number(page)) : 1)
   const safePageSize = Math.min(100, Math.max(1, Number.isFinite(Number(pageSize)) ? Math.floor(Number(pageSize)) : 20))
+  const titleSearch = typeof title === 'string' ? title.trim().slice(0, 120) : ''
+  const memberId = typeof member_id === 'string' && /^[0-9a-f-]{36}$/i.test(member_id) ? member_id : null
+  if (member_id && !memberId) return errorResponse('VALIDATION_ERROR', 'member_id invalide')
 
   const db = getServiceClient()
 
@@ -44,6 +49,16 @@ Deno.serve(async (req) => {
     }
   }
 
+  let memberParticipantAnimationIds: string[] | null = null
+  if (memberId) {
+    const { data: participations } = await db
+      .from('animation_participants')
+      .select('animation_id')
+      .eq('user_id', memberId)
+      .eq('status', 'validated')
+    memberParticipantAnimationIds = (participations ?? []).map((p: { animation_id: string }) => p.animation_id)
+  }
+
   let query = db
     .from('animations')
     .select(`
@@ -58,7 +73,15 @@ Deno.serve(async (req) => {
   if (server)     query = query.eq('server', server)
   if (village)    query = query.eq('village', village)
   if (type)       query = query.eq('type', type)
+  if (titleSearch) query = query.ilike('title', `%${titleSearch}%`)
   if (creator_id) query = query.eq('creator_id', creator_id)
+  if (memberId) {
+    if (memberParticipantAnimationIds && memberParticipantAnimationIds.length > 0) {
+      query = query.or(`creator_id.eq.${memberId},id.in.(${memberParticipantAnimationIds.join(',')})`)
+    } else {
+      query = query.eq('creator_id', memberId)
+    }
+  }
   if (from)       query = query.gte('scheduled_at', from)
   if (to)         query = query.lte('scheduled_at', to)
 

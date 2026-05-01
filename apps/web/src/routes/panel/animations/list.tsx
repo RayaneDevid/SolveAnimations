@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useAnimations } from '@/hooks/queries/useAnimations'
+import { useAnimations, useMemberDirectory } from '@/hooks/queries/useAnimations'
 import type { AnimationStatus, Animation } from '@/types/database'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { VillageBadge } from '@/components/shared/VillageBadge'
+import { VillageBadge, VILLAGE_LABELS } from '@/components/shared/VillageBadge'
 import { ServerBadge } from '@/components/shared/ServerBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatDuration, formatTime } from '@/lib/utils/format'
+import { SERVERS, VILLAGES, type AnimationServer, type Village } from '@/lib/schemas/animation'
 
 const TYPE_LABELS = { moyenne: 'M', grande: 'G' } as const
 const TYPE_STYLES: Record<string, string> = {
@@ -24,6 +27,7 @@ type TabValue = 'active' | 'proposed' | 'all' | 'finished' | 'rejected'
 
 const ACTIVE_STATUSES: AnimationStatus[] = ['open', 'preparing', 'running']
 const PAGE_SIZE = 24
+const ALL_FILTER = 'all'
 
 const TABS: Array<{ value: TabValue; label: string }> = [
   { value: 'active',   label: 'Ouvertes & en cours' },
@@ -94,12 +98,33 @@ export default function AnimationsList() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabValue>('active')
   const [page, setPage] = useState(1)
+  const [finishedTitle, setFinishedTitle] = useState('')
+  const [finishedVillage, setFinishedVillage] = useState(ALL_FILTER)
+  const [finishedServer, setFinishedServer] = useState(ALL_FILTER)
+  const [finishedMemberId, setFinishedMemberId] = useState(ALL_FILTER)
   const asParticipant = searchParams.get('as_participant') === '1'
   const creatorId = searchParams.get('creator_id') ?? undefined
+  const { data: members = [] } = useMemberDirectory(activeTab === 'finished')
 
   useEffect(() => {
     setPage(1)
-  }, [asParticipant, creatorId])
+  }, [asParticipant, creatorId, finishedTitle, finishedVillage, finishedServer, finishedMemberId])
+
+  const finishedTitleSearch = finishedTitle.trim()
+  const hasFinishedFilters = finishedTitleSearch.length > 0 ||
+    finishedVillage !== ALL_FILTER ||
+    finishedServer !== ALL_FILTER ||
+    finishedMemberId !== ALL_FILTER
+
+  const finishedFilters = useMemo(() => {
+    if (activeTab !== 'finished') return {}
+    return {
+      ...(finishedTitleSearch ? { title: finishedTitleSearch } : {}),
+      ...(finishedVillage !== ALL_FILTER ? { village: finishedVillage as Village } : {}),
+      ...(finishedServer !== ALL_FILTER ? { server: finishedServer as AnimationServer } : {}),
+      ...(finishedMemberId !== ALL_FILTER ? { member_id: finishedMemberId } : {}),
+    }
+  }, [activeTab, finishedMemberId, finishedServer, finishedTitleSearch, finishedVillage])
 
   const tabFilters =
     activeTab === 'all'      ? {} :
@@ -109,6 +134,7 @@ export default function AnimationsList() {
 
   const filters = {
     ...tabFilters,
+    ...finishedFilters,
     ...(asParticipant ? { as_participant: true } : {}),
     ...(creatorId ? { creator_id: creatorId } : {}),
     page,
@@ -127,6 +153,13 @@ export default function AnimationsList() {
   const handleTabChange = (value: string) => {
     setActiveTab(value as TabValue)
     setPage(1)
+  }
+
+  const resetFinishedFilters = () => {
+    setFinishedTitle('')
+    setFinishedVillage(ALL_FILTER)
+    setFinishedServer(ALL_FILTER)
+    setFinishedMemberId(ALL_FILTER)
   }
 
   return (
@@ -154,6 +187,93 @@ export default function AnimationsList() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {activeTab === 'finished' && (
+          <GlassCard className="mt-4 p-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1.3fr_auto] xl:items-end">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                  Nom
+                </label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                  <Input
+                    value={finishedTitle}
+                    onChange={(event) => setFinishedTitle(event.target.value)}
+                    placeholder="Nom de l'animation"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                  Village
+                </label>
+                <Select value={finishedVillage} onValueChange={setFinishedVillage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Village" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER}>Tous les villages</SelectItem>
+                    {VILLAGES.map((village) => (
+                      <SelectItem key={village} value={village}>
+                        {VILLAGE_LABELS[village]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                  Serveur
+                </label>
+                <Select value={finishedServer} onValueChange={setFinishedServer}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Serveur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER}>Tous les serveurs</SelectItem>
+                    {SERVERS.map((server) => (
+                      <SelectItem key={server} value={server}>{server}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                  Créateur / participant
+                </label>
+                <Select value={finishedMemberId} onValueChange={setFinishedMemberId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Membre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER}>Tous les membres</SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetFinishedFilters}
+                disabled={!hasFinishedFilters}
+                className="gap-1.5"
+              >
+                <X className="h-3.5 w-3.5" />
+                Réinitialiser
+              </Button>
+            </div>
+          </GlassCard>
+        )}
 
         {TABS.map((t) => (
           <TabsContent key={t.value} value={t.value}>

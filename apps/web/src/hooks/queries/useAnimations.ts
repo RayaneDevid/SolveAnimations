@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
-import type { Animation, AnimationParticipant, DeletionRequest } from '@/types/database'
+import type { Animation, AnimationParticipant, DeletionRequest, TimeCorrectionRequest } from '@/types/database'
 import type { AnimationStatus } from '@/types/database'
 import type { AnimationServer, Village, AnimationType } from '@/lib/schemas/animation'
 
@@ -10,6 +10,8 @@ export interface AnimationFilters {
   server?: AnimationServer
   village?: Village
   type?: AnimationType
+  title?: string
+  member_id?: string
   creator_id?: string
   from?: string
   to?: string
@@ -58,7 +60,12 @@ export function useCalendarAvailability(params: { day: string; from: string; to:
 export function useAnimation(id: string) {
   return useQuery({
     queryKey: queryKeys.animations.detail(id),
-    queryFn: () => invokeEdge<{ animation: Animation; participants: AnimationParticipant[]; deletionRequest: DeletionRequest | null }>('animations-get', { id }),
+    queryFn: () => invokeEdge<{
+      animation: Animation
+      participants: AnimationParticipant[]
+      deletionRequest: DeletionRequest | null
+      timeCorrectionRequest: TimeCorrectionRequest | null
+    }>('animations-get', { id }),
     enabled: !!id,
   })
 }
@@ -67,6 +74,14 @@ export function useDeletionRequests(enabled = true) {
   return useQuery({
     queryKey: ['deletion-requests'],
     queryFn: () => invokeEdge<{ requests: DeletionRequest[] }>('deletion-requests-list'),
+    enabled,
+  })
+}
+
+export function useTimeCorrectionRequests(enabled = true) {
+  return useQuery({
+    queryKey: ['time-correction-requests'],
+    queryFn: () => invokeEdge<{ requests: TimeCorrectionRequest[] }>('time-correction-requests-list'),
     enabled,
   })
 }
@@ -239,11 +254,12 @@ export function useMembers() {
   })
 }
 
-export function useMemberDirectory() {
+export function useMemberDirectory(enabled = true) {
   return useQuery({
     queryKey: queryKeys.members.directory,
     queryFn: () => invokeEdge<import('@/types/database').MemberDirectoryEntry[]>('members-directory'),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 

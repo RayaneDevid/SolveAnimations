@@ -196,6 +196,57 @@ export function useDenyDeletion() {
   })
 }
 
+export function useRequestTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      animationId: string
+      requestedStartedAt: string
+      requestedActualDurationMin: number
+      requestedActualPrepTimeMin: number
+      reason?: string
+    }) =>
+      invokeEdge<{ request: { id: string } }>('animations-request-time-correction', {
+        animation_id: body.animationId,
+        requested_started_at: body.requestedStartedAt,
+        requested_actual_duration_min: body.requestedActualDurationMin,
+        requested_actual_prep_time_min: body.requestedActualPrepTimeMin,
+        reason: body.reason,
+      }),
+    onSuccess: (_, { animationId }) => {
+      invalidateAnimationCaches(qc, animationId)
+      qc.invalidateQueries({ queryKey: ['time-correction-requests'] })
+    },
+  })
+}
+
+export function useApproveTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ animation: Animation }>('animations-approve-time-correction', { request_id: requestId }),
+    onSuccess: (data) => {
+      invalidateAnimationCaches(qc, data.animation.id)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
+      qc.invalidateQueries({ queryKey: ['time-correction-requests'] })
+    },
+  })
+}
+
+export function useDenyTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ success: boolean }>('animations-deny-time-correction', { request_id: requestId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['time-correction-requests'] })
+      invalidateAnimationCaches(qc)
+    },
+  })
+}
+
 export function usePostponeAnimation() {
   const qc = useQueryClient()
   return useMutation({

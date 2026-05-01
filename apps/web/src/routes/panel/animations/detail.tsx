@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
   ArrowLeft, Play, Square, Clock, Users, Calendar,
-  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2,
+  Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2, Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAnimation, useMembers } from '@/hooks/queries/useAnimations'
@@ -11,7 +11,7 @@ import {
   useStopAnimation, useCancelAnimation, useDeleteAnimation,
   useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
-  useCorrectFinishedAnimation, useAddParticipantToFinished,
+  useCorrectFinishedAnimation, useAddParticipantToFinished, useRequestTimeCorrection,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -26,13 +26,14 @@ import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasPermissionRole } from '@/lib/config/discord'
 import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
-import type { AnimationParticipant, Animation } from '@/types/database'
+import type { AnimationParticipant, Animation, TimeCorrectionRequest } from '@/types/database'
 
 function FinishedEditForm({ animation }: { animation: Animation }) {
   const { mutateAsync: correct, isPending } = useCorrectFinishedAnimation()
@@ -159,6 +160,164 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
         </div>
       )}
     </GlassCard>
+  )
+}
+
+function TimeCorrectionRequestDialog({
+  animation,
+  open,
+  onClose,
+}: {
+  animation: Animation
+  open: boolean
+  onClose: () => void
+}) {
+  const { mutateAsync, isPending } = useRequestTimeCorrection()
+  const defaultStartedAt = animation.started_at ?? animation.scheduled_at
+  const [startedAt, setStartedAt] = useState<Date | undefined>(() => new Date(defaultStartedAt))
+  const [durationMin, setDurationMin] = useState(animation.actual_duration_min ?? animation.planned_duration_min)
+  const [prepMin, setPrepMin] = useState(animation.actual_prep_time_min ?? animation.prep_time_min ?? 0)
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setStartedAt(new Date(defaultStartedAt))
+    setDurationMin(animation.actual_duration_min ?? animation.planned_duration_min)
+    setPrepMin(animation.actual_prep_time_min ?? animation.prep_time_min ?? 0)
+    setReason('')
+  }, [animation.actual_duration_min, animation.actual_prep_time_min, animation.planned_duration_min, animation.prep_time_min, defaultStartedAt, open])
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!startedAt || Number.isNaN(startedAt.getTime())) {
+      toast.error('Date de début invalide')
+      return
+    }
+    if (!Number.isInteger(durationMin) || durationMin < 1 || durationMin > 720) {
+      toast.error('Durée animation invalide')
+      return
+    }
+    if (!Number.isInteger(prepMin) || prepMin < 0 || prepMin > 600) {
+      toast.error('Durée de préparation invalide')
+      return
+    }
+
+    try {
+      await mutateAsync({
+        animationId: animation.id,
+        requestedStartedAt: startedAt.toISOString(),
+        requestedActualDurationMin: durationMin,
+        requestedActualPrepTimeMin: prepMin,
+        reason: reason.trim() || undefined,
+      })
+      toast.success('Demande de correction envoyée aux responsables.')
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="bg-[#0F1014] border-white/[0.08] text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Demander une correction de temps</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label>Début réel</Label>
+            <RpDateTimePicker value={startedAt} onChange={setStartedAt} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Animation (min)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={720}
+                value={durationMin}
+                onChange={(event) => setDurationMin(Number(event.target.value))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Préparation (min)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={600}
+                value={prepMin}
+                onChange={(event) => setPrepMin(Number(event.target.value))}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Motif</Label>
+            <Textarea
+              rows={3}
+              maxLength={500}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Ex: chrono lancé trop tard, arrêt oublié..."
+            />
+            <p className="text-xs text-white/30 text-right">{reason.length}/500</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isPending} className="gap-2">
+              <Send className="h-3.5 w-3.5" />
+              {isPending ? 'Envoi...' : 'Envoyer'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TimeCorrectionRequestPanel({
+  animation,
+  pendingRequest,
+}: {
+  animation: Animation
+  pendingRequest: TimeCorrectionRequest | null
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <GlassCard className="p-5 space-y-3">
+        <div>
+          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+            Correction du temps
+          </h2>
+          <p className="text-xs text-white/35 mt-1">
+            Pour corriger un chrono oublié ou arrêté trop tard.
+          </p>
+        </div>
+
+        {pendingRequest ? (
+          <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Hourglass className="h-4 w-4 text-amber-400 shrink-0" />
+              <p className="text-xs font-medium text-amber-300">Demande en attente de validation</p>
+            </div>
+            <div className="text-xs text-amber-100/70 space-y-1">
+              <p>Début : {formatDateTime(pendingRequest.requested_started_at)}</p>
+              <p>Animation : {formatDuration(pendingRequest.requested_actual_duration_min)}</p>
+              <p>Préparation : {formatDuration(pendingRequest.requested_actual_prep_time_min)}</p>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" onClick={() => setOpen(true)} className="w-full gap-2">
+            <Clock className="h-4 w-4" />
+            Demander une correction
+          </Button>
+        )}
+      </GlassCard>
+      <TimeCorrectionRequestDialog animation={animation} open={open} onClose={() => setOpen(false)} />
+    </>
   )
 }
 
@@ -381,6 +540,7 @@ export default function AnimationDetail() {
   const navigate = useNavigate()
   const { user, permissionRoles } = useRequiredAuth()
   const [addParticipantOpen, setAddParticipantOpen] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync: start, isPending: starting } = useStartAnimation()
@@ -403,11 +563,17 @@ export default function AnimationDetail() {
 
   if (!data) return null
 
-  const { animation, participants, deletionRequest } = data
+  const { animation, participants, deletionRequest, timeCorrectionRequest } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
   const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
   const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
+  const scheduledAtHasPassed = new Date(animation.scheduled_at).getTime() <= Date.now()
+  const canRequestTimeCorrection =
+    isCreator &&
+    ['open', 'preparing', 'running', 'finished'].includes(animation.status) &&
+    (scheduledAtHasPassed || ['preparing', 'running', 'finished'].includes(animation.status)) &&
+    !(animation.status === 'finished' && canCorrectFinished)
   const isParticipant = participants.some(
     (p) => p.user_id === user.id && (p.status === 'pending' || p.status === 'validated'),
   )
@@ -418,6 +584,7 @@ export default function AnimationDetail() {
   const participantProgress = hasParticipantLimit
     ? Math.min(100, (validated.length / animation.required_participants) * 100)
     : 100
+  const descriptionNeedsToggle = (animation.description?.length ?? 0) > 180
 
   const handleStartPrep = async () => {
     try {
@@ -565,7 +732,20 @@ export default function AnimationDetail() {
               : 'Aucun participant demandé'}
           </div>
           {animation.description && (
-            <p className="text-sm text-white/60 line-clamp-2">{animation.description}</p>
+            <div className="w-full basis-full pt-1">
+              <p className={`text-sm leading-relaxed text-white/60 whitespace-pre-wrap break-words ${descriptionExpanded ? '' : 'line-clamp-2'}`}>
+                {animation.description}
+              </p>
+              {descriptionNeedsToggle && (
+                <button
+                  type="button"
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                  className="mt-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {descriptionExpanded ? 'Voir moins' : 'Voir plus'}
+                </button>
+              )}
+            </div>
           )}
         </div>
         <Progress value={participantProgress} className="mt-3" />
@@ -777,6 +957,13 @@ export default function AnimationDetail() {
 
               </div>
             </GlassCard>
+          )}
+
+          {canRequestTimeCorrection && (
+            <TimeCorrectionRequestPanel
+              animation={animation}
+              pendingRequest={timeCorrectionRequest}
+            />
           )}
 
           {/* Info */}

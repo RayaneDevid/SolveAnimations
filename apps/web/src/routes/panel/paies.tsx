@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -445,6 +445,8 @@ export default function Paies() {
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
   const showMj   = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_mj'])
 
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(showAnim ? 'animation' : 'mj')
+
   const poleAnim = useMemo(() =>
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'animation'), ANIM_PAY_ROLE_ORDER)
   , [data])
@@ -453,9 +455,11 @@ export default function Paies() {
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj'), MJ_PAY_ROLE_ORDER)
   , [data])
 
+  const activeEntries = activeTab === 'animation' ? poleAnim : poleMj
+
   const totals = useMemo(() => {
     if (!data) return null
-    const entries = data.entries
+    const entries = activeEntries
     return {
       totalRemuneration: entries.reduce((s, e) => s + e.remuneration, 0),
       totalAnimations: data.uniqueAnimationsCount,
@@ -560,26 +564,37 @@ export default function Paies() {
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-white/30 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          Anim : quota 5 anims + 4h, heures = animation + prépa
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-cyan-400" />
-          Anim : 0-4h × 1 000/h · 4-14h × 800/h · 14h+ × 1 250/h
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
-          Primes Anim : +1 000 crédits par podium top 3
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-400" />
-          MJ : quota 3 anims · base 4 000/5 000 + 800/h · +200 M / +300 G
-        </div>
-        <div className="flex items-center gap-1.5">
-          <TrendingUp className="h-3 w-3 text-amber-400" />
-          Plafond Anim : 17 000 hors primes
-        </div>
+        {activeTab === 'animation' ? (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              Quota 5 anims + 4h, heures = animation + prépa
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+              0-4h × 1 000/h · 4-14h × 800/h · 14h+ × 1 250/h
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              Primes : +1 000 crédits par podium top 3
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3 w-3 text-amber-400" />
+              Plafond temps : 17 000 hors primes
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-400" />
+              Quota 3 anims · base 4 000/5 000 + 800/h · +200 M / +300 G
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              Primes : +1 000 crédits par podium top 3
+            </div>
+          </>
+        )}
       </div>
 
       {/* Tables */}
@@ -595,7 +610,7 @@ export default function Paies() {
           ))}
         </GlassCard>
       ) : (
-        <Tabs defaultValue={showAnim ? 'animation' : 'mj'}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj')}>
           {showAnim && showMj && (
             <TabsList>
               <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>

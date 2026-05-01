@@ -18,6 +18,9 @@ import type { PaiesEntry } from '@/types/database'
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
 const ANIMATION_TIME_CAP = 17_000
+const MJ_HOURLY_RATE = 800
+const MJ_MOYENNE_REGISTRATION_BONUS = 200
+const MJ_GRANDE_REGISTRATION_BONUS = 300
 const MJ_PAY_CAP = 10_000
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
@@ -58,14 +61,15 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
     'Animations creees',
     'Participations',
     'Trames',
-    'Moyennes',
-    'Grandes',
+    'Inscriptions moyennes',
+    'Inscriptions grandes',
     'Temps animation (min)',
     'Temps preparation (min)',
     'Temps total (min)',
     'Quota',
     'Quota atteint',
     'Paie temps',
+    'Bonus inscriptions MJ',
     'Prime podium heures',
     'Prime podium creations',
     'Prime podium participations',
@@ -93,6 +97,9 @@ function buildPaiesCsv(entries: PaiesEntry[], poleLabel: string, weekLabel: stri
       : entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`,
     entry.quotaFilled ? 'Oui' : 'Non',
     entry.timePay,
+    entry.payPole === 'mj' && entry.quotaFilled
+      ? entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS + entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+      : 0,
     entry.hoursPodiumBonus,
     entry.createdPodiumBonus,
     entry.participationPodiumBonus,
@@ -209,9 +216,11 @@ function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
 
 function MjPayDetails({ entry }: { entry: PaiesEntry }) {
   const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
-  const moyennePay = entry.moyenne * 350
-  const grandePay = entry.grande * 500
-  const rawPay = (entry.quotaFilled ? basePay : 0) + moyennePay + grandePay
+  const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
+  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
+  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+  const registrationBonus = moyenneBonus + grandeBonus
+  const rawPay = entry.quotaFilled ? basePay + rawTimePay + registrationBonus : 0
 
   return (
     <>
@@ -225,8 +234,21 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(basePay) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
-      <PayDetailLine label={`Moyennes (${entry.moyenne} × 350)`} value={formatMoney(moyennePay)} />
-      <PayDetailLine label={`Grandes (${entry.grande} × 500)`} value={formatMoney(grandePay)} />
+      <PayDetailLine
+        label={`Temps (${formatMin(entry.totalMin)} × ${MJ_HOURLY_RATE}/h)`}
+        value={entry.quotaFilled ? formatMoney(rawTimePay) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label={`Inscriptions moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
+        value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label={`Inscriptions grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
+        value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
       {entry.remunerationCapped && (
         <>
           <PayDetailLine label="Sous-total" value={formatMoney(rawPay)} muted />
@@ -394,7 +416,7 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           )}
           {!isAnimationPay && entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              +{entry.payRole === 'mj_senior' ? '5 000' : '4 000'} base
+              base + temps + inscriptions
             </span>
           )}
         </div>
@@ -556,7 +578,7 @@ export default function Paies() {
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-400" />
-          MJ : Moyenne × 350 · Grande × 500 · base quota atteint
+          MJ : quota 3 anims · base 4 000/5 000 + 800/h · +200 M / +300 G
         </div>
         <div className="flex items-center gap-1.5">
           <TrendingUp className="h-3 w-3 text-amber-400" />
@@ -614,7 +636,7 @@ export default function Paies() {
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Créées</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Part.</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Trames</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">M / G</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Inscr. M/G</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Temps</th>

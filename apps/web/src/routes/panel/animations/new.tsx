@@ -23,16 +23,16 @@ const TYPE_DESCRIPTIONS = {
 
 const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: string }> = {
   classique: {
-    label: 'Mission classique',
-    description: 'Mission planifiée à venir, avec validation optionnelle.',
+    label: 'Animation classique',
+    description: 'Animation planifiée à venir, avec validation optionnelle.',
   },
   spontanee_bdm: {
     label: 'Mission spontanée / BDM',
     description: 'Créée immédiatement, sans participant demandé.',
   },
   passee: {
-    label: 'Mission passée',
-    description: 'Mission déjà jouée, soumise à validation Responsable.',
+    label: 'Animation passée',
+    description: 'Animation déjà jouée, soumise à validation Responsable.',
   },
 }
 
@@ -215,7 +215,7 @@ export default function NewAnimation() {
                 <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
                   <History className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-red-300/80">
-                    Une mission classique ne peut pas être antidatée. Utilise le type Mission passée.
+                    Une animation classique ne peut pas être antidatée. Utilise le type Mission passée.
                   </p>
                 </div>
               )}

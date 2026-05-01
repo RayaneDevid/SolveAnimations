@@ -63,14 +63,14 @@ export const createAnimationSchema = z
     if (value.scheduledAt && value.missionKind === 'classique' && value.scheduledAt.getTime() < Date.now()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Une mission classique ne peut pas être antidatée',
+        message: 'Une animation classique ne peut pas être antidatée',
         path: ['scheduledAt'],
       })
     }
     if (value.scheduledAt && isPastMission && value.scheduledAt.getTime() > Date.now()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Une mission passée ne peut pas être dans le futur',
+        message: 'Une animation passée ne peut pas être dans le futur',
         path: ['scheduledAt'],
       })
     }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -329,7 +330,12 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         <div className="flex items-center gap-3">
           <UserAvatar avatarUrl={entry.avatarUrl} username={entry.username} size="sm" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white/90 truncate">{entry.username}</p>
+            <Link
+              to={`/panel/casiers?user_id=${entry.id}`}
+              className="block truncate text-sm font-medium text-white/90 transition-colors hover:text-cyan-300"
+            >
+              {entry.username}
+            </Link>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <RoleBadge role={entry.role} />
               <span className={cn(

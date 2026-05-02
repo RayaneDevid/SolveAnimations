@@ -285,6 +285,7 @@ export interface PaiesEntry {
   participationPodiumBonus: number
   remuneration: number
   remunerationCapped: boolean
+  isRemoved: boolean
 }
 
 export interface AuditLogEntry {

@@ -165,16 +165,22 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   let mjFilled = 0
 
   for (const profile of quotaProfiles) {
-    if (absentIds.has(profile.id)) continue
     const role = profile.quotaRole as string
     const count = missionCount.get(profile.id) ?? 0
-    if (count === 0) continue  // pas d'activité cette semaine → non comptabilisé
+    const isAbsent = absentIds.has(profile.id)
+
     if (role in ANIM_QUOTA) {
+      const filled = count >= ANIM_QUOTA[role]
+      if (isAbsent && !filled) continue   // absent + quota non rempli → excusé, non comptabilisé
+      if (!isAbsent && count === 0) continue  // pas d'activité → non comptabilisé
       animTotal++
-      if (count >= ANIM_QUOTA[role]) animFilled++
+      if (filled) animFilled++
     } else if (role in MJ_QUOTA) {
+      const filled = count >= MJ_QUOTA[role]
+      if (isAbsent && !filled) continue   // absent + quota non rempli → excusé, non comptabilisé
+      if (!isAbsent && count === 0) continue  // pas d'activité → non comptabilisé
       mjTotal++
-      if (count >= MJ_QUOTA[role]) mjFilled++
+      if (filled) mjFilled++
     }
   }
 

@@ -94,8 +94,7 @@ Deno.serve(async (req) => {
 
   const { data: profiles, error: profilesError } = await db
     .from('profiles')
-    .select('id, username, avatar_url, role, pay_pole, discord_id, steam_id')
-    .eq('is_active', true)
+    .select('id, username, avatar_url, role, pay_pole, discord_id, steam_id, is_active')
     .order('username', { ascending: true })
 
   if (profilesError) return errorResponse('INTERNAL_ERROR', profilesError.message)
@@ -115,6 +114,7 @@ Deno.serve(async (req) => {
       payRole: PayRole
       discord_id: string
       steam_id: string | null
+      is_active: boolean
     }>
 
   const profileIds = eligibleProfiles.map((p) => p.id)
@@ -206,7 +206,9 @@ Deno.serve(async (req) => {
     formationCountMap.set(row.user_id, (formationCountMap.get(row.user_id) ?? 0) + 1)
   }
 
-  const baseEntries = eligibleProfiles.map((p) => {
+  const baseEntries = eligibleProfiles
+    .filter((p) => p.is_active || map.has(p.id))
+    .map((p) => {
     const s = map.get(p.id) ?? {
       animationsCount: 0, createdAnimationsCount: 0, participationsCount: 0,
       animationMin: 0, prepMin: 0,
@@ -260,6 +262,7 @@ Deno.serve(async (req) => {
         ? (quotaFilled ? animationTimePay.pay : 0)
         : rawMjRemuneration,
       remunerationCapped: isAnimationPay ? quotaFilled && animationTimePay.capped : false,
+      isRemoved: !p.is_active,
     }
   })
 

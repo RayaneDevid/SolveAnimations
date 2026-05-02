@@ -25,6 +25,7 @@ const MJ_GRANDE_REGISTRATION_BONUS = 300
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
+    if (a.isRemoved !== b.isRemoved) return a.isRemoved ? 1 : -1
     const ia = roleOrder.indexOf(a.payRole)
     const ib = roleOrder.indexOf(b.payRole)
     if (ia !== ib) return ia - ib
@@ -315,9 +316,11 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
   return (
     <tr className={cn(
       'border-b border-white/[0.04] transition-colors',
-      entry.quotaFilled
-        ? 'hover:bg-white/[0.02]'
-        : 'bg-red-500/[0.04] hover:bg-red-500/[0.07]',
+      entry.isRemoved
+        ? 'opacity-50'
+        : entry.quotaFilled
+          ? 'hover:bg-white/[0.02]'
+          : 'bg-red-500/[0.04] hover:bg-red-500/[0.07]',
       !hasActivity && !entry.quotaFilled && 'opacity-70',
     )}>
       <td className="py-3 pl-4 pr-2 text-xs text-white/30 w-8 tabular-nums">{rank}</td>
@@ -337,6 +340,11 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
               )}>
                 Paie {entry.payPole === 'mj' ? 'MJ' : 'Anim'}
               </span>
+              {entry.isRemoved && (
+                <span className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-white/40">
+                  Retiré
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -489,7 +497,7 @@ export default function Paies() {
   const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
 
   const handleExportCsv = (entries: PaiesEntry[], pole: 'animation' | 'mj') => {
-    const csv = buildPaiesCsv(entries, pole)
+    const csv = buildPaiesCsv(entries.filter((e) => !e.isRemoved), pole)
     downloadCsv(`paies-${pole}-${weekFileLabel}.csv`, csv)
   }
 

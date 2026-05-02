@@ -35,6 +35,7 @@ const CUSTOM_TOOLTIP_STYLE = {
 const QUOTA_COLORS = {
   filled: '#22c55e',
   missing: '#f97316',
+  absent: '#22d3ee',
 }
 
 function totalAnimations(counts: Record<string, number>): number {
@@ -85,6 +86,7 @@ function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion })
   const chartData = [
     { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: QUOTA_COLORS.filled },
     { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: QUOTA_COLORS.missing },
+    { name: 'Absents justifiés', value: data.absentPercent, count: data.absent, color: QUOTA_COLORS.absent },
   ].filter((entry) => entry.count > 0)
 
   return (
@@ -133,6 +135,15 @@ function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion })
                 </span>
                 <span className="font-medium text-white/80">{data.missing}/{data.total}</span>
               </div>
+              {data.absent > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-white/60">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-cyan-400" />
+                    Absents justifiés
+                  </span>
+                  <span className="font-medium text-white/80">{data.absent}/{data.total}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

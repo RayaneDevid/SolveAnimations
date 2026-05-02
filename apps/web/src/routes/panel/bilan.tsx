@@ -33,6 +33,7 @@ const MJ_ROLES = ['mj', 'mj_senior', 'responsable_mj']
 const QUOTA_COLORS = {
   filled: '#22c55e',
   missing: '#f97316',
+  absent: '#22d3ee',
 } as const
 
 type MemberBadgeVariant = 'default' | 'quotaMissing'
@@ -289,6 +290,7 @@ function QuotaPieSummary({ data }: { data?: QuotaCompletion }) {
   const chartData = [
     { name: 'Quota rempli', value: data.filledPercent, count: data.filled, color: QUOTA_COLORS.filled },
     { name: 'Quota non rempli', value: data.missingPercent, count: data.missing, color: QUOTA_COLORS.missing },
+    { name: 'Absents justifiés', value: data.absentPercent, count: data.absent, color: QUOTA_COLORS.absent },
   ].filter((entry) => entry.count > 0)
 
   if (data.total === 0) {
@@ -321,6 +323,12 @@ function QuotaPieSummary({ data }: { data?: QuotaCompletion }) {
             <span className="flex items-center gap-1.5 text-orange-100/70"><span className="h-2 w-2 rounded-sm bg-orange-500" />Non rempli</span>
             <span className="font-medium text-orange-100/80">{data.missing}/{data.total}</span>
           </div>
+          {data.absent > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-cyan-100/70"><span className="h-2 w-2 rounded-sm bg-cyan-400" />Absents just.</span>
+              <span className="font-medium text-cyan-100/80">{data.absent}/{data.total}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

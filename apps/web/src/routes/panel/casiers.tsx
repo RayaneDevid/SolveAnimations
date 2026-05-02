@@ -244,7 +244,7 @@ function FormerMemberCard({ member, onClick }: { member: FormerMemberEntry; onCl
 
 // ─── Active member detail panel ───────────────────────────────────────────────
 
-function MemberDetail({
+export function MemberDetail({
   member,
   canManageWarnings,
   onClose,
@@ -535,7 +535,7 @@ function WarningsSection({ userId, canCreate }: { userId: string; canCreate: boo
 
 // ─── Former member detail panel ───────────────────────────────────────────────
 
-function FormerMemberDetail({ member, onClose }: { member: FormerMemberEntry; onClose: () => void }) {
+export function FormerMemberDetail({ member, onClose }: { member: FormerMemberEntry; onClose: () => void }) {
   const { data: animsResult, isLoading: animsLoading } = useAnimations({ creator_id: member.id, pageSize: 100 })
   const { mutateAsync: reactivate, isPending: reactivating } = useReactivateMember()
 

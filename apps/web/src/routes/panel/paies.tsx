@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { AnimatePresence } from 'framer-motion'
 import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { usePaies } from '@/hooks/queries/useAnimations'
+import { useFormerMembers, useMembers, usePaies } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { useRequiredAuth } from '@/hooks/useAuth'
+import { FormerMemberDetail, MemberDetail } from '@/routes/panel/casiers'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
@@ -13,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils/cn'
-import { hasOwnedRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
 import type { PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
@@ -304,7 +305,7 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
 
 // ─── Table row ──────────────────────────────────────────────────────────────
 
-function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
+function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: number; onOpenCasier: (userId: string) => void }) {
   const hasActivity = entry.animationsCount > 0
   const isAnimationPay = entry.payPole === 'animation'
   const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafonné à 15 000 crédits'
@@ -330,12 +331,13 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
         <div className="flex items-center gap-3">
           <UserAvatar avatarUrl={entry.avatarUrl} username={entry.username} size="sm" />
           <div className="min-w-0">
-            <Link
-              to={`/panel/casiers?user_id=${entry.id}`}
+            <button
+              type="button"
+              onClick={() => onOpenCasier(entry.id)}
               className="block truncate text-sm font-medium text-white/90 transition-colors hover:text-cyan-300"
             >
               {entry.username}
-            </Link>
+            </button>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <RoleBadge role={entry.role} />
               <span className={cn(
@@ -466,11 +468,15 @@ export default function Paies() {
   const { user, permissionRoles } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
+  const { data: members = [] } = useMembers()
+  const { data: formerMembers = [] } = useFormerMembers()
+  const [selectedCasierId, setSelectedCasierId] = useState<string | null>(null)
 
   const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
     || (hasOwnedRole(permissionRoles, ['responsable']) && hasOwnedRole(permissionRoles, ['responsable_mj']))
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
   const showMj   = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_mj'])
+  const canManageWarnings = hasPermissionRole(permissionRoles, 'responsable')
 
   const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => {
     if (!showAnim) return 'mj'
@@ -485,6 +491,15 @@ export default function Paies() {
   const poleMj = useMemo(() =>
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj'), MJ_PAY_ROLE_ORDER)
   , [data])
+
+  const selectedActiveMember = useMemo(
+    () => members.find((member) => member.id === selectedCasierId) ?? null,
+    [members, selectedCasierId],
+  )
+  const selectedFormerMember = useMemo(
+    () => selectedActiveMember ? null : formerMembers.find((member) => member.id === selectedCasierId) ?? null,
+    [formerMembers, selectedActiveMember, selectedCasierId],
+  )
 
   const activeEntries = activeTab === 'animation' ? poleAnim : poleMj
 
@@ -694,7 +709,7 @@ export default function Paies() {
                           </tr>
                         ) : (
                           entries.map((entry, i) => (
-                            <EntryRow key={entry.id} entry={entry} rank={i + 1} />
+                            <EntryRow key={entry.id} entry={entry} rank={i + 1} onOpenCasier={setSelectedCasierId} />
                           ))
                         )}
                       </tbody>
@@ -718,6 +733,24 @@ export default function Paies() {
           })}
         </Tabs>
       )}
+
+      <AnimatePresence>
+        {selectedActiveMember && (
+          <MemberDetail
+            key={selectedActiveMember.id}
+            member={selectedActiveMember}
+            canManageWarnings={canManageWarnings}
+            onClose={() => setSelectedCasierId(null)}
+          />
+        )}
+        {selectedFormerMember && (
+          <FormerMemberDetail
+            key={selectedFormerMember.id}
+            member={selectedFormerMember}
+            onClose={() => setSelectedCasierId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

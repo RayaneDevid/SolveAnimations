@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { cn } from '@/lib/utils/cn'
+import { isMjStaffRole } from '@/lib/config/discord'
 import type { RecrutementSession, SeniorProfile } from '@/types/database'
 
 // ─── Multi-select seniors ─────────────────────────────────────────────────────
@@ -148,7 +149,7 @@ function CreateRecrutementForm({ onSuccess }: { onSuccess: () => void }) {
   const { mutateAsync, isPending } = useCreateRecrutement()
 
   const [type, setType] = useState<'ecrit' | 'oral'>('ecrit')
-  const [pole, setPole] = useState<'mj' | 'animation'>(() => user.pay_pole === 'mj' ? 'mj' : 'animation')
+  const [pole, setPole] = useState<'mj' | 'animation'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'animation')
   const [recruiterIds, setRecruiterIds] = useState<string[]>([])
   const [count, setCount] = useState(1)
   const [recruits, setRecruits] = useState<{ steam_id: string; name: string }[]>([{ steam_id: '', name: '' }])

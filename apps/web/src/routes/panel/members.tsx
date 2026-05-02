@@ -18,7 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasPermissionRole, type StaffRoleKey } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES, type StaffRoleKey } from '@/lib/config/discord'
 import { formatDate } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
@@ -834,7 +834,7 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Members() {
-  const { permissionRoles } = useRequiredAuth()
+  const { user, permissionRoles } = useRequiredAuth()
   const { data: members = [], isLoading } = useMembers()
   const { data: former = [], isLoading: isLoadingFormer } = useFormerMembers()
   const [removingMember, setRemovingMember] = useState<MemberEntry | null>(null)
@@ -891,7 +891,7 @@ export default function Members() {
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14" />)}
         </div>
       ) : (
-        <Tabs defaultValue="animation">
+        <Tabs defaultValue={user.pay_pole === 'mj' || hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'mj' : 'animation'}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <TabsList>
               <TabsTrigger value="management">Direction/Gérance ({managementMembers.length})</TabsTrigger>

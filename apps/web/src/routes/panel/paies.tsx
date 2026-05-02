@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils/cn'
-import { hasOwnedRole } from '@/lib/config/discord'
+import { hasOwnedRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
 import type { PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
@@ -469,7 +469,7 @@ export default function Paies() {
   const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => {
     if (!showAnim) return 'mj'
     if (!showMj) return 'animation'
-    return user.pay_pole === 'mj' ? 'mj' : 'animation'
+    return user.pay_pole === 'mj' || hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'mj' : 'animation'
   })
 
   const poleAnim = useMemo(() =>

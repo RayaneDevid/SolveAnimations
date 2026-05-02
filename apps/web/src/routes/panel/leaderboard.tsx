@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDuration } from '@/lib/utils/format'
+import { isMjStaffRole } from '@/lib/config/discord'
 import type { LeaderboardEntry } from '@/types/database'
 
 const MEDAL_STYLES = [
@@ -140,7 +141,7 @@ export default function Leaderboard() {
   const { user } = useRequiredAuth()
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [metric, setMetric] = useState<'byHours' | 'byAnimations' | 'byParticipations'>('byHours')
-  const [pole, setPole] = useState<'anim' | 'mj'>(() => user.pay_pole === 'mj' ? 'mj' : 'anim')
+  const [pole, setPole] = useState<'anim' | 'mj'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'anim')
   const { data, isLoading } = useLeaderboard(period)
 
   const rawEntries = data?.[metric] ?? []

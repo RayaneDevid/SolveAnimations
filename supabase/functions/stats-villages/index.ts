@@ -121,7 +121,7 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   const weekStartDate = parisDateString(weekStart)
   const weekEndDate = parisDateString(weekEnd)
 
-  const [{ data: finishedAnims }, { data: absences }] = await Promise.all([
+  const [{ data: finishedAnims }, { data: absences }, { data: trainingRows }] = await Promise.all([
     db
       .from('animations')
       .select('id, creator_id')
@@ -133,9 +133,16 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
       .select('user_id')
       .lt('from_date', weekEndDate)
       .gt('to_date', weekStartDate),
+    db
+      .from('training_trainers')
+      .select('user_id, training_sessions!inner(created_at)')
+      .gte('training_sessions.created_at' as never, weekStart.toISOString())
+      .lt('training_sessions.created_at' as never, weekEnd.toISOString())
+      .in('user_id', profileIds),
   ])
 
   const absentIds = new Set((absences ?? []).map((a: { user_id: string }) => a.user_id))
+  const profileIdSet = new Set(profileIds)
 
   // JOIN approach — évite le double .in(animation_id, ...).in(user_id, ...) dont l'URL GET
   // peut dépasser la limite et échouer silencieusement (data = null → participations = []).
@@ -152,11 +159,14 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
 
   const missionCount = new Map<string, number>()
   for (const anim of finishedAnims ?? []) {
-    if (!profileIds.includes(anim.creator_id)) continue
+    if (!profileIdSet.has(anim.creator_id)) continue
     missionCount.set(anim.creator_id, (missionCount.get(anim.creator_id) ?? 0) + 1)
   }
   for (const participation of participations ?? []) {
     missionCount.set(participation.user_id, (missionCount.get(participation.user_id) ?? 0) + 1)
+  }
+  for (const training of trainingRows ?? []) {
+    missionCount.set(training.user_id, (missionCount.get(training.user_id) ?? 0) + 1)
   }
 
   let animTotal = 0

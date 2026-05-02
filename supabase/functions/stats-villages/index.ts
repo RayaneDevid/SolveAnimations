@@ -119,20 +119,35 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     }
   }
 
-  const { data: finishedAnims } = await db
-    .from('animations')
-    .select('id, creator_id')
-    .eq('status', 'finished')
-    .gte('ended_at', weekStart.toISOString())
-    .lt('ended_at', weekEnd.toISOString())
+  const weekStartDate = parisDateString(weekStart)
+  const weekEndDate = parisDateString(weekEnd)
 
-  const animIds = (finishedAnims ?? []).map((a: { id: string }) => a.id)
-  const { data: participations } = animIds.length > 0
+  const [{ data: finishedAnims }, { data: absences }] = await Promise.all([
+    db
+      .from('animations')
+      .select('id, creator_id')
+      .eq('status', 'finished')
+      .gte('ended_at', weekStart.toISOString())
+      .lt('ended_at', weekEnd.toISOString()),
+    db
+      .from('user_absences')
+      .select('user_id')
+      .lt('from_date', weekEndDate)
+      .gt('to_date', weekStartDate),
+  ])
+
+  const absentIds = new Set((absences ?? []).map((a: { user_id: string }) => a.user_id))
+
+  // JOIN approach — évite le double .in(animation_id, ...).in(user_id, ...) dont l'URL GET
+  // peut dépasser la limite et échouer silencieusement (data = null → participations = []).
+  const { data: participations } = profileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id')
+        .select('user_id, animations!inner(ended_at)')
         .eq('status', 'validated')
-        .in('animation_id', animIds)
+        .eq('animations.status' as never, 'finished')
+        .gte('animations.ended_at' as never, weekStart.toISOString())
+        .lt('animations.ended_at' as never, weekEnd.toISOString())
         .in('user_id', profileIds)
     : { data: [] }
 
@@ -151,8 +166,10 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   let mjFilled = 0
 
   for (const profile of quotaProfiles) {
+    if (absentIds.has(profile.id)) continue
     const role = profile.quotaRole as string
     const count = missionCount.get(profile.id) ?? 0
+    if (count === 0) continue  // pas d'activité cette semaine → non comptabilisé
     if (role in ANIM_QUOTA) {
       animTotal++
       if (count >= ANIM_QUOTA[role]) animFilled++
@@ -166,6 +183,17 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     animation: buildQuotaSummary(animFilled, animTotal),
     mj: buildQuotaSummary(mjFilled, mjTotal),
   }
+}
+
+function parisDateString(date: Date): string {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date)
+  const y = parts.find((p) => p.type === 'year')?.value
+  const m = parts.find((p) => p.type === 'month')?.value
+  const d = parts.find((p) => p.type === 'day')?.value
+  return `${y}-${m}-${d}`
 }
 
 function buildQuotaSummary(filled: number, total: number) {

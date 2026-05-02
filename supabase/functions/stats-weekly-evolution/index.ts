@@ -65,21 +65,31 @@ Deno.serve(async (req) => {
       )
     : (rawAnims ?? [])
 
-  const animIds = (allAnims ?? []).map((a: { id: string }) => a.id)
-  const { data: participations, error: partsErr } = user_id && animIds.length > 0
+  // JOIN approach — évite le .in(animation_id, animIds) avec des centaines d'UUIDs.
+  // Le filtre de pôle (basé sur creator.role) est appliqué en JS après.
+  const { data: participations, error: partsErr } = user_id
     ? await db
-      .from('animation_participants')
-      .select('animation_id')
-      .eq('user_id', user_id)
-      .eq('status', 'validated')
-      .in('animation_id', animIds)
-    : { data: [], error: null }
+        .from('animation_participants')
+        .select('animation_id, animations!inner(creator_id, creator:profiles!animations_creator_id_fkey(role))')
+        .eq('user_id', user_id)
+        .eq('status', 'validated')
+        .eq('animations.status' as never, 'finished')
+        .gte('animations.ended_at' as never, oldest.toISOString())
+        .lt('animations.ended_at' as never, rangeEnd)
+    : { data: null, error: null }
 
   if (partsErr) {
-    return errorResponse('INTERNAL_ERROR', partsErr.message)
+    return errorResponse('INTERNAL_ERROR', (partsErr as { message: string }).message)
   }
 
-  const participatedAnimationIds = new Set((participations ?? []).map((p: { animation_id: string }) => p.animation_id))
+  type PartRow = { animation_id: string; animations: { creator_id: string; creator: { role: string } | null } | null }
+  const participatedAnimationIds = new Set(
+    (participations ?? [])
+      .filter((p: PartRow) =>
+        !pole || (p.animations?.creator?.role && (pole === 'anim' ? ANIM_ROLES : MJ_ROLES).includes(p.animations.creator.role))
+      )
+      .map((p: PartRow) => p.animation_id)
+  )
 
   // Apply user filter: animations created by the user + validated participations.
   const userAnims = user_id

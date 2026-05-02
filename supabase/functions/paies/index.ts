@@ -128,19 +128,18 @@ Deno.serve(async (req) => {
     .gte('ended_at', weekStart.toISOString())
     .lt('ended_at', weekEnd.toISOString())
 
-  // Validated participations on those animations
-  const animIds = (anims ?? []).map((a) => a.id)
-  const { data: participations } = animIds.length > 0
+  // Validated participations via JOIN — évite le .in(animation_id, animIds) qui génère
+  // une URL GET trop longue et échoue silencieusement (data = null → ?? [] → count = 0).
+  const { data: participationRows } = profileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animation_id')
+        .select('user_id, animations!inner(creator_id, type, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
-        .in('animation_id', animIds)
+        .eq('animations.status' as never, 'finished')
+        .gte('animations.ended_at' as never, weekStart.toISOString())
+        .lt('animations.ended_at' as never, weekEnd.toISOString())
         .in('user_id', profileIds)
     : { data: [] }
-
-  // Build a lookup: animId → animation
-  const animById = new Map((anims ?? []).map((a) => [a.id, a]))
 
   // Aggregate per user
   const map = new Map<string, {
@@ -178,8 +177,9 @@ Deno.serve(async (req) => {
   }
 
   // Participated animations (validated, not the creator)
-  for (const p of participations ?? []) {
-    const anim = animById.get(p.animation_id)
+  type AnimJoin = { creator_id: string; type: string; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null }
+  for (const p of (participationRows ?? []) as Array<{ user_id: string; animations: AnimJoin }>) {
+    const anim = p.animations
     if (!anim || anim.creator_id === p.user_id) continue
     const entry = getEntry(p.user_id)
     entry.animationsCount++

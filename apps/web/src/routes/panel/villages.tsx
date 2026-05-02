@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tool
 import { CalendarDays, ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react'
 import { useVillageStats, useWeeklyEvolution } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
+import { useRequiredAuth } from '@/hooks/useAuth'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -140,9 +141,13 @@ function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion })
   )
 }
 
+const MJ_ROLES = new Set(['mj', 'mj_senior', 'responsable_mj'])
+
 export default function Villages() {
+  const { user } = useRequiredAuth()
+  const defaultPole = user.pay_pole === 'mj' || MJ_ROLES.has(user.role) ? 'mj' : 'anim'
   const [selectedUser, setSelectedUser] = useState<string>('all')
-  const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>('anim')
+  const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>(defaultPole)
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading } = useVillageStats(bounds.start)
   const { data: evoData, isLoading: evoLoading } = useWeeklyEvolution(

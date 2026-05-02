@@ -438,7 +438,7 @@ export default function Bilan() {
   const { data: villageStats } = useVillageStats(bounds.start)
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => user.pay_pole === 'mj' ? 'mj' : 'animation')
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => user.pay_pole === 'mj' || isMjRole(user.role) ? 'mj' : 'animation')
   const [exporting, setExporting] = useState(false)
 
   const exportFileName = data

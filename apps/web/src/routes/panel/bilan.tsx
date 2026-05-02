@@ -2,12 +2,13 @@ import { useRef, useState } from 'react'
 import { addDays, format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { toPng } from 'html-to-image'
-import { AlertTriangle, CalendarOff, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, CalendarOff, ChevronLeft, ChevronRight, ClipboardList, Download, FileDown, LogOut, ShieldAlert, Target, UserX, type LucideIcon } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { useWeeklyReview, useVillageStats, type WeeklyReviewAbsence, type WeeklyReviewDeparture, type WeeklyReviewMember, type WeeklyReviewWarning } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
+import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { cn } from '@/lib/utils/cn'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -432,8 +433,9 @@ function PoleCards({
 
 export default function Bilan() {
   const { user } = useRequiredAuth()
-  const { data, isLoading } = useWeeklyReview()
-  const { data: villageStats } = useVillageStats()
+  const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
+  const { data, isLoading } = useWeeklyReview(bounds.start)
+  const { data: villageStats } = useVillageStats(bounds.start)
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => user.pay_pole === 'mj' ? 'mj' : 'animation')
@@ -562,7 +564,7 @@ export default function Bilan() {
       `}</style>
 
       <div id="weekly-review-export" className="space-y-8 bg-[#0A0B0F]">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
               <ClipboardList className="h-6 w-6 text-cyan-400" />
@@ -572,11 +574,38 @@ export default function Bilan() {
               Semaine active : {formatWeekRange(data.week.startDate, data.week.endDate)}
             </p>
           </div>
-          <p className="text-xs text-white/30">
-            {data.hasTwoWeekHistory
-              ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
-              : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
-          </p>
+          <div className="flex flex-col items-start gap-2 lg:items-end">
+            <div data-export-ignore="true" className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+              <button
+                onClick={goPrev}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+                title="Semaine précédente"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={goToday}
+                disabled={isCurrentWeek()}
+                className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-default transition-colors"
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Aujourd'hui
+              </button>
+              <button
+                onClick={goNext}
+                disabled={isCurrentWeek()}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/50 hover:text-white/80 hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-default transition-colors"
+                title="Semaine suivante"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-white/30">
+              {data.hasTwoWeekHistory
+                ? `Comparaison 2 semaines : ${formatWeekRange(data.previousWeek.startDate, data.week.endDate)}`
+                : `Contrôles x2 actifs à partir de la semaine suivant le ${formatShortDate(data.firstWeekStartDate)}`}
+            </p>
+          </div>
         </div>
 
         <div data-export-ignore="true" className="flex flex-wrap items-center gap-2">

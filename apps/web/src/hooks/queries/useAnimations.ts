@@ -150,10 +150,11 @@ export function useAbsencesSummary() {
   })
 }
 
-export function useVillageStats() {
+export function useVillageStats(weekStart?: Date) {
+  const weekStartIso = weekStart?.toISOString()
   return useQuery({
-    queryKey: queryKeys.stats.villages,
-    queryFn: () => invokeEdge<import('@/types/database').VillageStats>('stats-villages'),
+    queryKey: [...queryKeys.stats.villages, weekStartIso ?? 'current'],
+    queryFn: () => invokeEdge<import('@/types/database').VillageStats>('stats-villages', weekStartIso ? { week_start: weekStartIso } : {}),
   })
 }
 
@@ -232,10 +233,11 @@ export interface WeeklyReview {
   quotaMissingTwoWeeks: WeeklyReviewMember[]
 }
 
-export function useWeeklyReview() {
+export function useWeeklyReview(weekStart?: Date) {
+  const weekStartIso = weekStart?.toISOString()
   return useQuery({
-    queryKey: queryKeys.weeklyReview,
-    queryFn: () => invokeEdge<WeeklyReview>('weekly-review'),
+    queryKey: [...queryKeys.weeklyReview, weekStartIso ?? 'current'],
+    queryFn: () => invokeEdge<WeeklyReview>('weekly-review', weekStartIso ? { week_start: weekStartIso } : {}),
   })
 }
 

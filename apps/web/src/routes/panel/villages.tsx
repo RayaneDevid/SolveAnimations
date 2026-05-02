@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { PieChart as PieIcon } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react'
 import { useVillageStats, useWeeklyEvolution } from '@/hooks/queries/useAnimations'
+import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -140,7 +143,8 @@ function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion })
 export default function Villages() {
   const [selectedUser, setSelectedUser] = useState<string>('all')
   const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>('anim')
-  const { data, isLoading } = useVillageStats()
+  const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
+  const { data, isLoading } = useVillageStats(bounds.start)
   const { data: evoData, isLoading: evoLoading } = useWeeklyEvolution(
     selectedUser === 'all' ? null : selectedUser,
     12,
@@ -170,8 +174,9 @@ export default function Villages() {
 
   // Build stacked bar data
   const villages = Object.keys(VILLAGE_CHART_COLORS) as Village[]
+  const selectedWeekLabel = isCurrentWeek() ? 'Cette sem.' : format(bounds.start, 'dd/MM', { locale: fr })
   const barData = [...lastFourWeeks, currentWeek].map((w, i) => {
-    const label = i === lastFourWeeks.length ? 'Cette sem.' : `S-${lastFourWeeks.length - i}`
+    const label = i === lastFourWeeks.length ? selectedWeekLabel : `S-${lastFourWeeks.length - i}`
     return {
       name: label,
       weekStart: 'weekStart' in w ? w.weekStart : currentWeek.start,
@@ -184,14 +189,41 @@ export default function Villages() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <PieIcon className="h-6 w-6 text-cyan-400" />
-          Statistiques
-        </h1>
-        <p className="text-sm text-white/40 mt-0.5">
-          Répartition des animations par village
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <PieIcon className="h-6 w-6 text-cyan-400" />
+            Statistiques
+          </h1>
+          <p className="text-sm text-white/40 mt-0.5">
+            Répartition des animations par village
+          </p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+          <button
+            onClick={goPrev}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+            title="Semaine précédente"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            onClick={goToday}
+            disabled={isCurrentWeek()}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-default transition-colors"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Aujourd'hui
+          </button>
+          <button
+            onClick={goNext}
+            disabled={isCurrentWeek()}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white/50 hover:text-white/80 hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-default transition-colors"
+            title="Semaine suivante"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -301,7 +333,9 @@ export default function Villages() {
                 className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2"
               >
                 <span className="text-xs font-medium text-white/50">
-                  {week.name === 'Cette sem.' ? 'Cette semaine' : week.name}
+                  {week.name === selectedWeekLabel
+                    ? (isCurrentWeek() ? 'Cette semaine' : `Semaine du ${week.name}`)
+                    : week.name}
                 </span>
                 <span className="text-xs font-semibold text-white/80">
                   {week.totalAnimations} animation{week.totalAnimations > 1 ? 's' : ''} au total

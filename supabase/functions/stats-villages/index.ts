@@ -28,9 +28,8 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const db = getServiceClient()
-
-  const now = new Date()
-  const weekStart = computeWeekStart(now)
+  const body = await req.json().catch(() => ({}))
+  const weekStart = body.week_start ? new Date(body.week_start) : computeWeekStart(new Date())
   const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
 
   // Current week

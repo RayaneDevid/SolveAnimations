@@ -85,7 +85,8 @@ Deno.serve(async (req) => {
   if (guard) return guard
 
   const db = getServiceClient()
-  const currentStart = computeWeekStart(new Date())
+  const body = await req.json().catch(() => ({}))
+  const currentStart = body.week_start ? new Date(body.week_start) : computeWeekStart(new Date())
   const currentEnd = new Date(currentStart.getTime() + 7 * 24 * 60 * 60 * 1000)
   const previousStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000)
   const previousEnd = currentStart
@@ -216,27 +217,25 @@ async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<
 
   const { data: animations } = await db
     .from('animations')
-    .select('id, creator_id')
+    .select('creator_id')
     .eq('status', 'finished')
     .gte('ended_at', start.toISOString())
     .lt('ended_at', end.toISOString())
-
-  const animationIds = (animations ?? []).map((animation: { id: string }) => animation.id)
 
   for (const animation of animations ?? []) {
     counts.set(animation.creator_id, (counts.get(animation.creator_id) ?? 0) + 1)
   }
 
-  if (animationIds.length > 0) {
-    const { data: participations } = await db
-      .from('animation_participants')
-      .select('user_id')
-      .eq('status', 'validated')
-      .in('animation_id', animationIds)
+  const { data: participations } = await db
+    .from('animation_participants')
+    .select('user_id, animations!inner(ended_at)')
+    .eq('status', 'validated')
+    .eq('animations.status' as never, 'finished')
+    .gte('animations.ended_at' as never, start.toISOString())
+    .lt('animations.ended_at' as never, end.toISOString())
 
-    for (const participation of participations ?? []) {
-      counts.set(participation.user_id, (counts.get(participation.user_id) ?? 0) + 1)
-    }
+  for (const participation of participations ?? []) {
+    counts.set(participation.user_id, (counts.get(participation.user_id) ?? 0) + 1)
   }
 
   return counts

@@ -189,11 +189,9 @@ export interface VillageStats {
 export interface QuotaCompletion {
   filled: number
   missing: number
-  absent: number
   total: number
   filledPercent: number
   missingPercent: number
-  absentPercent: number
 }
 
 export interface LeaderboardEntry {

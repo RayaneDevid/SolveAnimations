@@ -159,12 +159,10 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     missionCount.set(participation.user_id, (missionCount.get(participation.user_id) ?? 0) + 1)
   }
 
+  let animTotal = 0
   let animFilled = 0
-  let animMissing = 0
-  let animAbsent = 0
+  let mjTotal = 0
   let mjFilled = 0
-  let mjMissing = 0
-  let mjAbsent = 0
 
   for (const profile of quotaProfiles) {
     const role = profile.quotaRole as string
@@ -173,20 +171,22 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
 
     if (role in ANIM_QUOTA) {
       const filled = count >= ANIM_QUOTA[role]
-      if (isAbsent && !filled) { animAbsent++; continue }
-      if (!isAbsent && count === 0) continue
-      if (filled) animFilled++; else animMissing++
+      if (isAbsent && !filled) continue   // absent + quota non rempli → excusé, non comptabilisé
+      if (!isAbsent && count === 0) continue  // pas d'activité → non comptabilisé
+      animTotal++
+      if (filled) animFilled++
     } else if (role in MJ_QUOTA) {
       const filled = count >= MJ_QUOTA[role]
-      if (isAbsent && !filled) { mjAbsent++; continue }
-      if (!isAbsent && count === 0) continue
-      if (filled) mjFilled++; else mjMissing++
+      if (isAbsent && !filled) continue   // absent + quota non rempli → excusé, non comptabilisé
+      if (!isAbsent && count === 0) continue  // pas d'activité → non comptabilisé
+      mjTotal++
+      if (filled) mjFilled++
     }
   }
 
   return {
-    animation: buildQuotaSummary(animFilled, animMissing, animAbsent),
-    mj: buildQuotaSummary(mjFilled, mjMissing, mjAbsent),
+    animation: buildQuotaSummary(animFilled, animTotal),
+    mj: buildQuotaSummary(mjFilled, mjTotal),
   }
 }
 
@@ -201,16 +201,14 @@ function parisDateString(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-function buildQuotaSummary(filled: number, missing: number, absent: number) {
-  const total = filled + missing + absent
+function buildQuotaSummary(filled: number, total: number) {
+  const missing = Math.max(total - filled, 0)
   return {
     filled,
     missing,
-    absent,
     total,
     filledPercent: total > 0 ? Math.round((filled / total) * 1000) / 10 : 0,
     missingPercent: total > 0 ? Math.round((missing / total) * 1000) / 10 : 0,
-    absentPercent: total > 0 ? Math.round((absent / total) * 1000) / 10 : 0,
   }
 }
 

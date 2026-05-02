@@ -188,7 +188,7 @@ function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
     <>
       <PayDetailLine
         label="Quota"
-        value={`${entry.animationsCount}/${entry.quotaMax ?? 5} anims`}
+        value={`${entry.animationsCount + entry.formationsCount}/${entry.quotaMax ?? 5}${entry.formationsCount > 0 ? ` (${entry.animationsCount} anims · ${entry.formationsCount} form.)` : ' anims'}`}
         muted={!entry.quotaFilled}
       />
       <PayDetailLine label="Temps compté" value={formatMin(entry.totalMin)} muted={entry.totalMin === 0} />
@@ -238,7 +238,7 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
     <>
       <PayDetailLine
         label="Quota"
-        value={entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount}/${entry.quotaMax}`}
+        value={entry.quotaMax == null ? 'Aucun' : `${entry.animationsCount + entry.formationsCount}/${entry.quotaMax}${entry.formationsCount > 0 ? ` (${entry.animationsCount} anims · ${entry.formationsCount} form.)` : ''}`}
         muted={!entry.quotaFilled}
       />
       <PayDetailLine
@@ -355,9 +355,9 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
       </td>
 
       <td className="py-3 pr-4 text-center tabular-nums">
-        {entry.trameReportsCount != null && entry.trameReportsCount > 0 ? (
+        {entry.formationsCount > 0 ? (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-violet-500/10 text-violet-400">
-            {entry.trameReportsCount}
+            {entry.formationsCount}
           </span>
         ) : (
           <span className="text-xs text-white/20">—</span>
@@ -415,7 +415,7 @@ function EntryRow({ entry, rank }: { entry: PaiesEntry; rank: number }) {
           </div>
           {!entry.quotaFilled && entry.quotaMax !== null && (
             <span className="text-[10px] text-red-400/60">
-              quota {entry.animationsCount}/{entry.quotaMax}
+              quota {entry.animationsCount + entry.formationsCount}/{entry.quotaMax}
             </span>
           )}
           {isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
@@ -476,14 +476,14 @@ export default function Paies() {
 
   const totals = useMemo(() => {
     if (!data) return null
-    const entries = activeEntries
     return {
-      totalRemuneration: entries.reduce((s, e) => s + e.remuneration, 0),
-      totalAnimations: data.uniqueAnimationsCount,
-      totalMin: data.uniqueAnimationsTotalMin,
-      activeCount: entries.filter((e) => e.animationsCount > 0).length,
+      totalRemuneration: activeEntries.reduce((s, e) => s + e.remuneration, 0),
+      totalAnimations: activeEntries.reduce((s, e) => s + e.createdAnimationsCount, 0),
+      totalMin: activeEntries.reduce((s, e) => s + e.animationMin + e.prepMin, 0),
+      activeCount: activeEntries.filter((e) => e.animationsCount > 0).length,
+      totalCount: activeEntries.length,
     }
-  }, [data])
+  }, [activeEntries, data])
 
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} – ${format(bounds.end, 'dd/MM', { locale: fr })}`
   const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
@@ -562,7 +562,7 @@ export default function Paies() {
           />
           <SummaryCard
             label="Membres actifs"
-            value={`${totals.activeCount} / ${data?.entries.length ?? 0}`}
+            value={`${totals.activeCount} / ${totals.totalCount}`}
             sub="avec au moins 1 animation"
           />
           <SummaryCard
@@ -662,7 +662,7 @@ export default function Paies() {
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Créées</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Part.</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Trames</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Formation</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Inscr. M/G</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>

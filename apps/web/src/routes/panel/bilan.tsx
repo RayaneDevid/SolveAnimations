@@ -309,8 +309,8 @@ function QuotaPieSummary({ data }: { data?: QuotaCompletion }) {
       </ResponsiveContainer>
       <div className="space-y-2">
         <div>
-          <p className="text-2xl font-bold text-white">{data.missingPercent.toFixed(1)}%</p>
-          <p className="text-[11px] text-orange-200/55">n'ont pas rempli leur quota</p>
+          <p className="text-2xl font-bold text-white">{data.filledPercent.toFixed(1)}%</p>
+          <p className="text-[11px] text-emerald-200/55">ont rempli leur quota</p>
         </div>
         <div className="space-y-1 text-xs">
           <div className="flex items-center justify-between gap-3">

@@ -191,18 +191,35 @@ Deno.serve(async (req) => {
     map.set(p.user_id, entry)
   }
 
+  // Formation sessions where user is a trainer this week
+  const { data: trainingRows } = profileIds.length > 0
+    ? await db
+        .from('training_trainers')
+        .select('user_id, training_sessions!inner(created_at)')
+        .gte('training_sessions.created_at' as never, weekStart.toISOString())
+        .lt('training_sessions.created_at' as never, weekEnd.toISOString())
+        .in('user_id', profileIds)
+    : { data: [] }
+
+  const formationCountMap = new Map<string, number>()
+  for (const row of (trainingRows ?? []) as Array<{ user_id: string }>) {
+    formationCountMap.set(row.user_id, (formationCountMap.get(row.user_id) ?? 0) + 1)
+  }
+
   const baseEntries = eligibleProfiles.map((p) => {
     const s = map.get(p.id) ?? {
       animationsCount: 0, createdAnimationsCount: 0, participationsCount: 0,
       animationMin: 0, prepMin: 0,
       moyenne: 0, grande: 0,
     }
+    const formationsCount = formationCountMap.get(p.id) ?? 0
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
     const totalMin = s.animationMin + s.prepMin
     const isAnimationPay = p.payPole === 'animation'
+    const missionCount = s.animationsCount + formationsCount
     const quotaFilled = isAnimationPay
-      ? s.animationsCount >= ANIMATION_QUOTA_COUNT
-      : quotaMax === null || s.animationsCount >= quotaMax
+      ? missionCount >= ANIMATION_QUOTA_COUNT
+      : quotaMax === null || missionCount >= quotaMax
 
     const basePay = BASE_PAY[p.payRole] ?? 0
     const seniorBase = isAnimationPay && p.payRole === 'senior' && quotaFilled ? SENIOR_BASE_PAY : 0
@@ -224,6 +241,7 @@ Deno.serve(async (req) => {
       animationsCount: s.animationsCount,
       createdAnimationsCount: s.createdAnimationsCount,
       participationsCount: s.participationsCount,
+      formationsCount,
       animationMin: s.animationMin,
       prepMin: s.prepMin,
       totalMin,

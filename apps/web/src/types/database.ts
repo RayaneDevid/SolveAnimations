@@ -268,6 +268,7 @@ export interface PaiesEntry {
   animationsCount: number
   createdAnimationsCount: number
   participationsCount: number
+  formationsCount: number
   animationMin: number
   prepMin: number
   totalMin: number
@@ -284,7 +285,6 @@ export interface PaiesEntry {
   participationPodiumBonus: number
   remuneration: number
   remunerationCapped: boolean
-  trameReportsCount?: number
 }
 
 export interface AuditLogEntry {

@@ -780,7 +780,12 @@ function FormerMembersTable({ entries }: { entries: FormerMemberEntry[] }) {
             <td className="px-4 py-3">
               <div className="flex items-center gap-2.5">
                 <UserAvatar avatarUrl={m.avatarUrl} username={m.username} size="sm" />
-                <span className="text-sm font-medium text-white/70">{m.username}</span>
+                <Link
+                  to={`/panel/casiers?user_id=${m.id}`}
+                  className="text-sm font-medium text-white/70 transition-colors hover:text-cyan-300"
+                >
+                  {m.username}
+                </Link>
               </div>
             </td>
             <td className="px-4 py-3"><RoleBadge role={m.role as never} /></td>

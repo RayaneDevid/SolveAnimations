@@ -125,19 +125,19 @@ Deno.serve(async (req) => {
     .from('animations')
     .select('id, creator_id, type, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
-    .gte('ended_at', weekStart.toISOString())
-    .lt('ended_at', weekEnd.toISOString())
+    .gte('started_at', weekStart.toISOString())
+    .lt('started_at', weekEnd.toISOString())
 
   // Validated participations via JOIN — évite le .in(animation_id, animIds) qui génère
   // une URL GET trop longue et échoue silencieusement (data = null → ?? [] → count = 0).
   const { data: participationRows } = profileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animations!inner(creator_id, type, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .select('user_id, animations!inner(creator_id, type, started_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
-        .gte('animations.ended_at' as never, weekStart.toISOString())
-        .lt('animations.ended_at' as never, weekEnd.toISOString())
+        .gte('animations.started_at' as never, weekStart.toISOString())
+        .lt('animations.started_at' as never, weekEnd.toISOString())
         .in('user_id', profileIds)
     : { data: [] }
 

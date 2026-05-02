@@ -33,11 +33,11 @@ Deno.serve(async (req) => {
   // Fetch all finished animations with creator info
   let animQuery = db
     .from('animations')
-    .select('id, creator_id, actual_duration_min, prep_time_min, actual_prep_time_min, ended_at, profiles!creator_id(id, username, avatar_url, role)')
+    .select('id, creator_id, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, profiles!creator_id(id, username, avatar_url, role)')
     .eq('status', 'finished')
 
   if (fromDate) {
-    animQuery = animQuery.gte('ended_at', fromDate)
+    animQuery = animQuery.gte('started_at', fromDate)
   }
 
   const { data: animations } = await animQuery
@@ -45,12 +45,12 @@ Deno.serve(async (req) => {
   // Fetch all validated participations on finished animations in the period
   let partQuery = db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
 
   if (fromDate) {
-    partQuery = partQuery.gte('animations.ended_at' as never, fromDate)
+    partQuery = partQuery.gte('animations.started_at' as never, fromDate)
   }
 
   const { data: participations } = await partQuery

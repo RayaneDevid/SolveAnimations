@@ -219,8 +219,8 @@ async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<
     .from('animations')
     .select('creator_id')
     .eq('status', 'finished')
-    .gte('ended_at', start.toISOString())
-    .lt('ended_at', end.toISOString())
+    .gte('started_at', start.toISOString())
+    .lt('started_at', end.toISOString())
 
   for (const animation of animations ?? []) {
     counts.set(animation.creator_id, (counts.get(animation.creator_id) ?? 0) + 1)
@@ -228,11 +228,11 @@ async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<
 
   const { data: participations } = await db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at)')
+    .select('user_id, animations!inner(started_at)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
-    .gte('animations.ended_at' as never, start.toISOString())
-    .lt('animations.ended_at' as never, end.toISOString())
+    .gte('animations.started_at' as never, start.toISOString())
+    .lt('animations.started_at' as never, end.toISOString())
 
   for (const participation of participations ?? []) {
     counts.set(participation.user_id, (counts.get(participation.user_id) ?? 0) + 1)

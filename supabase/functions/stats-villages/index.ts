@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
     .from('animations')
     .select('village')
     .eq('status', 'finished')
-    .gte('ended_at', weekStart.toISOString())
-    .lt('ended_at', weekEnd.toISOString())
+    .gte('started_at', weekStart.toISOString())
+    .lt('started_at', weekEnd.toISOString())
 
   const currentCounts = buildCounts(currentAnims ?? [])
   const currentTotal = Object.values(currentCounts).reduce((s, v) => s + v, 0)
@@ -55,8 +55,8 @@ Deno.serve(async (req) => {
       .from('animations')
       .select('village')
       .eq('status', 'finished')
-      .gte('ended_at', wStart.toISOString())
-      .lt('ended_at', wEnd.toISOString())
+      .gte('started_at', wStart.toISOString())
+      .lt('started_at', wEnd.toISOString())
 
     const counts = buildCounts(anims ?? [])
     const total = Object.values(counts).reduce((s, v) => s + v, 0)
@@ -126,8 +126,8 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
       .from('animations')
       .select('id, creator_id')
       .eq('status', 'finished')
-      .gte('ended_at', weekStart.toISOString())
-      .lt('ended_at', weekEnd.toISOString()),
+      .gte('started_at', weekStart.toISOString())
+      .lt('started_at', weekEnd.toISOString()),
     db
       .from('user_absences')
       .select('user_id')
@@ -149,11 +149,11 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   const { data: participations } = profileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animations!inner(ended_at)')
+        .select('user_id, animations!inner(started_at)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
-        .gte('animations.ended_at' as never, weekStart.toISOString())
-        .lt('animations.ended_at' as never, weekEnd.toISOString())
+        .gte('animations.started_at' as never, weekStart.toISOString())
+        .lt('animations.started_at' as never, weekEnd.toISOString())
         .in('user_id', profileIds)
     : { data: [] }
 

@@ -49,10 +49,10 @@ Deno.serve(async (req) => {
   // Fetch all finished animations in range with creator role (for pole filter)
   const { data: rawAnims, error: allErr } = await db
     .from('animations')
-    .select('id, ended_at, creator_id, creator:profiles!animations_creator_id_fkey(role)')
+    .select('id, started_at, creator_id, creator:profiles!animations_creator_id_fkey(role)')
     .eq('status', 'finished')
-    .gte('ended_at', oldest.toISOString())
-    .lt('ended_at', rangeEnd)
+    .gte('started_at', oldest.toISOString())
+    .lt('started_at', rangeEnd)
 
   if (allErr) {
     return errorResponse('INTERNAL_ERROR', allErr.message)
@@ -70,12 +70,12 @@ Deno.serve(async (req) => {
   const { data: participations, error: partsErr } = user_id
     ? await db
         .from('animation_participants')
-        .select('animation_id, animations!inner(creator_id, creator:profiles!animations_creator_id_fkey(role))')
+        .select('animation_id, animations!inner(started_at, creator_id, creator:profiles!animations_creator_id_fkey(role))')
         .eq('user_id', user_id)
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
-        .gte('animations.ended_at' as never, oldest.toISOString())
-        .lt('animations.ended_at' as never, rangeEnd)
+        .gte('animations.started_at' as never, oldest.toISOString())
+        .lt('animations.started_at' as never, rangeEnd)
     : { data: null, error: null }
 
   if (partsErr) {
@@ -100,8 +100,8 @@ Deno.serve(async (req) => {
 
   // Count per bucket
   const weekData = buckets.map(({ weekStart, weekEnd, label }) => {
-    const inRange = (a: { ended_at: string }) => {
-      const t = new Date(a.ended_at).getTime()
+    const inRange = (a: { started_at: string }) => {
+      const t = new Date(a.started_at).getTime()
       return t >= weekStart.getTime() && t < weekEnd.getTime()
     }
     const count = userAnims.filter(inRange).length

@@ -36,8 +36,8 @@ Deno.serve(async (req) => {
     .from('animations')
     .select('creator_id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
-    .gte('ended_at', weekStart.toISOString())
-    .lt('ended_at', weekEnd.toISOString())
+    .gte('started_at', weekStart.toISOString())
+    .lt('started_at', weekEnd.toISOString())
     .in('creator_id', profileIds)
 
   // Total finished animations per creator (all time)
@@ -50,11 +50,11 @@ Deno.serve(async (req) => {
   // Weekly validated participations
   const { data: weeklyParts } = await db
     .from('animation_participants')
-    .select('user_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
-    .gte('animations.ended_at' as never, weekStart.toISOString())
-    .lt('animations.ended_at' as never, weekEnd.toISOString())
+    .gte('animations.started_at' as never, weekStart.toISOString())
+    .lt('animations.started_at' as never, weekEnd.toISOString())
     .in('user_id', profileIds)
 
   // Current absences: to_date is the return date, so it no longer blocks that day.

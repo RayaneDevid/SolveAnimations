@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     .select('id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('creator_id', targetId)
     .eq('status', 'finished')
-    .gte('ended_at', weekStart)
-    .lt('ended_at', weekEnd)
+    .gte('started_at', weekStart)
+    .lt('started_at', weekEnd)
 
   const animationsCreated = finishedAnims?.length ?? 0
   const hoursFromCreated = (finishedAnims ?? []).reduce(
@@ -73,12 +73,12 @@ Deno.serve(async (req) => {
   // Participations validated on finished animations this week
   const { data: participationRows } = await db
     .from('animation_participants')
-    .select('animation_id, animations!inner(ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('animation_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
-    .gte('animations.ended_at' as never, weekStart)
-    .lt('animations.ended_at' as never, weekEnd)
+    .gte('animations.started_at' as never, weekStart)
+    .lt('animations.started_at' as never, weekEnd)
 
   const participationsValidated = participationRows?.length ?? 0
   const hoursFromParticipations = (participationRows ?? []).reduce(

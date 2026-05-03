@@ -484,7 +484,7 @@ export function useCreateWarning() {
 export function useCreateBroadcast() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title?: string; message: string; audience: 'all' | 'selected'; recipientIds?: string[] }) =>
+    mutationFn: (body: { title?: string; message: string; audience: import('@/types/database').Broadcast['audience']; recipientIds?: string[] }) =>
       invokeEdge<{ broadcast: import('@/types/database').Broadcast }>('broadcasts-create', {
         title: body.title,
         message: body.message,

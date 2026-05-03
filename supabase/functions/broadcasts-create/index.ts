@@ -5,6 +5,8 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
+const AUDIENCES = new Set(['all', 'selected', 'pole_animation', 'pole_mj', 'pole_bdm'])
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -18,7 +20,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
   const title = typeof body.title === 'string' ? body.title.trim() : ''
   const message = typeof body.message === 'string' ? body.message.trim() : ''
-  const audience = body.audience === 'selected' ? 'selected' : 'all'
+  const audience = typeof body.audience === 'string' && AUDIENCES.has(body.audience) ? body.audience : 'all'
   const recipientIds = Array.isArray(body.recipient_ids)
     ? Array.from(new Set(body.recipient_ids.filter((id: unknown) => typeof id === 'string')))
     : []

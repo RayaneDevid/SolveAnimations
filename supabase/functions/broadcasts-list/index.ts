@@ -4,6 +4,24 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
+function rolePool(profile: { role: string; available_roles?: string[] | null }): string[] {
+  return Array.from(new Set([...(profile.available_roles ?? []), profile.role]))
+}
+
+function isInAudience(profile: { role: string; available_roles?: string[] | null; pay_pole?: 'animation' | 'mj' | null }, audience: string): boolean {
+  const roles = rolePool(profile)
+  if (audience === 'pole_animation') {
+    return profile.pay_pole === 'animation' || roles.some((role) => ['responsable', 'senior', 'animateur'].includes(role))
+  }
+  if (audience === 'pole_mj') {
+    return profile.pay_pole === 'mj' || roles.some((role) => ['responsable_mj', 'mj_senior', 'mj'].includes(role))
+  }
+  if (audience === 'pole_bdm') {
+    return roles.some((role) => ['responsable_bdm', 'bdm'].includes(role))
+  }
+  return false
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -38,6 +56,7 @@ Deno.serve(async (req) => {
     .filter((broadcast) =>
       broadcast.audience === 'all' ||
       targetedIds.has(broadcast.id) ||
+      isInAudience(profile, broadcast.audience) ||
       broadcast.created_by === profile.id
     )
 

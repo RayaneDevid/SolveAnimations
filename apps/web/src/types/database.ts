@@ -163,7 +163,7 @@ export interface Broadcast {
   id: string
   title: string | null
   message: string
-  audience: 'all' | 'selected'
+  audience: 'all' | 'selected' | 'pole_animation' | 'pole_mj' | 'pole_bdm'
   created_by: string | null
   created_at: string
   archived_at: string | null

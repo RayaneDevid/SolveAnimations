@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X } from 'lucide-react'
+import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -23,6 +23,20 @@ import { formatDateTime, formatTime } from '@/lib/utils/format'
 import { hasOwnedRole, ROLE_LABELS } from '@/lib/config/discord'
 import { cn } from '@/lib/utils/cn'
 import type { Broadcast } from '@/types/database'
+
+type BroadcastAudience = Broadcast['audience']
+
+const BROADCAST_AUDIENCE_OPTIONS: Array<{ value: BroadcastAudience; label: string; description: string }> = [
+  { value: 'all', label: 'Tout le monde', description: 'Visible par tous les utilisateurs.' },
+  { value: 'pole_animation', label: 'Pôle Animation', description: 'Visible par le pôle Animation.' },
+  { value: 'pole_mj', label: 'Pôle MJ', description: 'Visible par le pôle MJ.' },
+  { value: 'pole_bdm', label: 'Pôle BDM', description: 'Visible par le pôle BDM.' },
+  { value: 'selected', label: 'Utilisateurs sélectionnés', description: 'Visible uniquement par la sélection.' },
+]
+
+function broadcastAudienceLabel(audience: BroadcastAudience): string {
+  return BROADCAST_AUDIENCE_OPTIONS.find((option) => option.value === audience)?.label ?? 'Ciblé'
+}
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction: null,
@@ -92,8 +106,14 @@ function BroadcastCenter({
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
-  const [audience, setAudience] = useState<'all' | 'selected'>('all')
+  const [audience, setAudience] = useState<BroadcastAudience>('all')
   const [recipientIds, setRecipientIds] = useState<string[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+
+  const normalizedSearch = memberSearch.trim().toLowerCase()
+  const filteredMembers = normalizedSearch
+    ? members.filter((member) => member.username.toLowerCase().includes(normalizedSearch))
+    : members
 
   const toggleRecipient = (userId: string) => {
     setRecipientIds((current) =>
@@ -108,6 +128,7 @@ function BroadcastCenter({
     setMessage('')
     setAudience('all')
     setRecipientIds([])
+    setMemberSearch('')
     setShowForm(false)
   }
 
@@ -208,14 +229,11 @@ function BroadcastCenter({
             rows={4}
           />
           <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'all', label: 'Tout le monde' },
-              { value: 'selected', label: 'Utilisateurs sélectionnés' },
-            ].map((option) => (
+            {BROADCAST_AUDIENCE_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setAudience(option.value as typeof audience)}
+                onClick={() => setAudience(option.value)}
                 className={cn(
                   'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                   audience === option.value
@@ -228,28 +246,46 @@ function BroadcastCenter({
             ))}
           </div>
           {audience === 'selected' && (
-            <div className="max-h-44 overflow-y-auto rounded-xl border border-white/[0.08] bg-black/10 p-2">
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                {members.map((member) => (
-                  <label
-                    key={member.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 hover:bg-white/[0.04]"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={recipientIds.includes(member.id)}
-                      onChange={() => toggleRecipient(member.id)}
-                      className="h-3.5 w-3.5 accent-cyan-400"
-                    />
-                    <span className="truncate">{member.username}</span>
-                  </label>
-                ))}
+            <div className="space-y-2 rounded-xl border border-white/[0.08] bg-black/10 p-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                <Input
+                  value={memberSearch}
+                  onChange={(event) => setMemberSearch(event.target.value)}
+                  placeholder="Rechercher un pseudo"
+                  className="h-9 pl-9"
+                />
+              </div>
+              <div className="max-h-44 overflow-y-auto">
+                {filteredMembers.length === 0 ? (
+                  <p className="px-2 py-6 text-center text-xs text-white/30">Aucun membre trouvé</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredMembers.map((member) => (
+                      <label
+                        key={member.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 hover:bg-white/[0.04]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={recipientIds.includes(member.id)}
+                          onChange={() => toggleRecipient(member.id)}
+                          className="h-3.5 w-3.5 accent-cyan-400"
+                        />
+                        <UserAvatar avatarUrl={member.avatarUrl} username={member.username} size="xs" />
+                        <span className="truncate">{member.username}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-white/35">
-              {audience === 'all' ? 'Visible par tous les utilisateurs.' : `${recipientIds.length} destinataire(s) sélectionné(s).`}
+              {audience === 'selected'
+                ? `${recipientIds.length} destinataire(s) sélectionné(s).`
+                : BROADCAST_AUDIENCE_OPTIONS.find((option) => option.value === audience)?.description}
             </p>
             <Button
               type="button"
@@ -284,7 +320,7 @@ function BroadcastCenter({
                       {broadcast.title || 'Annonce'}
                     </p>
                     <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/40">
-                      {broadcast.audience === 'all' ? 'Tout le monde' : 'Ciblé'}
+                      {broadcastAudienceLabel(broadcast.audience)}
                     </span>
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white/70">

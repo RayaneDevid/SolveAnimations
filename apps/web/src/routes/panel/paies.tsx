@@ -20,7 +20,8 @@ import type { PaiesEntry } from '@/types/database'
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
 const ANIMATION_TIME_CAP = 17_000
-const MJ_TIME_BONUS_CAP = 20_000
+const MJ_BEFORE_PODIUM_CAP = 17_000
+const MJ_TOTAL_CAP = 20_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
 const MJ_GRANDE_REGISTRATION_BONUS = 300
@@ -81,17 +82,20 @@ function buildMjCommentaire(entry: PaiesEntry): string {
   const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
   const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
   const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawVariablePay = rawTimePay + moyenneBonus + grandeBonus + entry.podiumBonus
+  const rawBeforePodiumPay = basePay + rawTimePay + moyenneBonus + grandeBonus
+  const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
+  const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const parts: string[] = [
     `Base quota: ${basePay}`,
     `Temps (${formatMin(entry.totalMin)} x ${MJ_HOURLY_RATE}/h): ${rawTimePay}`,
     `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
     `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
   ]
+  if (rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP) parts.push(`Base + temps + inscriptions plafonné à ${MJ_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
   if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
-  if (entry.remunerationCapped) parts.push(`Temps + primes plafonné à ${MJ_TIME_BONUS_CAP} (brut: ${rawVariablePay})`)
+  if (rawTotalPay > MJ_TOTAL_CAP) parts.push(`Total plafonné à ${MJ_TOTAL_CAP} (brut: ${rawTotalPay})`)
   return parts.join(' | ')
 }
 
@@ -240,8 +244,11 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
   const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
   const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
   const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawVariablePay = rawTimePay + moyenneBonus + grandeBonus + entry.podiumBonus
-  const paidVariablePay = Math.max(entry.remuneration - (entry.quotaFilled ? basePay : 0), 0)
+  const rawBeforePodiumPay = basePay + rawTimePay + moyenneBonus + grandeBonus
+  const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
+  const rawTotalPay = beforePodiumPay + entry.podiumBonus
+  const beforePodiumCapped = rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP
+  const totalCapped = rawTotalPay > MJ_TOTAL_CAP
   return (
     <>
       <PayDetailLine
@@ -269,6 +276,12 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
+      {beforePodiumCapped && (
+        <>
+          <PayDetailLine label="Sous-total hors podium" value={formatMoney(rawBeforePodiumPay)} muted />
+          <PayDetailLine label="Plafond hors podium" value={formatMoney(MJ_BEFORE_PODIUM_CAP)} />
+        </>
+      )}
       {entry.hoursPodiumBonus > 0 && (
         <PayDetailLine label="Prime podium heures" value={`+${formatMoney(entry.hoursPodiumBonus)}`} />
       )}
@@ -278,14 +291,14 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
       {entry.participationPodiumBonus > 0 && (
         <PayDetailLine label="Prime podium participations" value={`+${formatMoney(entry.participationPodiumBonus)}`} />
       )}
-      {entry.remunerationCapped && (
+      {totalCapped && (
         <>
-          <PayDetailLine label="Sous-total temps + primes" value={formatMoney(rawVariablePay)} muted />
-          <PayDetailLine label="Plafond temps + primes" value={formatMoney(MJ_TIME_BONUS_CAP)} />
+          <PayDetailLine label="Sous-total avec podium" value={formatMoney(rawTotalPay)} muted />
+          <PayDetailLine label="Plafond total" value={formatMoney(MJ_TOTAL_CAP)} />
         </>
       )}
       {entry.quotaFilled && (
-        <PayDetailLine label="Variable payée" value={formatMoney(paidVariablePay)} />
+        <PayDetailLine label="Total payé" value={formatMoney(Math.min(rawTotalPay, MJ_TOTAL_CAP))} />
       )}
       <PayDetailLine label="Total" value={formatMoney(entry.remuneration)} highlight />
     </>
@@ -322,7 +335,7 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
 function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: number; onOpenCasier: (userId: string) => void }) {
   const hasActivity = entry.animationsCount > 0
   const isAnimationPay = entry.payPole === 'animation'
-  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Temps + primes plafonnés à 20 000 crédits'
+  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafond MJ appliqué'
   const podiumLabels = [
     entry.hoursPodiumBonus > 0 ? 'Heures' : null,
     entry.createdPodiumBonus > 0 ? 'Créations' : null,
@@ -455,7 +468,7 @@ function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: numb
           )}
           {!isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              base + variable {formatMoney(Math.max(entry.remuneration - (entry.payRole === 'mj_senior' ? 5_000 : 4_000), 0))}
+              total {formatMoney(entry.remuneration)}
             </span>
           )}
         </div>
@@ -654,7 +667,7 @@ export default function Paies() {
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />
-              Plafond temps + primes : 20 000 hors base
+              17 000 hors podium · 20 000 total max
             </div>
           </>
         )}

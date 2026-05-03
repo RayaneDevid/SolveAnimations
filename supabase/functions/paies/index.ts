@@ -15,7 +15,8 @@ const BASE_PAY: Record<string, number> = {
 
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_TIME_CAP = 17_000
-const MJ_TIME_BONUS_CAP = 20_000
+const MJ_BEFORE_PODIUM_CAP = 17_000
+const MJ_TOTAL_CAP = 20_000
 const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
@@ -231,8 +232,9 @@ Deno.serve(async (req) => {
     const mjRegistrationBonus =
       s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
       s.grande * MJ_GRANDE_REGISTRATION_BONUS
-    const mjVariablePay = Math.min(mjTimePay + mjRegistrationBonus, MJ_TIME_BONUS_CAP)
-    const rawMjRemuneration = quotaFilled ? basePay + mjVariablePay : 0
+    const rawMjBeforePodiumPay = basePay + mjTimePay + mjRegistrationBonus
+    const mjBeforePodiumPay = Math.min(rawMjBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
+    const rawMjRemuneration = quotaFilled ? mjBeforePodiumPay : 0
     return {
       id: p.id,
       username: p.username,
@@ -263,7 +265,7 @@ Deno.serve(async (req) => {
       remuneration: isAnimationPay
         ? (quotaFilled ? animationTimePay.pay : 0)
         : rawMjRemuneration,
-      remunerationCapped: quotaFilled && (isAnimationPay ? animationTimePay.capped : mjTimePay + mjRegistrationBonus > MJ_TIME_BONUS_CAP),
+      remunerationCapped: quotaFilled && (isAnimationPay ? animationTimePay.capped : rawMjBeforePodiumPay > MJ_BEFORE_PODIUM_CAP),
       isRemoved: !p.is_active,
     }
   })
@@ -295,16 +297,17 @@ Deno.serve(async (req) => {
       const registrationBonus =
         entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
         entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-      const rawVariablePay = entry.timePay + registrationBonus + podiumBonus
-      const variablePay = Math.min(rawVariablePay, MJ_TIME_BONUS_CAP)
+      const rawBeforePodiumPay = basePay + entry.timePay + registrationBonus
+      const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
+      const rawTotalPay = beforePodiumPay + podiumBonus
       return {
         ...entry,
         hoursPodiumBonus,
         createdPodiumBonus,
         participationPodiumBonus,
         podiumBonus,
-        remuneration: entry.quotaFilled ? basePay + variablePay : 0,
-        remunerationCapped: entry.quotaFilled && rawVariablePay > MJ_TIME_BONUS_CAP,
+        remuneration: entry.quotaFilled ? Math.min(rawTotalPay, MJ_TOTAL_CAP) : 0,
+        remunerationCapped: entry.quotaFilled && (rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP || rawTotalPay > MJ_TOTAL_CAP),
       }
     }
     return entry

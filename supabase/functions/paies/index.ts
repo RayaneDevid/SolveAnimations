@@ -15,6 +15,7 @@ const BASE_PAY: Record<string, number> = {
 
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_TIME_CAP = 17_000
+const MJ_TIME_BONUS_CAP = 20_000
 const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
@@ -61,11 +62,6 @@ function computeAnimationTimePay(totalMin: number, base = 0): { pay: number; cap
 
 function computeHourlyPay(totalMin: number, hourlyRate: number): number {
   return Math.round(totalMin * (hourlyRate / 60))
-}
-
-function computeCappedHourlyPay(totalMin: number, hourlyRate: number): { pay: number; raw: number; capped: boolean } {
-  const raw = computeHourlyPay(totalMin, hourlyRate)
-  return { pay: Math.min(raw, ANIMATION_TIME_CAP), raw, capped: raw > ANIMATION_TIME_CAP }
 }
 
 function topThreeIds<T extends { id: string; username: string }>(
@@ -231,11 +227,12 @@ Deno.serve(async (req) => {
     const basePay = BASE_PAY[p.payRole] ?? 0
     const seniorBase = isAnimationPay && p.payRole === 'senior' && quotaFilled ? SENIOR_BASE_PAY : 0
     const animationTimePay = computeAnimationTimePay(totalMin, seniorBase)
-    const mjTimePay = computeCappedHourlyPay(totalMin, MJ_HOURLY_RATE)
+    const mjTimePay = computeHourlyPay(totalMin, MJ_HOURLY_RATE)
     const mjRegistrationBonus =
       s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
       s.grande * MJ_GRANDE_REGISTRATION_BONUS
-    const rawMjRemuneration = quotaFilled ? basePay + mjTimePay.pay + mjRegistrationBonus : 0
+    const mjVariablePay = Math.min(mjTimePay + mjRegistrationBonus, MJ_TIME_BONUS_CAP)
+    const rawMjRemuneration = quotaFilled ? basePay + mjVariablePay : 0
     return {
       id: p.id,
       username: p.username,
@@ -258,7 +255,7 @@ Deno.serve(async (req) => {
       quotaMin: null,
       quotaFilled,
       seniorBase,
-      timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay.pay) : 0,
+      timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
       podiumBonus: 0,
       hoursPodiumBonus: 0,
       createdPodiumBonus: 0,
@@ -266,7 +263,7 @@ Deno.serve(async (req) => {
       remuneration: isAnimationPay
         ? (quotaFilled ? animationTimePay.pay : 0)
         : rawMjRemuneration,
-      remunerationCapped: quotaFilled && (isAnimationPay ? animationTimePay.capped : mjTimePay.capped),
+      remunerationCapped: quotaFilled && (isAnimationPay ? animationTimePay.capped : mjTimePay + mjRegistrationBonus > MJ_TIME_BONUS_CAP),
       isRemoved: !p.is_active,
     }
   })
@@ -294,7 +291,21 @@ Deno.serve(async (req) => {
       const createdPodiumBonus = mjCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
       const participationPodiumBonus = mjParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
       const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
-      return { ...entry, hoursPodiumBonus, createdPodiumBonus, participationPodiumBonus, podiumBonus, remuneration: entry.remuneration + podiumBonus }
+      const basePay = BASE_PAY[entry.payRole] ?? 0
+      const registrationBonus =
+        entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
+        entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+      const rawVariablePay = entry.timePay + registrationBonus + podiumBonus
+      const variablePay = Math.min(rawVariablePay, MJ_TIME_BONUS_CAP)
+      return {
+        ...entry,
+        hoursPodiumBonus,
+        createdPodiumBonus,
+        participationPodiumBonus,
+        podiumBonus,
+        remuneration: entry.quotaFilled ? basePay + variablePay : 0,
+        remunerationCapped: entry.quotaFilled && rawVariablePay > MJ_TIME_BONUS_CAP,
+      }
     }
     return entry
   })

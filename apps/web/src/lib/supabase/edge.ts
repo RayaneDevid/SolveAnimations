@@ -76,6 +76,9 @@ export type EdgeFunctionName =
   | 'requetes-create'
   | 'requetes-decide'
   | 'participants-add-to-finished'
+  | 'broadcasts-list'
+  | 'broadcasts-create'
+  | 'broadcasts-archive'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

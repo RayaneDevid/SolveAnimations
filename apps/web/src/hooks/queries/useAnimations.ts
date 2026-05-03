@@ -311,6 +311,13 @@ export function useUserWarnings(userId: string) {
   })
 }
 
+export function useBroadcasts() {
+  return useQuery({
+    queryKey: queryKeys.broadcasts.list,
+    queryFn: () => invokeEdge<{ broadcasts: import('@/types/database').Broadcast[] }>('broadcasts-list'),
+  })
+}
+
 export interface AuditLogFilters {
   action?: string | null
   actorId?: string | null

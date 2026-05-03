@@ -481,6 +481,34 @@ export function useCreateWarning() {
   })
 }
 
+export function useCreateBroadcast() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { title?: string; message: string; audience: 'all' | 'selected'; recipientIds?: string[] }) =>
+      invokeEdge<{ broadcast: import('@/types/database').Broadcast }>('broadcasts-create', {
+        title: body.title,
+        message: body.message,
+        audience: body.audience,
+        recipient_ids: body.recipientIds ?? [],
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.broadcasts.list })
+      qc.invalidateQueries({ queryKey: ['logs'] })
+    },
+  })
+}
+
+export function useArchiveBroadcast() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ success: boolean }>('broadcasts-archive', { id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.broadcasts.list })
+      qc.invalidateQueries({ queryKey: ['logs'] })
+    },
+  })
+}
+
 export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({

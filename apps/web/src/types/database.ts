@@ -159,6 +159,17 @@ export interface UserWarning {
   creator?: { id: string; username: string; avatar_url: string | null } | null
 }
 
+export interface Broadcast {
+  id: string
+  title: string | null
+  message: string
+  audience: 'all' | 'selected'
+  created_by: string | null
+  created_at: string
+  archived_at: string | null
+  creator?: { id: string; username: string; avatar_url: string | null } | null
+}
+
 export interface WeeklyStats {
   animationsCreated: number
   hoursAnimated: number

@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
-import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays } from 'lucide-react'
+import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useWeeklyStats, useAnimations, useMyReports } from '@/hooks/queries/useAnimations'
+import { toast } from 'sonner'
+import { useWeeklyStats, useAnimations, useMyReports, useBroadcasts, useMemberDirectory } from '@/hooks/queries/useAnimations'
+import { useCreateBroadcast, useArchiveBroadcast } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { GlassCard } from '@/components/shared/GlassCard'
@@ -14,8 +17,12 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime, formatTime } from '@/lib/utils/format'
-import { ROLE_LABELS } from '@/lib/config/discord'
+import { hasOwnedRole, ROLE_LABELS } from '@/lib/config/discord'
+import { cn } from '@/lib/utils/cn'
+import type { Broadcast } from '@/types/database'
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction: null,
@@ -70,8 +77,217 @@ function StatCard({
   )
 }
 
+function BroadcastCenter({
+  broadcasts,
+  loading,
+  canManage,
+}: {
+  broadcasts: Broadcast[]
+  loading: boolean
+  canManage: boolean
+}) {
+  const { data: members = [] } = useMemberDirectory(canManage)
+  const { mutateAsync: createBroadcast, isPending: creating } = useCreateBroadcast()
+  const { mutateAsync: archiveBroadcast, isPending: archiving } = useArchiveBroadcast()
+  const [showForm, setShowForm] = useState(false)
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [audience, setAudience] = useState<'all' | 'selected'>('all')
+  const [recipientIds, setRecipientIds] = useState<string[]>([])
+
+  const toggleRecipient = (userId: string) => {
+    setRecipientIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    )
+  }
+
+  const resetForm = () => {
+    setTitle('')
+    setMessage('')
+    setAudience('all')
+    setRecipientIds([])
+    setShowForm(false)
+  }
+
+  const handleSubmit = async () => {
+    try {
+      await createBroadcast({
+        title,
+        message,
+        audience,
+        recipientIds: audience === 'selected' ? recipientIds : [],
+      })
+      toast.success('Broadcast publié')
+      resetForm()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du broadcast')
+    }
+  }
+
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveBroadcast(id)
+      toast.success('Broadcast archivé')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage")
+    }
+  }
+
+  if (!canManage && !loading && broadcasts.length === 0) return null
+
+  return (
+    <GlassCard className="p-5 border border-cyan-400/15 bg-cyan-400/[0.03]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10">
+            <Megaphone className="h-4 w-4 text-cyan-300" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-white/85">Broadcast</h2>
+            <p className="text-xs text-white/35">Messages affichés sur le dashboard</p>
+          </div>
+        </div>
+        {canManage && (
+          <Button
+            type="button"
+            size="sm"
+            variant={showForm ? 'outline' : 'default'}
+            onClick={() => setShowForm((value) => !value)}
+            className="gap-1.5"
+          >
+            {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {showForm ? 'Fermer' : 'Nouveau'}
+          </Button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="mb-4 space-y-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+          <Input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            maxLength={120}
+            placeholder="Titre optionnel"
+          />
+          <Textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            maxLength={2000}
+            placeholder="Message à afficher sur le dashboard"
+            rows={4}
+          />
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: 'all', label: 'Tout le monde' },
+              { value: 'selected', label: 'Utilisateurs sélectionnés' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setAudience(option.value as typeof audience)}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+                  audience === option.value
+                    ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-200'
+                    : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:text-white/75',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {audience === 'selected' && (
+            <div className="max-h-44 overflow-y-auto rounded-xl border border-white/[0.08] bg-black/10 p-2">
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                {members.map((member) => (
+                  <label
+                    key={member.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 hover:bg-white/[0.04]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={recipientIds.includes(member.id)}
+                      onChange={() => toggleRecipient(member.id)}
+                      className="h-3.5 w-3.5 accent-cyan-400"
+                    />
+                    <span className="truncate">{member.username}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-white/35">
+              {audience === 'all' ? 'Visible par tous les utilisateurs.' : `${recipientIds.length} destinataire(s) sélectionné(s).`}
+            </p>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={creating || message.trim().length === 0 || (audience === 'selected' && recipientIds.length === 0)}
+              className="gap-1.5"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Publier
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : broadcasts.length === 0 ? (
+        <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-white/30">
+          Aucun broadcast actif.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {broadcasts.map((broadcast) => (
+            <div key={broadcast.id} className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-cyan-100">
+                      {broadcast.title || 'Annonce'}
+                    </p>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/40">
+                      {broadcast.audience === 'all' ? 'Tout le monde' : 'Ciblé'}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white/70">
+                    {broadcast.message}
+                  </p>
+                  <p className="mt-2 text-[11px] text-white/35">
+                    {broadcast.creator?.username ? `Par ${broadcast.creator.username} · ` : ''}
+                    {formatDateTime(broadcast.created_at)}
+                  </p>
+                </div>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => handleArchive(broadcast.id)}
+                    disabled={archiving}
+                    className="rounded-lg p-1.5 text-white/30 transition-colors hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-40"
+                    title="Archiver"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 export default function Dashboard() {
-  const { user, role } = useRequiredAuth()
+  const { user, role, permissionRoles } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data: stats, isLoading: statsLoading } = useWeeklyStats(undefined, bounds.start)
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
@@ -92,6 +308,7 @@ export default function Dashboard() {
     pageSize: 5,
   })
   const { data: reports, isLoading: reportsLoading } = useMyReports()
+  const { data: broadcastData, isLoading: broadcastsLoading } = useBroadcasts()
 
   const quotaMax = QUOTA_MAX[role] ?? null
   const quotaPercent = quotaMax ? Math.min(100, ((stats?.quota ?? 0) / quotaMax) * 100) : 100
@@ -110,6 +327,7 @@ export default function Dashboard() {
   const scheduledLoading = scheduledParticipantLoading || scheduledCreatedLoading
 
   const profileIncomplete = !user.steam_id || !user.arrival_date
+  const canManageBroadcasts = hasOwnedRole(permissionRoles, ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm'])
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
   const statsPeriodLabel = isCurrentWeek() ? 'cette semaine' : `semaine du ${weekLabel}`
 
@@ -155,6 +373,12 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.div>
+
+      <BroadcastCenter
+        broadcasts={broadcastData?.broadcasts ?? []}
+        loading={broadcastsLoading}
+        canManage={canManageBroadcasts}
+      />
 
       {/* Stats */}
       <div className="flex items-center justify-between gap-3 flex-wrap">

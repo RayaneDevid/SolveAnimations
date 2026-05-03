@@ -44,6 +44,9 @@ export const queryKeys = {
   messages: {
     forAnimation: (animationId: string) => ['messages', animationId] as const,
   },
+  broadcasts: {
+    list: ['broadcasts'] as const,
+  },
   trameReports: {
     all: ['trame-reports'] as const,
     list: () => ['trame-reports', 'list'] as const,

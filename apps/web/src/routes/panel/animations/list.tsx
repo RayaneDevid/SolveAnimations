@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatDuration, formatTime } from '@/lib/utils/format'
+import { cn } from '@/lib/utils/cn'
 import { SERVERS, VILLAGES, type AnimationServer, type Village } from '@/lib/schemas/animation'
 
 const TYPE_LABELS = { moyenne: 'M', grande: 'G' } as const
@@ -38,6 +39,8 @@ const TABS: Array<{ value: TabValue; label: string }> = [
 ]
 
 function AnimationCard({ anim }: { anim: Animation }) {
+  const isBdmMission = anim.bdm_mission
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -45,10 +48,18 @@ function AnimationCard({ anim }: { anim: Animation }) {
       transition={{ duration: 0.2 }}
     >
       <Link to={`/panel/animations/${anim.id}`}>
-        <GlassCard className="p-4 glass-hover cursor-pointer">
+        <GlassCard
+          className={cn(
+            'p-4 glass-hover cursor-pointer',
+            isBdmMission && 'border border-teal-300/35 bg-teal-500/[0.06] shadow-[0_0_24px_rgba(45,212,191,0.10)]',
+          )}
+        >
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold text-white/90 truncate hover:text-cyan-400 transition-colors">
+              <h3 className={cn(
+                'text-sm font-semibold truncate transition-colors',
+                isBdmMission ? 'text-teal-50 hover:text-teal-200' : 'text-white/90 hover:text-cyan-400',
+              )}>
                 {anim.title}
               </h3>
               <div className="flex items-center gap-2 mt-1">
@@ -68,6 +79,11 @@ function AnimationCard({ anim }: { anim: Animation }) {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap mb-3">
+            {isBdmMission && (
+              <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
+                Mission BDM
+              </span>
+            )}
             <ServerBadge server={anim.server} />
             <VillageBadge village={anim.village} />
             <span

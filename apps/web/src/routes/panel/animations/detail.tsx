@@ -701,6 +701,11 @@ export default function AnimationDetail() {
                 </span>
               </div>
             )}
+            {animation.bdm_mission && (
+              <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
+                Mission BDM
+              </span>
+            )}
           </div>
         </div>
         <StatusBadge status={animation.status} />
@@ -741,6 +746,11 @@ export default function AnimationDetail() {
             {formatDuration(animation.planned_duration_min)}
             {animation.prep_time_min > 0 && ` · Débrief ${formatDuration(animation.prep_time_min)}`}
           </div>
+          {animation.bdm_mission && (
+            <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2.5 py-1 text-xs font-bold text-teal-200">
+              Mission BDM
+            </span>
+          )}
           <ServerBadge server={animation.server} />
           <VillageBadge village={animation.village} />
           <div className="flex items-center gap-2 text-sm text-white/60">

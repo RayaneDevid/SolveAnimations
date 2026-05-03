@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trophy, Clock, Sword, Users, ChevronLeft, ChevronRight, CalendarDays, Briefcase } from 'lucide-react'
+import { Trophy, Clock, Sword, Users, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -173,18 +173,18 @@ export default function Leaderboard() {
     .map((e, i) => ({ ...e, rank: i + 1 }))
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="shrink-0">
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Trophy className="h-6 w-6 text-amber-400" />
             Classement
           </h1>
           <p className="text-sm text-white/40 mt-0.5">Performances de l'équipe</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-1">
           {period === 'week' && (
-            <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
               <Button variant="ghost" size="sm" onClick={goPrev} className="h-8 w-8 p-0">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -205,10 +205,7 @@ export default function Leaderboard() {
             <TabsList>
               <TabsTrigger value="anim">Pôle Animation</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
-              <TabsTrigger value="bdm">
-                <Briefcase className="mr-1 h-3.5 w-3.5" />
-                Pôle BDM
-              </TabsTrigger>
+              <TabsTrigger value="bdm">Pôle BDM</TabsTrigger>
             </TabsList>
           </Tabs>
           <Tabs value={metric} onValueChange={(v) => setMetric(v as typeof metric)}>

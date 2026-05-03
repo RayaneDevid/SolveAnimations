@@ -333,7 +333,74 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
   )
 }
 
+function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
+  const rawTimePay = Math.round(entry.totalMin * (BDM_HOURLY_RATE / 60))
+  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
+  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay + moyenneBonus + grandeBonus
+  const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
+  const rawTotalPay = beforePodiumPay + entry.podiumBonus
+  const beforePodiumCapped = rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP
+  const totalCapped = rawTotalPay > BDM_TOTAL_CAP
+
+  return (
+    <>
+      <PayDetailLine
+        label="Quota"
+        value={`${entry.animationsCount}/${entry.quotaMax ?? 3} missions`}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label="Base quota"
+        value={entry.quotaFilled ? formatMoney(BDM_BASE_PAY) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label={`Temps (${formatMin(entry.totalMin)} × ${BDM_HOURLY_RATE}/h)`}
+        value={entry.quotaFilled ? formatMoney(rawTimePay) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label={`Part. + créations moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
+        value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      <PayDetailLine
+        label={`Part. + créations grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
+        value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
+        muted={!entry.quotaFilled}
+      />
+      {beforePodiumCapped && (
+        <>
+          <PayDetailLine label="Sous-total hors podium" value={formatMoney(rawBeforePodiumPay)} muted />
+          <PayDetailLine label="Plafond hors podium" value={formatMoney(BDM_BEFORE_PODIUM_CAP)} />
+        </>
+      )}
+      {entry.hoursPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium heures" value={`+${formatMoney(entry.hoursPodiumBonus)}`} />
+      )}
+      {entry.createdPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium créations" value={`+${formatMoney(entry.createdPodiumBonus)}`} />
+      )}
+      {entry.participationPodiumBonus > 0 && (
+        <PayDetailLine label="Prime podium participations" value={`+${formatMoney(entry.participationPodiumBonus)}`} />
+      )}
+      {totalCapped && (
+        <>
+          <PayDetailLine label="Sous-total avec podium" value={formatMoney(rawTotalPay)} muted />
+          <PayDetailLine label="Plafond total" value={formatMoney(BDM_TOTAL_CAP)} />
+        </>
+      )}
+      {entry.quotaFilled && (
+        <PayDetailLine label="Total payé" value={formatMoney(Math.min(rawTotalPay, BDM_TOTAL_CAP))} />
+      )}
+      <PayDetailLine label="Total" value={formatMoney(entry.remuneration)} highlight />
+    </>
+  )
+}
+
 function PayAmount({ entry }: { entry: PaiesEntry }) {
+  const detailLabel = entry.payPole === 'mj' ? 'MJ' : entry.payPole === 'bdm' ? 'BDM' : 'Animation'
   return (
     <Tooltip delayDuration={100}>
       <TooltipTrigger asChild>
@@ -347,11 +414,15 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
       </TooltipTrigger>
       <TooltipContent side="left" align="end" className="w-80 space-y-2 p-3">
         <div>
-          <p className="text-xs font-semibold text-white/90">Détail paie {entry.payPole === 'mj' ? 'MJ' : 'Animation'}</p>
+          <p className="text-xs font-semibold text-white/90">Détail paie {detailLabel}</p>
           <p className="text-[11px] text-white/40">{entry.username}</p>
         </div>
         <div className="space-y-1.5 text-[11px] text-white/60">
-          {entry.payPole === 'animation' ? <AnimationPayDetails entry={entry} /> : <MjPayDetails entry={entry} />}
+          {entry.payPole === 'animation'
+            ? <AnimationPayDetails entry={entry} />
+            : entry.payPole === 'mj'
+              ? <MjPayDetails entry={entry} />
+              : <BdmPayDetails entry={entry} />}
         </div>
       </TooltipContent>
     </Tooltip>
@@ -363,7 +434,12 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
 function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: number; onOpenCasier: (userId: string) => void }) {
   const hasActivity = entry.animationsCount > 0
   const isAnimationPay = entry.payPole === 'animation'
-  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafond MJ appliqué'
+  const capTitle = isAnimationPay
+    ? 'Temps plafonné à 17 000 crédits'
+    : entry.payPole === 'mj'
+      ? 'Plafond MJ appliqué'
+      : 'Plafond BDM appliqué'
+  const payBadgeLabel = entry.payPole === 'mj' ? 'MJ' : entry.payPole === 'bdm' ? 'BDM' : 'Anim'
   const podiumLabels = [
     entry.hoursPodiumBonus > 0 ? 'Heures' : null,
     entry.createdPodiumBonus > 0 ? 'Créations' : null,
@@ -399,9 +475,11 @@ function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: numb
                 'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
                 entry.payPole === 'mj'
                   ? 'border-red-500/20 bg-red-500/10 text-red-300'
+                  : entry.payPole === 'bdm'
+                    ? 'border-teal-500/20 bg-teal-500/10 text-teal-300'
                   : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
               )}>
-                Paie {entry.payPole === 'mj' ? 'MJ' : 'Anim'}
+                Paie {payBadgeLabel}
               </span>
               {entry.isRemoved && (
                 <span className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-white/40">
@@ -528,14 +606,16 @@ export default function Paies() {
   const [selectedCasierId, setSelectedCasierId] = useState<string | null>(null)
 
   const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
-    || (hasOwnedRole(permissionRoles, ['responsable']) && hasOwnedRole(permissionRoles, ['responsable_mj']))
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
   const showMj   = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_mj'])
+  const showBdm  = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_bdm'])
   const canManageWarnings = hasPermissionRole(permissionRoles, 'responsable')
 
-  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => {
-    if (!showAnim) return 'mj'
-    if (!showMj) return 'animation'
+  const [activeTab, setActiveTab] = useState<PayTab>(() => {
+    if (showBdm && !showAnim && !showMj) return 'bdm'
+    if (showMj && !showAnim) return 'mj'
+    if (showAnim && !showMj && !showBdm) return 'animation'
+    if (showBdm && hasOwnedRole(permissionRoles, BDM_STAFF_ROLES) && !hasOwnedRole(permissionRoles, MJ_STAFF_ROLES)) return 'bdm'
     return user.pay_pole === 'mj' || hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'mj' : 'animation'
   })
 
@@ -547,6 +627,10 @@ export default function Paies() {
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj'), MJ_PAY_ROLE_ORDER)
   , [data])
 
+  const poleBdm = useMemo(() =>
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'bdm'), BDM_PAY_ROLE_ORDER)
+  , [data])
+
   const selectedActiveMember = useMemo(
     () => members.find((member) => member.id === selectedCasierId) ?? null,
     [members, selectedCasierId],
@@ -556,7 +640,7 @@ export default function Paies() {
     [formerMembers, selectedActiveMember, selectedCasierId],
   )
 
-  const activeEntries = activeTab === 'animation' ? poleAnim : poleMj
+  const activeEntries = activeTab === 'animation' ? poleAnim : activeTab === 'mj' ? poleMj : poleBdm
 
   const totals = useMemo(() => {
     if (!data) return null
@@ -572,10 +656,16 @@ export default function Paies() {
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} – ${format(bounds.end, 'dd/MM', { locale: fr })}`
   const weekFileLabel = `${format(bounds.start, 'yyyy-MM-dd')}_${format(bounds.end, 'yyyy-MM-dd')}`
 
-  const handleExportCsv = (entries: PaiesEntry[], pole: 'animation' | 'mj') => {
+  const handleExportCsv = (entries: PaiesEntry[], pole: PayTab) => {
     const csv = buildPaiesCsv(entries.filter((e) => !e.isRemoved), pole)
     downloadCsv(`paies-${pole}-${weekFileLabel}.csv`, csv)
   }
+
+  const visibleTabs: Array<{ key: PayTab; entries: PaiesEntry[] }> = [
+    ...(showAnim ? [{ key: 'animation' as const, entries: poleAnim }] : []),
+    ...(showMj ? [{ key: 'mj' as const, entries: poleMj }] : []),
+    ...(showBdm ? [{ key: 'bdm' as const, entries: poleBdm }] : []),
+  ]
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
@@ -647,10 +737,10 @@ export default function Paies() {
           <SummaryCard
             label="Membres actifs"
             value={`${totals.activeCount} / ${totals.totalCount}`}
-            sub="avec au moins 1 animation"
+            sub={activeTab === 'bdm' ? 'avec au moins 1 mission' : 'avec au moins 1 animation'}
           />
           <SummaryCard
-            label="Animations terminées"
+            label={activeTab === 'bdm' ? 'Missions terminées' : 'Animations terminées'}
             value={String(totals.totalAnimations)}
             sub="cette semaine"
           />
@@ -683,7 +773,7 @@ export default function Paies() {
               Plafond temps : 17 000 hors primes
             </div>
           </>
-        ) : (
+        ) : activeTab === 'mj' ? (
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-400" />
@@ -692,6 +782,21 @@ export default function Paies() {
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
               Primes : +1 000 crédits par podium top 3
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3 w-3 text-amber-400" />
+              17 000 hors podium · 20 000 total max
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-teal-400" />
+              Quota 3 missions BDM · base 4 000 + 600/h · +200 M / +300 G
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              Primes : +1 000 crédits par podium top 3 BDM
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />
@@ -714,25 +819,23 @@ export default function Paies() {
           ))}
         </GlassCard>
       ) : (
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj')}>
-          {showAnim && showMj && (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PayTab)}>
+          {visibleTabs.length > 1 && (
             <TabsList>
-              <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>
-              <TabsTrigger value="mj">Pôle MJ ({poleMj.length})</TabsTrigger>
+              {showAnim && <TabsTrigger value="animation">Pôle Animation ({poleAnim.length})</TabsTrigger>}
+              {showMj && <TabsTrigger value="mj">Pôle MJ ({poleMj.length})</TabsTrigger>}
+              {showBdm && <TabsTrigger value="bdm">Pôle BDM ({poleBdm.length})</TabsTrigger>}
             </TabsList>
           )}
-          {[
-            ...(showAnim ? [{ key: 'animation', entries: poleAnim }] : []),
-            ...(showMj   ? [{ key: 'mj',        entries: poleMj   }] : []),
-          ].map(({ key, entries }) => {
+          {visibleTabs.map(({ key, entries }) => {
             const poleTotal = entries.reduce((s, e) => s + e.remuneration, 0)
-            const poleLabel = key === 'mj' ? 'MJ' : 'Animation'
+            const poleLabel = key === 'mj' ? 'MJ' : key === 'bdm' ? 'BDM' : 'Animation'
             return (
               <TabsContent key={key} value={key}>
                 <div className="mb-3 flex justify-end">
                   <button
                     type="button"
-                    onClick={() => handleExportCsv(entries, key as 'animation' | 'mj')}
+                    onClick={() => handleExportCsv(entries, key)}
                     disabled={entries.length === 0}
                     className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/85 disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -747,11 +850,11 @@ export default function Paies() {
                         <tr className="border-b border-white/[0.06]">
                           <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">{key === 'bdm' ? 'Missions' : 'Total'}</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Créées</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Part.</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Formation</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Inscr. M/G</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Temps</th>

@@ -30,7 +30,7 @@ export function hasAnyRole(profile: Profile, roles: string[]): boolean {
 }
 
 export function isResponsableRole(roleOrProfile: string | Profile): boolean {
-  const responsableRoles = ['direction', 'gerance', 'responsable', 'responsable_mj']
+  const responsableRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm']
   if (typeof roleOrProfile === 'string') return responsableRoles.includes(roleOrProfile)
   return hasAnyRole(roleOrProfile, responsableRoles)
 }

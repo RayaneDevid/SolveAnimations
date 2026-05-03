@@ -14,18 +14,24 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils/cn'
-import { hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
+import { BDM_STAFF_ROLES, hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
 import type { PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
+const BDM_PAY_ROLE_ORDER  = ['responsable_bdm', 'bdm']
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
 const MJ_HOURLY_RATE = 800
+const BDM_BASE_PAY = 4_000
+const BDM_HOURLY_RATE = 600
+const BDM_BEFORE_PODIUM_CAP = 17_000
+const BDM_TOTAL_CAP = 20_000
 const MJ_MOYENNE_REGISTRATION_BONUS = 200
 const MJ_GRANDE_REGISTRATION_BONUS = 300
 
+type PayTab = 'animation' | 'mj' | 'bdm'
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
@@ -99,8 +105,30 @@ function buildMjCommentaire(entry: PaiesEntry): string {
   return parts.join(' | ')
 }
 
-function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj'): string {
-  if (pole === 'mj') {
+function buildBdmCommentaire(entry: PaiesEntry): string {
+  if (!entry.quotaFilled) return 'Quota non atteint'
+  const rawTimePay = Math.round(entry.totalMin * (BDM_HOURLY_RATE / 60))
+  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
+  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
+  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay + moyenneBonus + grandeBonus
+  const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
+  const rawTotalPay = beforePodiumPay + entry.podiumBonus
+  const parts: string[] = [
+    `Base quota: ${BDM_BASE_PAY}`,
+    `Temps (${formatMin(entry.totalMin)} x ${BDM_HOURLY_RATE}/h): ${rawTimePay}`,
+    `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
+    `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
+  ]
+  if (rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP) parts.push(`Base + temps + inscriptions plafonné à ${BDM_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
+  if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
+  if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
+  if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
+  if (rawTotalPay > BDM_TOTAL_CAP) parts.push(`Total plafonné à ${BDM_TOTAL_CAP} (brut: ${rawTotalPay})`)
+  return parts.join(' | ')
+}
+
+function buildPaiesCsv(entries: PaiesEntry[], pole: PayTab): string {
+  if (pole === 'mj' || pole === 'bdm') {
     const header = ['discord_id', 'steam_id', 'grade', 'moyenne', 'grande', 'total_animations', 'total_heures', 'commentaire', 'montant']
     const rows = entries.map((entry) => [
       entry.discordId,
@@ -110,7 +138,7 @@ function buildPaiesCsv(entries: PaiesEntry[], pole: 'animation' | 'mj'): string 
       entry.grande,
       entry.animationsCount,
       formatMin(entry.totalMin),
-      buildMjCommentaire(entry),
+      pole === 'mj' ? buildMjCommentaire(entry) : buildBdmCommentaire(entry),
       entry.remuneration,
     ])
     return [

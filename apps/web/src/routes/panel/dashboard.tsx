@@ -443,7 +443,7 @@ export default function Dashboard() {
           <UserAvatar avatarUrl={user.avatar_url} username={user.username} size="md" />
           <div>
             <h1 className="text-xl font-bold text-white">
-              {user.discord_id === '381763507991085056' ? 'Salam Aleykoum' : 'Bonjour'}, <span className="text-gradient-cyan">{user.username}</span>
+              {user.discord_id === '381763507991085056' || user.discord_id === '295184028464578561' ? 'Salam Aleykoum' : 'Bonjour'}, <span className="text-gradient-cyan">{user.username}</span>
             </h1>
             <p className="text-sm text-white/40">{ROLE_LABELS[role]}</p>
           </div>

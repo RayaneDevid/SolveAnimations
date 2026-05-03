@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trophy, Clock, Sword, Users, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { Trophy, Clock, Sword, Users, ChevronLeft, ChevronRight, CalendarDays, Briefcase } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -13,7 +13,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDuration } from '@/lib/utils/format'
-import { isMjStaffRole } from '@/lib/config/discord'
+import { isBdmStaffRole, isMjStaffRole } from '@/lib/config/discord'
 import type { LeaderboardEntry } from '@/types/database'
 
 const MEDAL_STYLES = [
@@ -23,6 +23,14 @@ const MEDAL_STYLES = [
 ]
 
 const MEDAL_LABELS = ['🥇', '🥈', '🥉']
+type LeaderboardPole = 'anim' | 'mj' | 'bdm'
+type LeaderboardMetric = 'byHours' | 'byAnimations' | 'byParticipations'
+
+const BDM_METRIC_KEYS: Record<LeaderboardMetric, 'bdmByHours' | 'bdmByAnimations' | 'bdmByParticipations'> = {
+  byHours: 'bdmByHours',
+  byAnimations: 'bdmByAnimations',
+  byParticipations: 'bdmByParticipations',
+}
 
 function Podium({ entries }: { entries: LeaderboardEntry[] }) {
   const top3 = entries.slice(0, 3)
@@ -68,13 +76,14 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
   )
 }
 
-function RankingTable({ entries }: { entries: LeaderboardEntry[] }) {
+function RankingTable({ entries, pole }: { entries: LeaderboardEntry[]; pole: LeaderboardPole }) {
+  const isBdm = pole === 'bdm'
   return (
     <GlassCard className="overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-white/[0.06]">
-            {['Rang', 'Animateur', 'Rôle', 'Heures', 'Animations', 'Participations'].map((h) => (
+            {['Rang', isBdm ? 'Membre BDM' : 'Animateur', 'Rôle', 'Heures', isBdm ? 'Missions' : 'Animations', 'Participations'].map((h) => (
               <th
                 key={h}
                 className="text-left text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3"
@@ -107,7 +116,12 @@ function RankingTable({ entries }: { entries: LeaderboardEntry[] }) {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <RoleBadge role={entry.role as never} />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <RoleBadge role={entry.role as never} />
+                  {isBdm && entry.primaryRole && entry.primaryRole !== entry.role && (
+                    <RoleBadge role={entry.primaryRole as never} />
+                  )}
+                </div>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1.5 text-sm text-white/70">
@@ -145,15 +159,17 @@ export default function Leaderboard() {
   const { user } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
-  const [metric, setMetric] = useState<'byHours' | 'byAnimations' | 'byParticipations'>('byHours')
-  const [pole, setPole] = useState<'anim' | 'mj'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'anim')
+  const [metric, setMetric] = useState<LeaderboardMetric>('byHours')
+  const [pole, setPole] = useState<LeaderboardPole>(() => {
+    if (isBdmStaffRole(user.role) && !isMjStaffRole(user.role)) return 'bdm'
+    return user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'anim'
+  })
   const { data, isLoading } = useLeaderboard(period, bounds.start)
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
 
-  const rawEntries = data?.[metric] ?? []
+  const rawEntries = pole === 'bdm' ? data?.[BDM_METRIC_KEYS[metric]] ?? [] : data?.[metric] ?? []
   const poleRoles = pole === 'anim' ? ANIM_ROLES : MJ_ROLES
-  const entries = rawEntries
-    .filter((e) => poleRoles.includes(e.role))
+  const entries = (pole === 'bdm' ? rawEntries : rawEntries.filter((e) => poleRoles.includes(e.role)))
     .map((e, i) => ({ ...e, rank: i + 1 }))
 
   return (
@@ -189,12 +205,16 @@ export default function Leaderboard() {
             <TabsList>
               <TabsTrigger value="anim">Pôle Animation</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+              <TabsTrigger value="bdm">
+                <Briefcase className="mr-1 h-3.5 w-3.5" />
+                Pôle BDM
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           <Tabs value={metric} onValueChange={(v) => setMetric(v as typeof metric)}>
             <TabsList>
               <TabsTrigger value="byHours">Heures</TabsTrigger>
-              <TabsTrigger value="byAnimations">Animations</TabsTrigger>
+              <TabsTrigger value="byAnimations">{pole === 'bdm' ? 'Missions' : 'Animations'}</TabsTrigger>
               <TabsTrigger value="byParticipations">Participations</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -216,7 +236,7 @@ export default function Leaderboard() {
       ) : (
         <>
           {entries.length >= 3 && <Podium entries={entries} />}
-          <RankingTable entries={entries} />
+          <RankingTable entries={entries} pole={pole} />
         </>
       )}
     </div>

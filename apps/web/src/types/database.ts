@@ -202,6 +202,7 @@ export interface LeaderboardEntry {
   username: string
   avatarUrl: string | null
   role: string
+  primaryRole?: string
   hoursAnimated: number
   animationsCreated: number
   participationsValidated: number
@@ -212,6 +213,9 @@ export interface LeaderboardResult {
   byHours: LeaderboardEntry[]
   byAnimations: LeaderboardEntry[]
   byParticipations: LeaderboardEntry[]
+  bdmByHours: LeaderboardEntry[]
+  bdmByAnimations: LeaderboardEntry[]
+  bdmByParticipations: LeaderboardEntry[]
   period: 'week' | 'month' | 'all'
 }
 

@@ -20,7 +20,7 @@ export const queryKeys = {
     list: (userId?: string) => ['absences', userId ?? 'self'] as const,
   },
   stats: {
-    weekly: (userId?: string) => ['stats', 'weekly', userId ?? 'self'] as const,
+    weekly: (userId?: string, weekStart?: string) => ['stats', 'weekly', userId ?? 'self', weekStart ?? 'current'] as const,
     villages: ['stats', 'villages'] as const,
   },
   leaderboard: (period: string, weekStart?: string) => ['leaderboard', period, weekStart ?? 'current'] as const,

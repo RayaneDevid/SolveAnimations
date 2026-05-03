@@ -86,10 +86,14 @@ export function useTimeCorrectionRequests(enabled = true) {
   })
 }
 
-export function useWeeklyStats(userId?: string) {
+export function useWeeklyStats(userId?: string, weekStart?: Date) {
+  const weekStartIso = weekStart?.toISOString()
   return useQuery({
-    queryKey: queryKeys.stats.weekly(userId),
-    queryFn: () => invokeEdge<import('@/types/database').WeeklyStats>('stats-weekly', userId ? { user_id: userId } : {}),
+    queryKey: queryKeys.stats.weekly(userId, weekStartIso),
+    queryFn: () => invokeEdge<import('@/types/database').WeeklyStats>('stats-weekly', {
+      ...(userId ? { user_id: userId } : {}),
+      ...(weekStartIso ? { week_start: weekStartIso } : {}),
+    }),
   })
 }
 

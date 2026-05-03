@@ -1,8 +1,11 @@
 import { Link } from 'react-router'
-import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog } from 'lucide-react'
+import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { useWeeklyStats, useAnimations, useMyReports } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
+import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { VillageBadge } from '@/components/shared/VillageBadge'
@@ -69,7 +72,8 @@ function StatCard({
 
 export default function Dashboard() {
   const { user, role } = useRequiredAuth()
-  const { data: stats, isLoading: statsLoading } = useWeeklyStats()
+  const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
+  const { data: stats, isLoading: statsLoading } = useWeeklyStats(undefined, bounds.start)
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
     status: ['pending_validation', 'open', 'preparing', 'running'],
     order: 'asc',
@@ -106,6 +110,8 @@ export default function Dashboard() {
   const scheduledLoading = scheduledParticipantLoading || scheduledCreatedLoading
 
   const profileIncomplete = !user.steam_id || !user.arrival_date
+  const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
+  const statsPeriodLabel = isCurrentWeek() ? 'cette semaine' : `semaine du ${weekLabel}`
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -151,12 +157,35 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Stats */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold text-white/80">Stats hebdomadaires</h2>
+          <p className="text-xs text-white/35">{statsPeriodLabel}</p>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+          <Button variant="ghost" size="sm" onClick={goPrev} className="h-8 w-8 p-0">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <button
+            type="button"
+            onClick={goToday}
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
+          >
+            <CalendarDays className="h-3.5 w-3.5 text-cyan-400" />
+            {isCurrentWeek() ? 'Cette sem.' : weekLabel}
+          </button>
+          <Button variant="ghost" size="sm" onClick={goNext} disabled={isCurrentWeek()} className="h-8 w-8 p-0">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Sword}
           label="Animations créées"
           value={stats?.animationsCreated ?? 0}
-          sub="cette semaine"
+          sub={statsPeriodLabel}
           color="cyan"
           loading={statsLoading}
         />
@@ -164,7 +193,7 @@ export default function Dashboard() {
           icon={Users}
           label="Participations"
           value={stats?.participationsValidated ?? 0}
-          sub="validées cette semaine"
+          sub="validées"
           color="emerald"
           loading={statsLoading}
         />
@@ -172,7 +201,7 @@ export default function Dashboard() {
           icon={Clock}
           label="Heures animées"
           value={stats ? `${(stats.hoursAnimated / 60).toFixed(1)}h` : '0h'}
-          sub="cette semaine"
+          sub={statsPeriodLabel}
           color="violet"
           loading={statsLoading}
         />

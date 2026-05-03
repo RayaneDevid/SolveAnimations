@@ -30,29 +30,38 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body = await req.json().catch(() => ({}))
-  const { user_id } = body
+  const { user_id, week_start } = body
 
   if (user_id && user_id !== profile.id && !isResponsableRole(profile))
     return errorResponse('FORBIDDEN', 'Accès refusé')
+
+  if (week_start && Number.isNaN(new Date(week_start).getTime()))
+    return errorResponse('VALIDATION_ERROR', 'week_start invalide')
 
   const targetId = user_id ?? profile.id
 
   const db = getServiceClient()
 
-  // Use PostgreSQL week_start/week_end SQL functions
-  const { data: bounds, error: boundsError } = await db
-    .rpc('get_current_week_bounds' as never) as { data: { week_start: string; week_end: string } | null; error: unknown }
-
-  // Fallback to JS calculation if RPC not available
   let weekStart: string
   let weekEnd: string
-  if (bounds) {
-    weekStart = (bounds as { week_start: string }).week_start
-    weekEnd = (bounds as { week_end: string }).week_end
-  } else {
-    const ws = computeWeekStart()
+  if (week_start) {
+    const ws = new Date(week_start)
     weekStart = ws.toISOString()
     weekEnd = new Date(ws.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  } else {
+    // Use PostgreSQL week_start/week_end SQL functions
+    const { data: bounds } = await db
+      .rpc('get_current_week_bounds' as never) as { data: { week_start: string; week_end: string } | null; error: unknown }
+
+    // Fallback to JS calculation if RPC not available
+    if (bounds) {
+      weekStart = (bounds as { week_start: string }).week_start
+      weekEnd = (bounds as { week_end: string }).week_end
+    } else {
+      const ws = computeWeekStart()
+      weekStart = ws.toISOString()
+      weekEnd = new Date(ws.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    }
   }
 
   // Finished animations created by target this week

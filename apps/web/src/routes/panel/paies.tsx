@@ -86,6 +86,7 @@ function buildMjCommentaire(entry: PaiesEntry): string {
     `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
     `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
   ]
+  if (entry.remunerationCapped) parts.push(`Temps plafonné à ${ANIMATION_TIME_CAP}`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
   if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
@@ -254,6 +255,12 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(rawTimePay) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
+      {entry.remunerationCapped && (
+        <>
+          <PayDetailLine label="Plafond temps" value={formatMoney(ANIMATION_TIME_CAP)} />
+          <PayDetailLine label="Paie temps" value={formatMoney(entry.timePay)} />
+        </>
+      )}
       <PayDetailLine
         label={`Part. + créations moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
         value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
@@ -308,7 +315,7 @@ function PayAmount({ entry }: { entry: PaiesEntry }) {
 function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: number; onOpenCasier: (userId: string) => void }) {
   const hasActivity = entry.animationsCount > 0
   const isAnimationPay = entry.payPole === 'animation'
-  const capTitle = isAnimationPay ? 'Temps plafonné à 17 000 crédits' : 'Plafonné à 15 000 crédits'
+  const capTitle = 'Temps plafonné à 17 000 crédits'
   const podiumLabels = [
     entry.hoursPodiumBonus > 0 ? 'Heures' : null,
     entry.createdPodiumBonus > 0 ? 'Créations' : null,
@@ -439,9 +446,9 @@ function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: numb
               temps {formatMoney(entry.timePay)}
             </span>
           )}
-          {!isAnimationPay && entry.quotaFilled && entry.quotaMax !== null && entry.animationsCount > 0 && (
+          {!isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
             <span className="text-[10px] text-emerald-400/40">
-              base + temps + inscriptions
+              base + temps {formatMoney(entry.timePay)} + inscriptions
             </span>
           )}
         </div>

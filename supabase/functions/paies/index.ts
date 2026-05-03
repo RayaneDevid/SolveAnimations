@@ -63,6 +63,11 @@ function computeHourlyPay(totalMin: number, hourlyRate: number): number {
   return Math.round(totalMin * (hourlyRate / 60))
 }
 
+function computeCappedHourlyPay(totalMin: number, hourlyRate: number): { pay: number; raw: number; capped: boolean } {
+  const raw = computeHourlyPay(totalMin, hourlyRate)
+  return { pay: Math.min(raw, ANIMATION_TIME_CAP), raw, capped: raw > ANIMATION_TIME_CAP }
+}
+
 function topThreeIds<T extends { id: string; username: string }>(
   entries: T[],
   metric: (entry: T) => number,
@@ -226,11 +231,11 @@ Deno.serve(async (req) => {
     const basePay = BASE_PAY[p.payRole] ?? 0
     const seniorBase = isAnimationPay && p.payRole === 'senior' && quotaFilled ? SENIOR_BASE_PAY : 0
     const animationTimePay = computeAnimationTimePay(totalMin, seniorBase)
-    const mjTimePay = computeHourlyPay(totalMin, MJ_HOURLY_RATE)
+    const mjTimePay = computeCappedHourlyPay(totalMin, MJ_HOURLY_RATE)
     const mjRegistrationBonus =
       s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
       s.grande * MJ_GRANDE_REGISTRATION_BONUS
-    const rawMjRemuneration = quotaFilled ? basePay + mjTimePay + mjRegistrationBonus : 0
+    const rawMjRemuneration = quotaFilled ? basePay + mjTimePay.pay + mjRegistrationBonus : 0
     return {
       id: p.id,
       username: p.username,
@@ -253,7 +258,7 @@ Deno.serve(async (req) => {
       quotaMin: null,
       quotaFilled,
       seniorBase,
-      timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
+      timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay.pay) : 0,
       podiumBonus: 0,
       hoursPodiumBonus: 0,
       createdPodiumBonus: 0,
@@ -261,7 +266,7 @@ Deno.serve(async (req) => {
       remuneration: isAnimationPay
         ? (quotaFilled ? animationTimePay.pay : 0)
         : rawMjRemuneration,
-      remunerationCapped: isAnimationPay ? quotaFilled && animationTimePay.capped : false,
+      remunerationCapped: quotaFilled && (isAnimationPay ? animationTimePay.capped : mjTimePay.capped),
       isRemoved: !p.is_active,
     }
   })

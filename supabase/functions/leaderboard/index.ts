@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   // Fetch all finished animations with creator info
   let animQuery = db
     .from('animations')
-    .select('id, creator_id, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, profiles!creator_id(id, username, avatar_url, role, available_roles)')
+    .select('id, creator_id, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, profiles!creator_id(id, username, avatar_url, role, available_roles, gender)')
     .eq('status', 'finished')
 
   if (fromDate) {
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   // are never lost for users who haven't created any animation
   const { data: allProfiles } = await db
     .from('profiles')
-    .select('id, username, avatar_url, role, available_roles')
+    .select('id, username, avatar_url, role, available_roles, gender')
 
   const userMap = new Map<string, {
     userId: string
@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
     avatarUrl: string | null
     role: string
     primaryRole: string
+    gender: 'homme' | 'femme' | 'autre' | null
     hoursAnimated: number
     animationsCreated: number
     participationsValidated: number
@@ -106,6 +107,7 @@ Deno.serve(async (req) => {
     avatarUrl: string | null
     role: string
     primaryRole: string
+    gender: 'homme' | 'femme' | 'autre' | null
     hoursAnimated: number
     animationsCreated: number
     participationsValidated: number
@@ -118,6 +120,7 @@ Deno.serve(async (req) => {
       avatarUrl: p.avatar_url,
       role: p.role,
       primaryRole: p.role,
+      gender: p.gender,
       hoursAnimated: 0,
       animationsCreated: 0,
       participationsValidated: 0,
@@ -130,6 +133,7 @@ Deno.serve(async (req) => {
         avatarUrl: p.avatar_url,
         role: bdmRole,
         primaryRole: p.role,
+        gender: p.gender,
         hoursAnimated: 0,
         animationsCreated: 0,
         participationsValidated: 0,
@@ -148,7 +152,7 @@ Deno.serve(async (req) => {
       continue
     }
 
-    const creator = (anim as unknown as { profiles: { id: string; username: string; avatar_url: string | null; role: string; available_roles: string[] | null } }).profiles
+    const creator = (anim as unknown as { profiles: { id: string; username: string; avatar_url: string | null; role: string; available_roles: string[] | null; gender: 'homme' | 'femme' | 'autre' | null } }).profiles
     if (!creator) continue
     const existing = userMap.get(creator.id)
     if (existing) {

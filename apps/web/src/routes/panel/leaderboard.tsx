@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/shared/GlassCard'
 import { Button } from '@/components/ui/button'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
+import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDuration } from '@/lib/utils/format'
@@ -59,9 +60,12 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
               className="ring-2 ring-white/20"
             />
             <div className="text-center">
-              <p className="text-xs font-semibold text-white/80 max-w-[80px] truncate">
-                {entry.username}
-              </p>
+              <div className="flex max-w-[96px] items-center justify-center gap-1">
+                <p className="truncate text-xs font-semibold text-white/80">
+                  {entry.username}
+                </p>
+                <GenderIcon gender={entry.gender} className="h-3.5 w-3.5" />
+              </div>
               <p className="text-xs text-white/40">{formatDuration(entry.hoursAnimated)}</p>
             </div>
             <div
@@ -112,14 +116,17 @@ function RankingTable({ entries, pole }: { entries: LeaderboardEntry[]; pole: Le
                     username={entry.username}
                     size="sm"
                   />
-                  <span className="text-sm font-medium text-white/90">{entry.username}</span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-white/90">{entry.username}</span>
+                    <GenderIcon gender={entry.gender} className="h-3.5 w-3.5" />
+                  </div>
                 </div>
               </td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <RoleBadge role={entry.role as never} />
+                  <RoleBadge role={entry.role as never} gender={entry.gender} />
                   {isBdm && entry.primaryRole && entry.primaryRole !== entry.role && (
-                    <RoleBadge role={entry.primaryRole as never} />
+                    <RoleBadge role={entry.primaryRole as never} gender={entry.gender} />
                   )}
                 </div>
               </td>

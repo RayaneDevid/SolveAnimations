@@ -214,6 +214,7 @@ export interface LeaderboardEntry {
   avatarUrl: string | null
   role: string
   primaryRole?: string
+  gender: 'homme' | 'femme' | 'autre' | null
   hoursAnimated: number
   animationsCreated: number
   participationsValidated: number

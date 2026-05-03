@@ -22,7 +22,7 @@ import { hasPermissionRole } from '@/lib/config/discord'
 
 const TYPE_LABELS_FULL = { moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
-  moyenne: 'Pour les tickets animations, les missions spontanées / BDM et les scènes MJ',
+  moyenne: 'Pour les tickets animations, les missions spontanées et les scènes MJ',
   grande: 'Pour les animations Trames et les events (+ animations très longues)',
 } as const
 
@@ -31,9 +31,13 @@ const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: str
     label: 'Animation classique',
     description: 'Animation planifiée à venir, avec validation optionnelle.',
   },
-  spontanee_bdm: {
-    label: 'Mission spontanée / BDM',
+  spontanee: {
+    label: 'Animation spontanée',
     description: 'Créée immédiatement, sans participant demandé.',
+  },
+  mission_bdm: {
+    label: 'Mission BDM',
+    description: 'Créée immédiatement, comptabilisée uniquement côté BDM.',
   },
   passee: {
     label: 'Animation passée',
@@ -87,12 +91,14 @@ export default function NewAnimation() {
       registrationsLocked: false,
       pastParticipantIds: [],
       spontaneous: false,
+      bdmMission: false,
     },
   })
 
   const scheduledAt = watch('scheduledAt')
   const missionKind = watch('missionKind')
-  const isInstantMission = missionKind === 'spontanee_bdm'
+  const isBdmMission = missionKind === 'mission_bdm'
+  const isInstantMission = missionKind === 'spontanee' || isBdmMission
   const isPastMission = missionKind === 'passee'
   const canSelfValidatePastMission = hasPermissionRole(permissionRoles, 'senior')
   const requiredParticipants = watch('requiredParticipants')
@@ -126,6 +132,8 @@ export default function NewAnimation() {
       setValue('requiredParticipants', 0, { shouldValidate: true })
       setValue('type', 'moyenne', { shouldValidate: true })
       setValue('pole', 'animation', { shouldValidate: true })
+      setValue('spontaneous', !isBdmMission)
+      setValue('bdmMission', isBdmMission)
       setValue('requestValidation', false)
       setValue('pingRoles', false)
       setValue('pastParticipantIds', [], { shouldValidate: true })
@@ -133,25 +141,31 @@ export default function NewAnimation() {
     }
 
     if (isPastMission) {
+      setValue('spontaneous', false)
+      setValue('bdmMission', false)
       setValue('requestValidation', !canSelfValidatePastMission)
       setValue('pingRoles', false)
       setValue('registrationsLocked', true)
     } else {
+      setValue('spontaneous', false)
+      setValue('bdmMission', false)
       setValue('pastParticipantIds', [], { shouldValidate: true })
     }
 
     if (requiredParticipants == null) {
       setValue('requiredParticipants', 4, { shouldValidate: true })
     }
-  }, [canSelfValidatePastMission, isInstantMission, isPastMission, requiredParticipants, setValue])
+  }, [canSelfValidatePastMission, isBdmMission, isInstantMission, isPastMission, requiredParticipants, setValue])
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
-      const instantMission = data.missionKind === 'spontanee_bdm'
+      const bdmMission = data.missionKind === 'mission_bdm'
+      const instantMission = data.missionKind === 'spontanee' || bdmMission
       const pastMission = data.missionKind === 'passee'
       const result = await mutateAsync({
         ...data,
-        spontaneous: instantMission,
+        spontaneous: instantMission && !bdmMission,
+        bdmMission,
         scheduledAt: instantMission ? undefined : data.scheduledAt,
         plannedDurationMin: instantMission ? 15 : data.plannedDurationMin,
         prepTimeMin: instantMission ? 0 : data.prepTimeMin,
@@ -203,7 +217,7 @@ export default function NewAnimation() {
               name="missionKind"
               control={control}
               render={({ field }) => (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {MISSION_KINDS.map((kind) => {
                     const config = MISSION_KIND_CONFIG[kind]
                     const selected = field.value === kind
@@ -283,7 +297,7 @@ export default function NewAnimation() {
             <Label htmlFor="description">Description de l'animation</Label>
             <Textarea
               id="description"
-              placeholder={isInstantMission ? 'Décris rapidement la mission spontanée / BDM...' : 'Décris le contexte, les objectifs, le déroulement prévu...'}
+              placeholder={isBdmMission ? 'Décris rapidement la mission BDM...' : isInstantMission ? 'Décris rapidement l\'animation spontanée...' : 'Décris le contexte, les objectifs, le déroulement prévu...'}
               rows={4}
               {...register('description')}
             />

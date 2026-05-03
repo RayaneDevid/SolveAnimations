@@ -10,7 +10,7 @@ const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
 const TYPES    = ['moyenne','grande'] as const
 const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
-const MISSION_KINDS = ['classique','spontanee_bdm','passee'] as const
+const MISSION_KINDS = ['classique','spontanee','mission_bdm','passee'] as const
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -25,9 +25,10 @@ Deno.serve(async (req) => {
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
     registrationsLocked = false,
     pastParticipantIds = [],
-    requestValidation = true, pingRoles = true, spontaneous = false, missionKind = 'classique',
+    requestValidation = true, pingRoles = true, spontaneous = false, bdmMission = false, missionKind = 'classique',
   } = body
-  const isInstantMission = spontaneous === true || missionKind === 'spontanee_bdm'
+  const isBdmMission = bdmMission === true || missionKind === 'mission_bdm'
+  const isInstantMission = spontaneous === true || isBdmMission || missionKind === 'spontanee'
   const isPastMission = missionKind === 'passee'
   const resolvedScheduledAt = isInstantMission ? new Date().toISOString() : scheduledAt
   const resolvedPlannedDurationMin = isInstantMission ? 15 : plannedDurationMin
@@ -109,6 +110,7 @@ Deno.serve(async (req) => {
       village,
       description: description?.trim() || null,
       registrations_locked: shouldLockRegistrations,
+      bdm_mission: isBdmMission,
       creator_id: profile.id,
       status: autoFinishPastMission ? 'finished' : isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
       ...(isPastMission ? {

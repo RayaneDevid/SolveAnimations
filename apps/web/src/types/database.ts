@@ -44,6 +44,7 @@ export interface Animation {
   village: Village
   description: string | null
   registrations_locked: boolean
+  bdm_mission: boolean
   pole: 'animation' | 'mj' | 'les_deux'
   creator_id: string
   status: AnimationStatus
@@ -265,8 +266,8 @@ export interface PaiesEntry {
   discordId: string
   steamId: string | null
   role: StaffRoleKey
-  payPole: 'animation' | 'mj'
-  payRole: 'animateur' | 'senior' | 'mj' | 'mj_senior'
+  payPole: 'animation' | 'mj' | 'bdm'
+  payRole: 'animateur' | 'senior' | 'mj' | 'mj_senior' | 'bdm' | 'responsable_bdm'
   animationsCount: number
   createdAnimationsCount: number
   participationsCount: number

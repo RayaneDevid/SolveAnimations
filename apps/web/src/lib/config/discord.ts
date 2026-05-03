@@ -55,9 +55,14 @@ export const ROLE_COLORS: Record<StaffRoleKey, string> = {
 }
 
 export const MJ_STAFF_ROLES: StaffRoleKey[] = ['responsable_mj', 'mj_senior', 'mj']
+export const BDM_STAFF_ROLES: StaffRoleKey[] = ['responsable_bdm', 'bdm']
 
 export function isMjStaffRole(role: string | null | undefined): boolean {
   return MJ_STAFF_ROLES.includes(role as StaffRoleKey)
+}
+
+export function isBdmStaffRole(role: string | null | undefined): boolean {
+  return BDM_STAFF_ROLES.includes(role as StaffRoleKey)
 }
 
 export function hasRole(userRole: StaffRoleKey, required: StaffRoleKey): boolean {

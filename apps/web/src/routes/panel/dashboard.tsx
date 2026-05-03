@@ -135,7 +135,36 @@ function BroadcastCenter({
     }
   }
 
-  if (!canManage && !loading && broadcasts.length === 0) return null
+  if (!canManage) {
+    if (loading) {
+      return <Skeleton className="h-20 w-full rounded-xl" />
+    }
+    if (broadcasts.length === 0) return null
+
+    return (
+      <div className="space-y-3">
+        {broadcasts.map((broadcast) => (
+          <motion.div
+            key={broadcast.id}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex items-start gap-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20">
+              <Megaphone className="h-5 w-5 text-cyan-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-cyan-200">{broadcast.title || 'Annonce'}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-cyan-100/75">
+                {broadcast.message}
+              </p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <GlassCard className="p-5 border border-cyan-400/15 bg-cyan-400/[0.03]">

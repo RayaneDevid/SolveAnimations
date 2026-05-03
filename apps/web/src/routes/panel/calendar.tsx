@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5 } from 'lucide-react'
+import { Briefcase, CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5 } from 'lucide-react'
 import { addDays, format, isSameDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAnimations, useCalendarAvailability } from '@/hooks/queries/useAnimations'
@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { rpDayFromDate } from '@/lib/utils/calendar'
 
 type CalendarMode = 'week' | 'day'
-type PoleFilter = 'all' | 'animation' | 'mj'
+type PoleFilter = 'all' | 'animation' | 'mj' | 'bdm'
 
 function dateInputValue(date: Date): string {
   return format(date, 'yyyy-MM-dd')
@@ -66,6 +66,7 @@ export default function Calendar() {
   const allAnimations = data?.animations ?? []
   const animations = useMemo(() => {
     if (poleFilter === 'all') return allAnimations
+    if (poleFilter === 'bdm') return allAnimations.filter((a) => a.bdm_mission)
     return allAnimations.filter((a) => a.pole === poleFilter || a.pole === 'les_deux')
   }, [allAnimations, poleFilter])
   const todayRpDay = rpDayFromDate(new Date())
@@ -132,6 +133,9 @@ export default function Calendar() {
               </TabsTrigger>
               <TabsTrigger value="mj">
                 <Dice5 className="h-3.5 w-3.5 mr-1" />MJ
+              </TabsTrigger>
+              <TabsTrigger value="bdm">
+                <Briefcase className="h-3.5 w-3.5 mr-1" />BDM
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -208,6 +212,7 @@ export default function Calendar() {
           { label: 'Temple', color: 'bg-pink-500/40' },
           { label: 'Nukenin', color: 'bg-white/20' },
           { label: 'Tout le monde', color: 'bg-gradient-to-r from-cyan-500/40 to-violet-500/40' },
+          { label: 'Mission BDM', color: 'bg-teal-500/40 border border-teal-300/70 border-dashed' },
         ].map((l) => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`h-3 w-3 rounded-sm ${l.color}`} />

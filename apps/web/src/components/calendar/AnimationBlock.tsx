@@ -75,6 +75,7 @@ interface AnimationBlockProps {
 export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT_PX_PER_MIN }: AnimationBlockProps) {
   const isRunning = animation.status === 'running' && !!animation.started_at
   const isFinished = animation.status === 'finished'
+  const isBdmMission = animation.bdm_mission
 
   const [elapsed, setElapsed] = useState(() =>
     isRunning ? elapsedMinutes(animation.started_at!) : 0,
@@ -103,7 +104,9 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
   const totalHeight = Math.max(debriefHeight + animNaturalHeight, 28)
   const animHeight = totalHeight - debriefHeight
 
-  const colorClass = VILLAGE_COLORS[animation.village] ?? VILLAGE_COLORS.autre
+  const colorClass = isBdmMission
+    ? 'bg-teal-500/25 border-teal-300/70 text-teal-50 ring-1 ring-teal-300/30 shadow-[0_0_18px_rgba(45,212,191,0.18)]'
+    : VILLAGE_COLORS[animation.village] ?? VILLAGE_COLORS.autre
 
   const GAP = 2
   const EDGE = 2
@@ -136,6 +139,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
       className={cn(
         'absolute rounded-lg border overflow-hidden group flex flex-col',
         'hover:brightness-125 transition-all duration-150 cursor-pointer',
+        isBdmMission && 'border-dashed',
         colorClass,
       )}
       style={{
@@ -159,6 +163,16 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
 
       {/* Animation zone */}
       <div className="flex-1 px-1.5 py-1 overflow-hidden flex flex-col gap-0.5 min-h-0">
+        {isBdmMission && (
+          <div className="flex items-center gap-1">
+            <span className="shrink-0 rounded-sm border border-teal-200/30 bg-teal-200/15 px-1 text-[8px] font-bold leading-3 tracking-wide text-teal-50">
+              BDM
+            </span>
+            <span className="truncate text-[8px] font-medium leading-3 text-teal-50/70">
+              Mission
+            </span>
+          </div>
+        )}
         <p className="text-[10px] font-semibold leading-tight truncate">
           {animation.title}{animation.creator ? ` · ${animation.creator.username}` : ''}
         </p>
@@ -167,7 +181,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
         </p>
         {animHeight >= 40 && (
           <p className="text-[9px] opacity-60 leading-tight truncate">
-            {animation.server} · {TYPE_LABELS[animation.type]}
+            {animation.server} · {isBdmMission ? 'Mission BDM' : TYPE_LABELS[animation.type]}
           </p>
         )}
         {animHeight >= 56 && (

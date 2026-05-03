@@ -470,7 +470,16 @@ function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: numb
               {entry.username}
             </button>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-              <RoleBadge role={entry.role} />
+              {entry.payPole === 'bdm' ? (
+                <>
+                  <RoleBadge role={entry.payRole} />
+                  {entry.payRole !== entry.role && (
+                    <RoleBadge role={entry.role} />
+                  )}
+                </>
+              ) : (
+                <RoleBadge role={entry.role} />
+              )}
               <span className={cn(
                 'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
                 entry.payPole === 'mj'

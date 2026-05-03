@@ -706,11 +706,11 @@ export default function Paies() {
                         <tr className="border-b border-white/[0.06]">
                           <th className="py-3 pl-4 pr-2 text-xs font-medium text-white/30 w-8">#</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30">Membre</th>
-                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Créées</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Part.</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Formation</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Inscr. M/G</th>
+                          <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Total</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps anim</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Tps prépa</th>
                           <th className="py-3 pr-4 text-xs font-medium text-white/30 text-center">Temps</th>

@@ -20,10 +20,16 @@ Deno.serve(async (req) => {
   const db = getServiceClient()
 
   let fromDate: string | null = null
+  let toDate: string | null = null
   const now = new Date()
 
   if (period === 'week') {
-    fromDate = computeWeekStart(now).toISOString()
+    const weekStart = body.week_start ? new Date(body.week_start) : computeWeekStart(now)
+    if (Number.isNaN(weekStart.getTime()))
+      return errorResponse('VALIDATION_ERROR', 'week_start invalide')
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+    fromDate = weekStart.toISOString()
+    toDate = weekEnd.toISOString()
   } else if (period === 'month') {
     const d = new Date(now)
     d.setDate(d.getDate() - 30)
@@ -39,6 +45,9 @@ Deno.serve(async (req) => {
   if (fromDate) {
     animQuery = animQuery.gte('started_at', fromDate)
   }
+  if (toDate) {
+    animQuery = animQuery.lt('started_at', toDate)
+  }
 
   const { data: animations } = await animQuery
 
@@ -51,6 +60,9 @@ Deno.serve(async (req) => {
 
   if (fromDate) {
     partQuery = partQuery.gte('animations.started_at' as never, fromDate)
+  }
+  if (toDate) {
+    partQuery = partQuery.lt('animations.started_at' as never, toDate)
   }
 
   const { data: participations } = await partQuery

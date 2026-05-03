@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { Trophy, Clock, Sword, Users } from 'lucide-react'
+import { Trophy, Clock, Sword, Users, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { useLeaderboard } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
+import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { GlassCard } from '@/components/shared/GlassCard'
+import { Button } from '@/components/ui/button'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -139,10 +143,12 @@ const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
 
 export default function Leaderboard() {
   const { user } = useRequiredAuth()
+  const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [metric, setMetric] = useState<'byHours' | 'byAnimations' | 'byParticipations'>('byHours')
   const [pole, setPole] = useState<'anim' | 'mj'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'anim')
-  const { data, isLoading } = useLeaderboard(period)
+  const { data, isLoading } = useLeaderboard(period, bounds.start)
+  const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
 
   const rawEntries = data?.[metric] ?? []
   const poleRoles = pole === 'anim' ? ANIM_ROLES : MJ_ROLES
@@ -160,7 +166,25 @@ export default function Leaderboard() {
           </h1>
           <p className="text-sm text-white/40 mt-0.5">Performances de l'équipe</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {period === 'week' && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+              <Button variant="ghost" size="sm" onClick={goPrev} className="h-8 w-8 p-0">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <button
+                type="button"
+                onClick={goToday}
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
+              >
+                <CalendarDays className="h-3.5 w-3.5 text-cyan-400" />
+                {isCurrentWeek() ? 'Cette sem.' : weekLabel}
+              </button>
+              <Button variant="ghost" size="sm" onClick={goNext} disabled={isCurrentWeek()} className="h-8 w-8 p-0">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <Tabs value={pole} onValueChange={(v) => setPole(v as typeof pole)}>
             <TabsList>
               <TabsTrigger value="anim">Pôle Animation</TabsTrigger>

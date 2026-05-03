@@ -23,7 +23,7 @@ export const queryKeys = {
     weekly: (userId?: string) => ['stats', 'weekly', userId ?? 'self'] as const,
     villages: ['stats', 'villages'] as const,
   },
-  leaderboard: (period: string) => ['leaderboard', period] as const,
+  leaderboard: (period: string, weekStart?: string) => ['leaderboard', period, weekStart ?? 'current'] as const,
   weeklyReview: ['weekly-review'] as const,
   members: {
     list: ['members'] as const,

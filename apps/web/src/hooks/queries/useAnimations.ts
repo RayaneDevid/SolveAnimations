@@ -241,10 +241,14 @@ export function useWeeklyReview(weekStart?: Date) {
   })
 }
 
-export function useLeaderboard(period: 'week' | 'month' | 'all') {
+export function useLeaderboard(period: 'week' | 'month' | 'all', weekStart?: Date) {
+  const weekStartIso = period === 'week' ? weekStart?.toISOString() : undefined
   return useQuery({
-    queryKey: queryKeys.leaderboard(period),
-    queryFn: () => invokeEdge<import('@/types/database').LeaderboardResult>('leaderboard', { period }),
+    queryKey: queryKeys.leaderboard(period, weekStartIso),
+    queryFn: () => invokeEdge<import('@/types/database').LeaderboardResult>('leaderboard', {
+      period,
+      ...(weekStartIso ? { week_start: weekStartIso } : {}),
+    }),
     staleTime: 5 * 60 * 1000,
   })
 }

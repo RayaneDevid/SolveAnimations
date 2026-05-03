@@ -27,14 +27,29 @@ const MANAGEMENT_ROLE_ORDER = ['direction', 'gerance']
 const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
 const MJ_ROLE_ORDER = ['responsable_mj', 'mj_senior', 'mj']
 const BDM_ROLE_ORDER = ['responsable_bdm', 'bdm']
+const BDM_ROLES = new Set(BDM_ROLE_ORDER)
 
 type MemberSortMode = 'role' | 'quota' | 'name'
 type PayPole = 'animation' | 'mj'
 
-function sortByRole(members: MemberEntry[], order: string[]): MemberEntry[] {
+function getBdmRole(member: MemberEntry): StaffRoleKey | null {
+  if (member.availableRoles?.includes('responsable_bdm')) return 'responsable_bdm'
+  if (member.availableRoles?.includes('bdm')) return 'bdm'
+  return BDM_ROLES.has(member.role) ? member.role : null
+}
+
+function hasBdmRole(member: MemberEntry): boolean {
+  return getBdmRole(member) !== null
+}
+
+function sortByRole(
+  members: MemberEntry[],
+  order: string[],
+  getRole: (member: MemberEntry) => string = (member) => member.role,
+): MemberEntry[] {
   return [...members].sort((a, b) => {
-    const ia = order.indexOf(a.role)
-    const ib = order.indexOf(b.role)
+    const ia = order.indexOf(getRole(a))
+    const ib = order.indexOf(getRole(b))
     if (ia !== ib) return ia - ib
     return a.username.localeCompare(b.username)
   })
@@ -63,6 +78,13 @@ function sortMembers(members: MemberEntry[], mode: MemberSortMode, roleOrder: st
     })
   }
   return sortByRole(members, roleOrder)
+}
+
+function sortBdmMembers(members: MemberEntry[], mode: MemberSortMode): MemberEntry[] {
+  if (mode === 'name') {
+    return [...members].sort((a, b) => a.username.localeCompare(b.username))
+  }
+  return sortByRole(members, BDM_ROLE_ORDER, (member) => getBdmRole(member) ?? member.role)
 }
 
 // ─── Remove confirm modal ─────────────────────────────────────────────────────
@@ -561,6 +583,7 @@ function EditProfileModal({ member, open, onClose }: { member: MemberEntry; open
 
 function MemberTable({
   members,
+  bdmView = false,
   onRemove,
   canManagePrimaryRole,
   onChangeRole,
@@ -569,6 +592,7 @@ function MemberTable({
   onEditProfile,
 }: {
   members: MemberEntry[]
+  bdmView?: boolean
   onRemove: (m: MemberEntry) => void
   canManagePrimaryRole: boolean
   onChangeRole: (m: MemberEntry) => void
@@ -584,7 +608,10 @@ function MemberTable({
     <table className="w-full">
         <thead>
           <tr className="border-b border-white/[0.06]">
-            {['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', ''].map((h) => (
+            {(bdmView
+              ? ['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Compteur BDM', 'Absence', '']
+              : ['Membre', 'Rôle', 'Paie', 'Dernière activité', 'Anim. (joueur/sem)', 'Heures (joueur/sem)', 'Quota', 'Absence', '']
+            ).map((h) => (
               <th
                 key={h}
                 className={`text-xs font-semibold text-white/40 uppercase tracking-wider px-4 py-3 ${h ? 'text-left' : 'w-14 text-right'}`}
@@ -600,6 +627,7 @@ function MemberTable({
             const quota = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
             const quotaPct = quotaMax ? Math.min(100, (quota / quotaMax) * 100) : 100
             const missionsCount = m.weeklyStats.animationsCreated + m.weeklyStats.participationsValidated
+            const bdmRole = getBdmRole(m)
             return (
               <motion.tr
                 key={m.id}
@@ -625,11 +653,20 @@ function MemberTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <RoleCell
-                    member={m}
-                    canManagePrimaryRole={canManagePrimaryRole}
-                    onChangeRole={onChangeRole}
-                  />
+                  {bdmView && bdmRole ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <RoleBadge role={bdmRole} gender={m.gender} />
+                      {bdmRole !== m.role && (
+                        <RoleBadge role={m.role} gender={m.gender} />
+                      )}
+                    </div>
+                  ) : (
+                    <RoleCell
+                      member={m}
+                      canManagePrimaryRole={canManagePrimaryRole}
+                      onChangeRole={onChangeRole}
+                    />
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <PayPoleCell
@@ -643,36 +680,46 @@ function MemberTable({
                     ? formatDistanceToNow(new Date(m.lastActivityAt), { addSuffix: true, locale: fr })
                     : '—'}
                 </td>
-                <td className="px-4 py-3 text-sm text-white/60">
-                  <span className="text-white/90 font-medium">{missionsCount}</span>
-                  <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
-                </td>
-                <td className="px-4 py-3 text-sm text-white/60">
-                  <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
-                  <span className="text-white/30"> / {((m.weeklyTotals?.hoursAnimated ?? 0) / 60).toFixed(1)}h</span>
-                </td>
-                <td className="px-4 py-3 w-32">
-                  {quotaMax === null ? (
-                    <span className="text-xs text-white/30">Illimité</span>
-                  ) : (
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white/60">{quota}/{quotaMax}</span>
-                      </div>
-                      <Progress
-                        value={quotaPct}
-                        className="h-1"
-                        indicatorClassName={
-                          quotaPct >= 100
-                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                            : quotaPct < 40
-                              ? 'bg-gradient-to-r from-red-400 to-orange-400'
-                              : undefined
-                        }
-                      />
-                    </div>
-                  )}
-                </td>
+                {bdmView ? (
+                  <td className="px-4 py-3">
+                    <span className="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-300">
+                      À venir
+                    </span>
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-4 py-3 text-sm text-white/60">
+                      <span className="text-white/90 font-medium">{missionsCount}</span>
+                      <span className="text-white/30"> / {m.weeklyTotals?.animationsCreated ?? 0}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-white/60">
+                      <span className="text-white/90 font-medium">{(m.weeklyStats.hoursAnimated / 60).toFixed(1)}h</span>
+                      <span className="text-white/30"> / {((m.weeklyTotals?.hoursAnimated ?? 0) / 60).toFixed(1)}h</span>
+                    </td>
+                    <td className="px-4 py-3 w-32">
+                      {quotaMax === null ? (
+                        <span className="text-xs text-white/30">Illimité</span>
+                      ) : (
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-white/60">{quota}/{quotaMax}</span>
+                          </div>
+                          <Progress
+                            value={quotaPct}
+                            className="h-1"
+                            indicatorClassName={
+                              quotaPct >= 100
+                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                                : quotaPct < 40
+                                  ? 'bg-gradient-to-r from-red-400 to-orange-400'
+                                  : undefined
+                            }
+                          />
+                        </div>
+                      )}
+                    </td>
+                  </>
+                )}
                 <td className="px-4 py-3">
                   {m.isAbsent ? (
                     <AbsenceBadge
@@ -853,7 +900,7 @@ export default function Members() {
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
   const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
   const poleMjMembers = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
-  const bdmMembers = sortMembers(members.filter((m) => BDM_ROLE_ORDER.includes(m.role)), sortMode, BDM_ROLE_ORDER)
+  const bdmMembers = sortBdmMembers(members.filter(hasBdmRole), sortMode)
 
   const stats = {
     total: members.length,
@@ -976,6 +1023,7 @@ export default function Members() {
             <GlassCard className="overflow-hidden">
               <MemberTable
                 members={bdmMembers}
+                bdmView
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}

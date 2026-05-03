@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X, Search } from 'lucide-react'
+import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, ChevronDown, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -104,6 +104,7 @@ function BroadcastCenter({
   const { mutateAsync: createBroadcast, isPending: creating } = useCreateBroadcast()
   const { mutateAsync: archiveBroadcast, isPending: archiving } = useArchiveBroadcast()
   const [showForm, setShowForm] = useState(false)
+  const [showBroadcasts, setShowBroadcasts] = useState(false)
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [audience, setAudience] = useState<BroadcastAudience>('all')
@@ -170,7 +171,7 @@ function BroadcastCenter({
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex items-start gap-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4"
+            className="flex items-center gap-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20">
               <Megaphone className="h-5 w-5 text-cyan-300" />
@@ -190,27 +191,37 @@ function BroadcastCenter({
   return (
     <GlassCard className="p-5 border border-cyan-400/15 bg-cyan-400/[0.03]">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10">
+        <button
+          type="button"
+          onClick={() => setShowBroadcasts((v) => !v)}
+          className="flex min-w-0 items-center gap-3 hover:opacity-80 transition-opacity"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10">
             <Megaphone className="h-4 w-4 text-cyan-300" />
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-white/85">Broadcast</h2>
+          <div className="min-w-0 text-left">
+            <h2 className="text-sm font-semibold text-white/85">
+              Broadcast
+              {broadcasts.length > 0 && (
+                <span className="ml-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
+                  {broadcasts.length}
+                </span>
+              )}
+            </h2>
             <p className="text-xs text-white/35">Messages affichés sur le dashboard</p>
           </div>
-        </div>
-        {canManage && (
-          <Button
-            type="button"
-            size="sm"
-            variant={showForm ? 'outline' : 'default'}
-            onClick={() => setShowForm((value) => !value)}
-            className="gap-1.5"
-          >
-            {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {showForm ? 'Fermer' : 'Nouveau'}
-          </Button>
-        )}
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/30 transition-transform', showBroadcasts && 'rotate-180')} />
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          variant={showForm ? 'outline' : 'default'}
+          onClick={() => setShowForm((value) => !value)}
+          className="shrink-0 gap-1.5"
+        >
+          {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+          {showForm ? 'Fermer' : 'Nouveau'}
+        </Button>
       </div>
 
       {showForm && (
@@ -300,38 +311,38 @@ function BroadcastCenter({
         </div>
       )}
 
-      {loading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : broadcasts.length === 0 ? (
-        <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-white/30">
-          Aucun broadcast actif.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {broadcasts.map((broadcast) => (
-            <div key={broadcast.id} className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-cyan-100">
-                      {broadcast.title || 'Annonce'}
+      {showBroadcasts && (
+        loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : broadcasts.length === 0 ? (
+          <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm text-white/30">
+            Aucun broadcast actif.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {broadcasts.map((broadcast) => (
+              <div key={broadcast.id} className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-cyan-100">
+                        {broadcast.title || 'Annonce'}
+                      </p>
+                      <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/40">
+                        {broadcastAudienceLabel(broadcast.audience)}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white/70">
+                      {broadcast.message}
                     </p>
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/40">
-                      {broadcastAudienceLabel(broadcast.audience)}
-                    </span>
+                    <p className="mt-2 text-[11px] text-white/35">
+                      {broadcast.creator?.username ? `Par ${broadcast.creator.username} · ` : ''}
+                      {formatDateTime(broadcast.created_at)}
+                    </p>
                   </div>
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white/70">
-                    {broadcast.message}
-                  </p>
-                  <p className="mt-2 text-[11px] text-white/35">
-                    {broadcast.creator?.username ? `Par ${broadcast.creator.username} · ` : ''}
-                    {formatDateTime(broadcast.created_at)}
-                  </p>
-                </div>
-                {canManage && (
                   <button
                     type="button"
                     onClick={() => handleArchive(broadcast.id)}
@@ -341,11 +352,11 @@ function BroadcastCenter({
                   >
                     <X className="h-4 w-4" />
                   </button>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
     </GlassCard>
   )

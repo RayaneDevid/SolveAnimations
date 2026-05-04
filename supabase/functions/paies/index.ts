@@ -21,11 +21,9 @@ const BDM_BASE_PAY = 4_000
 const BDM_QUOTA_COUNT = 3
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
-const BDM_HOURLY_RATE = 600
+const BDM_HOURLY_RATE = 650
 const SENIOR_BASE_PAY = 2_000
-const MJ_HOURLY_RATE = 800
-const MJ_MOYENNE_REGISTRATION_BONUS = 200
-const MJ_GRANDE_REGISTRATION_BONUS = 300
+const MJ_HOURLY_RATE = 500
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
 
@@ -103,6 +101,24 @@ function topThreeIds<T extends { id: string; username: string }>(
       .slice(0, 3)
       .map((entry) => entry.id),
   )
+}
+
+function exclusivePodiumIds<T extends { id: string; username: string }>(
+  entries: T[],
+  metrics: Array<(entry: T) => number>,
+): Set<string>[] {
+  const alreadyAwarded = new Set<string>()
+  return metrics.map((metric) => {
+    const ids = new Set(
+      [...entries]
+        .filter((entry) => metric(entry) > 0 && !alreadyAwarded.has(entry.id))
+        .sort((a, b) => metric(b) - metric(a) || a.username.localeCompare(b.username))
+        .slice(0, 3)
+        .map((entry) => entry.id),
+    )
+    ids.forEach((id) => alreadyAwarded.add(id))
+    return ids
+  })
 }
 
 Deno.serve(async (req) => {
@@ -375,10 +391,7 @@ Deno.serve(async (req) => {
       const totalMin = s.animationMin + s.prepMin
       const quotaFilled = s.animationsCount >= BDM_QUOTA_COUNT
       const timePay = computeHourlyPay(totalMin, BDM_HOURLY_RATE)
-      const registrationBonus =
-        s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
-        s.grande * MJ_GRANDE_REGISTRATION_BONUS
-      const rawBeforePodiumPay = BDM_BASE_PAY + timePay + registrationBonus
+      const rawBeforePodiumPay = BDM_BASE_PAY + timePay
       const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
       return {
         id: p.id,
@@ -419,14 +432,18 @@ Deno.serve(async (req) => {
   const animParticipationPodium = topThreeIds(animationEntries, (entry) => entry.participationsCount)
 
   const mjEntries = baseEntries.filter((entry) => entry.payPole === 'mj' && entry.quotaFilled)
-  const mjHoursPodium = topThreeIds(mjEntries, (entry) => entry.totalMin)
-  const mjCreatedPodium = topThreeIds(mjEntries, (entry) => entry.createdAnimationsCount)
-  const mjParticipationPodium = topThreeIds(mjEntries, (entry) => entry.participationsCount)
+  const [mjHoursPodium, mjCreatedPodium, mjParticipationPodium] = exclusivePodiumIds(mjEntries, [
+    (entry) => entry.totalMin,
+    (entry) => entry.createdAnimationsCount,
+    (entry) => entry.participationsCount,
+  ])
 
   const bdmPodiumEntries = bdmEntries.filter((entry) => entry.quotaFilled)
-  const bdmHoursPodium = topThreeIds(bdmPodiumEntries, (entry) => entry.totalMin)
-  const bdmCreatedPodium = topThreeIds(bdmPodiumEntries, (entry) => entry.createdAnimationsCount)
-  const bdmParticipationPodium = topThreeIds(bdmPodiumEntries, (entry) => entry.participationsCount)
+  const [bdmHoursPodium, bdmCreatedPodium, bdmParticipationPodium] = exclusivePodiumIds(bdmPodiumEntries, [
+    (entry) => entry.totalMin,
+    (entry) => entry.createdAnimationsCount,
+    (entry) => entry.participationsCount,
+  ])
 
   const result = baseEntries.map((entry) => {
     if (entry.payPole === 'animation') {
@@ -463,10 +480,7 @@ Deno.serve(async (req) => {
     const createdPodiumBonus = bdmCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
     const participationPodiumBonus = bdmParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
     const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
-    const registrationBonus =
-      entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
-      entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-    const rawBeforePodiumPay = BDM_BASE_PAY + entry.timePay + registrationBonus
+    const rawBeforePodiumPay = BDM_BASE_PAY + entry.timePay
     const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
     const rawTotalPay = beforePodiumPay + podiumBonus
     return {

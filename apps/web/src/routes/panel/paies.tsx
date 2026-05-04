@@ -23,13 +23,11 @@ const BDM_PAY_ROLE_ORDER  = ['responsable_bdm', 'bdm']
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
-const MJ_HOURLY_RATE = 800
+const MJ_HOURLY_RATE = 500
 const BDM_BASE_PAY = 4_000
-const BDM_HOURLY_RATE = 600
+const BDM_HOURLY_RATE = 650
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
-const MJ_MOYENNE_REGISTRATION_BONUS = 200
-const MJ_GRANDE_REGISTRATION_BONUS = 300
 
 type PayTab = 'animation' | 'mj' | 'bdm'
 
@@ -104,18 +102,14 @@ function buildMjCommentaire(entry: PaiesEntry): string {
 function buildBdmCommentaire(entry: PaiesEntry): string {
   if (!entry.quotaFilled) return 'Quota non atteint'
   const rawTimePay = Math.round(entry.totalMin * (BDM_HOURLY_RATE / 60))
-  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
-  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay + moyenneBonus + grandeBonus
+  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const parts: string[] = [
     `Base quota: ${BDM_BASE_PAY}`,
     `Temps (${formatMin(entry.totalMin)} x ${BDM_HOURLY_RATE}/h): ${rawTimePay}`,
-    `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
-    `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
   ]
-  if (rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP) parts.push(`Base + temps + inscriptions plafonné à ${BDM_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
+  if (rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP) parts.push(`Base + temps plafonné à ${BDM_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
   if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
@@ -319,9 +313,7 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
 
 function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
   const rawTimePay = Math.round(entry.totalMin * (BDM_HOURLY_RATE / 60))
-  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
-  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay + moyenneBonus + grandeBonus
+  const rawBeforePodiumPay = BDM_BASE_PAY + rawTimePay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const beforePodiumCapped = rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP
@@ -342,16 +334,6 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
       <PayDetailLine
         label={`Temps (${formatMin(entry.totalMin)} × ${BDM_HOURLY_RATE}/h)`}
         value={entry.quotaFilled ? formatMoney(rawTimePay) : formatMoney(0)}
-        muted={!entry.quotaFilled}
-      />
-      <PayDetailLine
-        label={`Part. + créations moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
-        value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
-        muted={!entry.quotaFilled}
-      />
-      <PayDetailLine
-        label={`Part. + créations grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
-        value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
       {beforePodiumCapped && (
@@ -770,11 +752,11 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-400" />
-              Quota 3 anims · base 4 000/5 000 + 800/h
+              Quota 3 anims · base 4 000/5 000 + 500/h
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
-              Primes : +1 000 crédits par podium top 3
+              Primes : +1 000 crédits par podium, 1 prime max par personne
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />
@@ -785,11 +767,11 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Quota 3 missions BDM · base 4 000 + 600/h · +200 M / +300 G
+              Quota 3 missions BDM · base 4 000 + 650/h
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
-              Primes : +1 000 crédits par podium top 3 BDM
+              Primes : +1 000 crédits par podium, 1 prime max par personne
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />

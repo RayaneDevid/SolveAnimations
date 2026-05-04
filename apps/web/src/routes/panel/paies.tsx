@@ -86,18 +86,14 @@ function buildMjCommentaire(entry: PaiesEntry): string {
   if (!entry.quotaFilled) return 'Quota non atteint'
   const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
   const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
-  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
-  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawBeforePodiumPay = basePay + rawTimePay + moyenneBonus + grandeBonus
+  const rawBeforePodiumPay = basePay + rawTimePay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const parts: string[] = [
     `Base quota: ${basePay}`,
     `Temps (${formatMin(entry.totalMin)} x ${MJ_HOURLY_RATE}/h): ${rawTimePay}`,
-    `M (${entry.moyenne} x ${MJ_MOYENNE_REGISTRATION_BONUS}): ${moyenneBonus}`,
-    `G (${entry.grande} x ${MJ_GRANDE_REGISTRATION_BONUS}): ${grandeBonus}`,
   ]
-  if (rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP) parts.push(`Base + temps + inscriptions plafonné à ${MJ_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
+  if (rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP) parts.push(`Base + temps plafonné à ${MJ_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
   if (entry.participationPodiumBonus > 0) parts.push(`Prime podium participations: +${entry.participationPodiumBonus}`)
@@ -270,9 +266,7 @@ function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
 function MjPayDetails({ entry }: { entry: PaiesEntry }) {
   const basePay = entry.payRole === 'mj_senior' ? 5_000 : 4_000
   const rawTimePay = Math.round(entry.totalMin * (MJ_HOURLY_RATE / 60))
-  const moyenneBonus = entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS
-  const grandeBonus = entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-  const rawBeforePodiumPay = basePay + rawTimePay + moyenneBonus + grandeBonus
+  const rawBeforePodiumPay = basePay + rawTimePay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const beforePodiumCapped = rawBeforePodiumPay > MJ_BEFORE_PODIUM_CAP
@@ -292,16 +286,6 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
       <PayDetailLine
         label={`Temps (${formatMin(entry.totalMin)} × ${MJ_HOURLY_RATE}/h)`}
         value={entry.quotaFilled ? formatMoney(rawTimePay) : formatMoney(0)}
-        muted={!entry.quotaFilled}
-      />
-      <PayDetailLine
-        label={`Part. + créations moyennes (${entry.moyenne} × ${MJ_MOYENNE_REGISTRATION_BONUS})`}
-        value={entry.quotaFilled ? formatMoney(moyenneBonus) : formatMoney(0)}
-        muted={!entry.quotaFilled}
-      />
-      <PayDetailLine
-        label={`Part. + créations grandes (${entry.grande} × ${MJ_GRANDE_REGISTRATION_BONUS})`}
-        value={entry.quotaFilled ? formatMoney(grandeBonus) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
       {beforePodiumCapped && (
@@ -786,7 +770,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-400" />
-              Quota 3 anims · base 4 000/5 000 + 800/h · +200 M / +300 G
+              Quota 3 anims · base 4 000/5 000 + 800/h
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />

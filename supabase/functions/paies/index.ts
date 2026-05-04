@@ -326,10 +326,7 @@ Deno.serve(async (req) => {
     const seniorBase = isAnimationPay && p.payRole === 'senior' && quotaFilled ? SENIOR_BASE_PAY : 0
     const animationTimePay = computeAnimationTimePay(totalMin, seniorBase)
     const mjTimePay = computeHourlyPay(totalMin, MJ_HOURLY_RATE)
-    const mjRegistrationBonus =
-      s.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
-      s.grande * MJ_GRANDE_REGISTRATION_BONUS
-    const rawMjBeforePodiumPay = basePay + mjTimePay + mjRegistrationBonus
+    const rawMjBeforePodiumPay = basePay + mjTimePay
     const mjBeforePodiumPay = Math.min(rawMjBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
     const rawMjRemuneration = quotaFilled ? mjBeforePodiumPay : 0
     return {
@@ -445,10 +442,7 @@ Deno.serve(async (req) => {
       const participationPodiumBonus = mjParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
       const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
       const basePay = BASE_PAY[entry.payRole] ?? 0
-      const registrationBonus =
-        entry.moyenne * MJ_MOYENNE_REGISTRATION_BONUS +
-        entry.grande * MJ_GRANDE_REGISTRATION_BONUS
-      const rawBeforePodiumPay = basePay + entry.timePay + registrationBonus
+      const rawBeforePodiumPay = basePay + entry.timePay
       const beforePodiumPay = Math.min(rawBeforePodiumPay, MJ_BEFORE_PODIUM_CAP)
       const rawTotalPay = beforePodiumPay + podiumBonus
       return {

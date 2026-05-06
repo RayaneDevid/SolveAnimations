@@ -57,6 +57,34 @@ function normalizeReportPole(pole: string | null | undefined): ReportPole {
   return pole === 'mj' || pole === 'bdm' ? pole : 'animateur'
 }
 
+function reportAnimationMinutes(report: AnimationReport): { animationMin: number; prepMin: number; totalMin: number } | null {
+  const anim = report.animation
+  if (!anim) return null
+  const animationMin = anim.actual_duration_min ?? anim.planned_duration_min ?? 0
+  const prepMin = anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
+  return { animationMin, prepMin, totalMin: animationMin + prepMin }
+}
+
+function reportParticipationMinutes(report: AnimationReport): number | null {
+  const anim = report.animation
+  const totals = reportAnimationMinutes(report)
+  if (!anim || !totals) return null
+  if (report.user_id === anim.creator_id || !report.participation) return totals.totalMin
+  if (!anim.started_at) return totals.totalMin
+
+  const startedMs = new Date(anim.started_at).getTime()
+  const joinedMs = report.participation.joined_at ? new Date(report.participation.joined_at).getTime() : startedMs
+  const endedMs = report.participation.participation_ended_at
+    ? new Date(report.participation.participation_ended_at).getTime()
+    : null
+  const offsetMin = Math.max(0, Math.floor((joinedMs - startedMs) / 60_000))
+  const endedOffsetMin = endedMs && endedMs > startedMs
+    ? Math.floor((endedMs - startedMs) / 60_000)
+    : totals.animationMin
+  const animationMin = Math.max(0, Math.min(totals.animationMin, endedOffsetMin) - offsetMin)
+  return animationMin + totals.prepMin
+}
+
 // ─── Report detail modal ──────────────────────────────────────────────────────
 
 export function ReportModal({
@@ -78,6 +106,8 @@ export function ReportModal({
   const isSubmitted = !!report.submitted_at
   const anim = report.animation
   const showReadOnly = readOnly || (isSubmitted && !editing)
+  const totalMinutes = reportAnimationMinutes(report)?.totalMin
+  const participationMinutes = reportParticipationMinutes(report)
   const quotaOptions = useMemo(() => {
     if (!anim?.bdm_mission || readOnly) return []
     const options = allowedReportPoles(user)
@@ -137,8 +167,8 @@ export function ReportModal({
             {[
               { icon: Calendar, label: 'Date', value: anim ? formatDateTime(anim.scheduled_at) : '—' },
               { icon: Sword, label: 'Quota', value: REPORT_POLE_LABELS[normalizeReportPole(report.pole)] },
-              { icon: Clock, label: 'Durée animation', value: anim ? formatDuration(anim.actual_duration_min ?? anim.planned_duration_min) : '—' },
-              { icon: Clock, label: 'Débrief / préparation', value: anim ? formatDuration(anim.actual_prep_time_min ?? anim.prep_time_min) : '—' },
+              { icon: Clock, label: 'Temps total', value: totalMinutes != null ? formatDuration(totalMinutes) : '—' },
+              { icon: Clock, label: 'Ma participation', value: participationMinutes != null ? formatDuration(participationMinutes) : '—' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                 <div className="flex items-center gap-1.5 mb-1">

@@ -140,6 +140,7 @@ export interface AnimationReport {
   submitted_at: string | null
   created_at: string
   animation?: Animation
+  participation?: Pick<AnimationParticipant, 'joined_at' | 'participation_ended_at' | 'status'> | null
   user?: Profile
 }
 

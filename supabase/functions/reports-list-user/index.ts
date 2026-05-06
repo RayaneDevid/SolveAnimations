@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { attachReportParticipations } from '../_shared/reportParticipations.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
       *,
       user:profiles!animation_reports_user_id_fkey(id, username, avatar_url, role, available_roles),
       animation:animations!animation_reports_animation_id_fkey(
-        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, status, server, type, bdm_mission, bdm_mission_rank, bdm_mission_type, bdm_spontaneous
+        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, ended_at, creator_id, status, server, type, bdm_mission, bdm_mission_rank, bdm_mission_type, bdm_spontaneous
       )
     `)
     .eq('user_id', user_id)
@@ -35,5 +36,5 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
-  return jsonResponse(reports ?? [])
+  return jsonResponse(await attachReportParticipations(db, reports ?? []))
 })

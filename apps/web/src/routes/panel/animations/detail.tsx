@@ -59,6 +59,7 @@ function FinishedEditForm({
   const [village, setVillage] = useState(animation.village)
   const [server, setServer] = useState(animation.server)
   const [type, setType] = useState((animation.type as string) === 'petite' ? 'moyenne' : animation.type)
+  const [bdmMission, setBdmMission] = useState(animation.bdm_mission)
   const [bdmRank, setBdmRank] = useState(animation.bdm_mission_rank)
   const [bdmType, setBdmType] = useState(animation.bdm_mission_type)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
@@ -77,9 +78,12 @@ function FinishedEditForm({
           type,
           scheduled_at: scheduledAt?.toISOString(),
         } : {}),
-        ...(animation.bdm_mission && canEditBdm ? {
-          bdm_mission_rank: bdmRank,
-          bdm_mission_type: bdmType,
+        ...(canEditBdm ? {
+          bdm_mission: bdmMission,
+          ...(bdmMission ? {
+            bdm_mission_rank: bdmRank,
+            bdm_mission_type: bdmType,
+          } : {}),
         } : {}),
       })
       toast.success('Animation corrigée')
@@ -185,7 +189,17 @@ function FinishedEditForm({
             </>
           )}
 
-          {animation.bdm_mission && canEditBdm && (
+          {canEditBdm && (
+            <div>
+              <label className={labelCls}>Nature</label>
+              <select value={bdmMission ? 'mission_bdm' : 'animation'} onChange={(e) => setBdmMission(e.target.value === 'mission_bdm')} className={inputCls}>
+                <option value="animation">Animation</option>
+                <option value="mission_bdm">Mission BDM</option>
+              </select>
+            </div>
+          )}
+
+          {bdmMission && canEditBdm && (
             <div>
               <label className={labelCls}>Rang BDM</label>
               <select value={bdmRank} onChange={(e) => setBdmRank(e.target.value as BdmMissionRank)} className={inputCls}>
@@ -193,7 +207,7 @@ function FinishedEditForm({
               </select>
             </div>
           )}
-          {animation.bdm_mission && canEditBdm && (
+          {bdmMission && canEditBdm && (
             <div>
               <label className={labelCls}>Type BDM</label>
               <select value={bdmType} onChange={(e) => setBdmType(e.target.value as BdmMissionType)} className={inputCls}>
@@ -624,7 +638,7 @@ export default function AnimationDetail() {
   const canManageAnimation = isResponsable || isBdmResponsable
   const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
   const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
-  const canCorrectFinishedBdm = animation.bdm_mission && (canCorrectFinished || isBdmResponsable)
+  const canCorrectFinishedBdm = canManageAnimation
   const scheduledAtHasPassed = new Date(animation.scheduled_at).getTime() <= Date.now()
   const canManageRegistrations =
     (isCreator || isResponsable) &&

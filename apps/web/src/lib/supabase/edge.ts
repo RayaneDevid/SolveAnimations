@@ -79,6 +79,7 @@ export type EdgeFunctionName =
   | 'broadcasts-list'
   | 'broadcasts-create'
   | 'broadcasts-archive'
+  | 'participation-conflicts'
 
 type ApiOk<T> = { data: T }
 type ApiError = { error: { code: string; message: string; details?: unknown } }

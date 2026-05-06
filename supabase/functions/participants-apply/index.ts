@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
   const { data: anim } = await db
     .from('animations')
-    .select('id, creator_id, status, scheduled_at, registrations_locked')
+    .select('id, creator_id, status, scheduled_at, planned_duration_min, prep_time_min, registrations_locked')
     .eq('id', animation_id)
     .single()
 
@@ -43,6 +43,50 @@ Deno.serve(async (req) => {
 
   if (absence)
     return errorResponse('CONFLICT', 'Tu as une absence déclarée pour cette date')
+
+  // Time-slot conflict: block if user is already creator or pending/validated participant
+  // on another active animation whose [scheduled_at - prep, scheduled_at + planned] overlaps.
+  const animStartMs = new Date(anim.scheduled_at).getTime() - (anim.prep_time_min ?? 0) * 60_000
+  const animEndMs = new Date(anim.scheduled_at).getTime() + (anim.planned_duration_min ?? 0) * 60_000
+  const windowFromIso = new Date(animStartMs - 24 * 3_600_000).toISOString()
+  const windowToIso = new Date(animEndMs + 24 * 3_600_000).toISOString()
+  const ACTIVE_STATUSES = ['pending_validation', 'open', 'preparing', 'running'] as const
+
+  const [{ data: createdRows }, { data: participantRows }] = await Promise.all([
+    db
+      .from('animations')
+      .select('id, title, scheduled_at, planned_duration_min, prep_time_min')
+      .eq('creator_id', profile.id)
+      .neq('id', animation_id)
+      .in('status', ACTIVE_STATUSES as unknown as string[])
+      .gte('scheduled_at', windowFromIso)
+      .lt('scheduled_at', windowToIso),
+    db
+      .from('animation_participants')
+      .select('animations!inner(id, title, scheduled_at, planned_duration_min, prep_time_min, status)')
+      .eq('user_id', profile.id)
+      .in('status', ['pending', 'validated'])
+      .neq('animation_id', animation_id)
+      .in('animations.status' as never, ACTIVE_STATUSES as unknown as string[])
+      .gte('animations.scheduled_at' as never, windowFromIso)
+      .lt('animations.scheduled_at' as never, windowToIso),
+  ])
+
+  type CandidateAnim = { id: string; title: string; scheduled_at: string; planned_duration_min: number | null; prep_time_min: number | null }
+  const candidates = new Map<string, CandidateAnim>()
+  for (const row of (createdRows ?? []) as CandidateAnim[]) candidates.set(row.id, row)
+  for (const row of (participantRows ?? []) as Array<{ animations: CandidateAnim }>) {
+    if (row.animations) candidates.set(row.animations.id, row.animations)
+  }
+
+  const overlap = Array.from(candidates.values()).find((c) => {
+    const cStart = new Date(c.scheduled_at).getTime() - (c.prep_time_min ?? 0) * 60_000
+    const cEnd = new Date(c.scheduled_at).getTime() + (c.planned_duration_min ?? 0) * 60_000
+    return cStart < animEndMs && cEnd > animStartMs
+  })
+
+  if (overlap)
+    return errorResponse('CONFLICT', `Créneau déjà occupé par "${overlap.title}". Désinscris-toi avant de t'inscrire ailleurs.`)
 
   // Reactivate an existing row if already present (e.g. after self-withdraw or creator-kick)
   const { data: existing } = await db

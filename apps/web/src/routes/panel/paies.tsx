@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { AnimatePresence } from 'framer-motion'
-import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react'
+import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useFormerMembers, useMembers, usePaies } from '@/hooks/queries/useAnimations'
+import { useFormerMembers, useMembers, useParticipationConflicts, usePaies } from '@/hooks/queries/useAnimations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { FormerMemberDetail, MemberDetail } from '@/routes/panel/casiers'
@@ -15,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils/cn'
 import { BDM_STAFF_ROLES, hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES } from '@/lib/config/discord'
-import type { PaiesEntry } from '@/types/database'
+import type { ParticipationConflictEntry, PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
@@ -586,6 +587,91 @@ function SummaryCard({ label, value, sub }: { label: string; value: string; sub?
   )
 }
 
+// ─── Conflicts banner ───────────────────────────────────────────────────────
+
+function ConflictsBanner({
+  conflicts,
+  open,
+  onToggle,
+}: {
+  conflicts: ParticipationConflictEntry[]
+  open: boolean
+  onToggle: () => void
+}) {
+  if (conflicts.length === 0) return null
+  const totalAnimations = conflicts.reduce((sum, c) => sum + c.animations.length, 0)
+  return (
+    <GlassCard className="border border-amber-400/30 bg-amber-400/[0.04] p-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-5 py-4 text-left"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
+          <AlertTriangle className="h-4 w-4 text-amber-300" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-amber-200">
+            {conflicts.length} double{conflicts.length > 1 ? 's' : ''} inscription{conflicts.length > 1 ? 's' : ''} cette semaine
+          </p>
+          <p className="text-xs text-amber-300/70">
+            {totalAnimations} animations en chevauchement · les responsables doivent désinscrire les membres concernés
+          </p>
+        </div>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-amber-300/70 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="border-t border-amber-400/15 px-5 py-3 space-y-3">
+          {conflicts.map((conflict, idx) => (
+            <div
+              key={`${conflict.user.id}-${idx}`}
+              className="rounded-xl border border-white/[0.06] bg-black/20 p-3"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <UserAvatar avatarUrl={conflict.user.avatarUrl} username={conflict.user.username} size="xs" />
+                <span className="text-sm font-medium text-white/85">{conflict.user.username}</span>
+                <RoleBadge role={conflict.user.role} />
+              </div>
+              <div className="space-y-1.5">
+                {conflict.animations.map((anim) => {
+                  const start = new Date(new Date(anim.scheduledAt).getTime() - anim.prepTimeMin * 60_000)
+                  const end = new Date(new Date(anim.scheduledAt).getTime() + anim.plannedDurationMin * 60_000)
+                  return (
+                    <Link
+                      key={anim.animationId}
+                      to={`/panel/animations/${anim.animationId}`}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white"
+                    >
+                      <Clock className="h-3 w-3 shrink-0 text-amber-300/70" />
+                      <span className="truncate font-medium text-white/85">{anim.title}</span>
+                      {anim.bdmMission && (
+                        <span className="rounded-full border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300">
+                          BDM
+                        </span>
+                      )}
+                      <span className="ml-auto whitespace-nowrap text-white/40">
+                        {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
+                      </span>
+                      <span className={cn(
+                        'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                        anim.role === 'creator'
+                          ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+                          : 'border-violet-500/20 bg-violet-500/10 text-violet-300',
+                      )}>
+                        {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </GlassCard>
+  )
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Paies() {
@@ -594,7 +680,9 @@ export default function Paies() {
   const { data, isLoading, error, refetch, isFetching } = usePaies(bounds.start)
   const { data: members = [] } = useMembers()
   const { data: formerMembers = [] } = useFormerMembers()
+  const { data: conflictsData } = useParticipationConflicts(bounds.start)
   const [selectedCasierId, setSelectedCasierId] = useState<string | null>(null)
+  const [showConflicts, setShowConflicts] = useState(true)
 
   const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
@@ -710,6 +798,12 @@ export default function Paies() {
           </button>
         </div>
       </div>
+
+      <ConflictsBanner
+        conflicts={conflictsData?.conflicts ?? []}
+        open={showConflicts}
+        onToggle={() => setShowConflicts((v) => !v)}
+      />
 
       {/* Summary cards */}
       {isLoading ? (

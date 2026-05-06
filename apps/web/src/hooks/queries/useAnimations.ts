@@ -378,6 +378,16 @@ export function usePaies(weekStart?: Date) {
   })
 }
 
+export function useParticipationConflicts(weekStart?: Date) {
+  return useQuery({
+    queryKey: ['participation-conflicts', weekStart?.toISOString() ?? 'current'] as const,
+    queryFn: () => invokeEdge<import('@/types/database').ParticipationConflictsResult>(
+      'participation-conflicts',
+      weekStart ? { week_start: weekStart.toISOString() } : {},
+    ),
+  })
+}
+
 // ─── Recrutement / Formation ──────────────────────────────────────────────────
 
 export function useSeniors() {

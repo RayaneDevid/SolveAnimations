@@ -385,6 +385,29 @@ export interface PaiesResult {
   uniqueAnimationsTotalMin: number
 }
 
+export interface ParticipationConflictAnimation {
+  animationId: string
+  title: string
+  scheduledAt: string
+  plannedDurationMin: number
+  prepTimeMin: number
+  status: AnimationStatus
+  bdmMission: boolean
+  role: 'creator' | 'participant'
+  participantStatus: 'pending' | 'validated' | null
+}
+
+export interface ParticipationConflictEntry {
+  user: { id: string; username: string; avatarUrl: string | null; role: StaffRoleKey }
+  animations: ParticipationConflictAnimation[]
+}
+
+export interface ParticipationConflictsResult {
+  conflicts: ParticipationConflictEntry[]
+  weekStart: string
+  weekEnd: string
+}
+
 export interface AnimationMessage {
   id: string
   animation_id: string

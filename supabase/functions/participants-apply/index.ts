@@ -45,6 +45,36 @@ Deno.serve(async (req) => {
   if (absence)
     return errorResponse('CONFLICT', 'Tu as une absence déclarée pour cette date')
 
+  // Hard lock while the user is currently active in a running animation.
+  // A running animation may exceed its planned slot, so overlap checks alone are not enough.
+  const [{ data: runningCreated }, { data: runningParticipation }] = await Promise.all([
+    db
+      .from('animations')
+      .select('id, title')
+      .eq('creator_id', profile.id)
+      .neq('id', animation_id)
+      .eq('status', 'running')
+      .limit(1)
+      .maybeSingle(),
+    db
+      .from('animation_participants')
+      .select('id, participation_ended_at, animation:animations!inner(id, title, status)')
+      .eq('user_id', profile.id)
+      .eq('status', 'validated')
+      .neq('animation_id', animation_id)
+      .is('participation_ended_at', null)
+      .eq('animation.status' as never, 'running')
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (runningCreated) {
+    return errorResponse('CONFLICT', `Tu dois d'abord terminer "${runningCreated.title}" avant de t'inscrire ailleurs.`)
+  }
+  if (runningParticipation?.animation) {
+    return errorResponse('CONFLICT', `Clique sur "J'ai terminé !" sur "${runningParticipation.animation.title}" avant de t'inscrire ailleurs.`)
+  }
+
   // Time-slot conflict: block if user is already creator or pending/validated participant
   // on another active animation whose real (chrono-based) slot overlaps.
   const { startMs: animStartMs, endMs: animEndMs } = animationSlotBounds(anim)

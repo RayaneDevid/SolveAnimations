@@ -752,7 +752,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-400" />
-              Quota 3 anims · base 4 000/5 000 + 500/h
+              Quota 3 anims · base 4 000/5 000 + 800/h
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />

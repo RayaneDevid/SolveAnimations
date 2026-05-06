@@ -20,8 +20,9 @@ export type ParticipantDurationResult = {
  * Compute the effective duration credited to a participant.
  *
  * If the participant joined before or at the animation's start, they get the full
- * animation duration plus prep. If they joined after the animation had already
- * started, they only count from join time, and the prep is excluded.
+ * animation duration plus prep/debrief. If they joined after the animation had
+ * already started, animation time only counts from join time, but the debrief
+ * bucket is still counted because actual_prep_time_min is used for prep/debrief.
  *
  * Used by paies, stats, members and leaderboard to pay/count fairly.
  */
@@ -59,8 +60,8 @@ export function computeParticipantDuration(
   const animMinutes = Math.max(0, animDuration - offsetMin)
   return {
     animMinutes,
-    prepMinutes: 0,
-    totalMinutes: animMinutes,
+    prepMinutes: prepDuration,
+    totalMinutes: animMinutes + prepDuration,
     offsetAtJoinMin: offsetMin,
     lateJoin: true,
   }

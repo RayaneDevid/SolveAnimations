@@ -391,6 +391,12 @@ export interface ParticipationConflictAnimation {
   scheduledAt: string
   plannedDurationMin: number
   prepTimeMin: number
+  actualDurationMin: number | null
+  actualPrepTimeMin: number | null
+  startedAt: string | null
+  endedAt: string | null
+  slotStart: string
+  slotEnd: string
   status: AnimationStatus
   bdmMission: boolean
   role: 'creator' | 'participant'

@@ -634,8 +634,9 @@ function ConflictsBanner({
               </div>
               <div className="space-y-1.5">
                 {conflict.animations.map((anim) => {
-                  const start = new Date(new Date(anim.scheduledAt).getTime() - anim.prepTimeMin * 60_000)
-                  const end = new Date(new Date(anim.scheduledAt).getTime() + anim.plannedDurationMin * 60_000)
+                  const start = new Date(anim.slotStart)
+                  const end = new Date(anim.slotEnd)
+                  const isReal = anim.startedAt != null || anim.endedAt != null
                   return (
                     <Link
                       key={anim.animationId}
@@ -651,6 +652,9 @@ function ConflictsBanner({
                       )}
                       <span className="ml-auto whitespace-nowrap text-white/40">
                         {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
+                        <span className={cn('ml-1.5 text-[10px]', isReal ? 'text-emerald-300/60' : 'text-white/30')}>
+                          {isReal ? '(réel)' : '(prévu)'}
+                        </span>
                       </span>
                       <span className={cn(
                         'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',

@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { animationSlotBounds } from '../_shared/animationSlot.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -18,7 +19,7 @@ Deno.serve(async (req) => {
 
   const { data: anim } = await db
     .from('animations')
-    .select('id, creator_id, status, scheduled_at, planned_duration_min, prep_time_min, registrations_locked')
+    .select('id, creator_id, status, scheduled_at, planned_duration_min, prep_time_min, actual_duration_min, actual_prep_time_min, started_at, ended_at, prep_started_at, registrations_locked')
     .eq('id', animation_id)
     .single()
 
@@ -45,17 +46,17 @@ Deno.serve(async (req) => {
     return errorResponse('CONFLICT', 'Tu as une absence déclarée pour cette date')
 
   // Time-slot conflict: block if user is already creator or pending/validated participant
-  // on another active animation whose [scheduled_at - prep, scheduled_at + planned] overlaps.
-  const animStartMs = new Date(anim.scheduled_at).getTime() - (anim.prep_time_min ?? 0) * 60_000
-  const animEndMs = new Date(anim.scheduled_at).getTime() + (anim.planned_duration_min ?? 0) * 60_000
+  // on another active animation whose real (chrono-based) slot overlaps.
+  const { startMs: animStartMs, endMs: animEndMs } = animationSlotBounds(anim)
   const windowFromIso = new Date(animStartMs - 24 * 3_600_000).toISOString()
   const windowToIso = new Date(animEndMs + 24 * 3_600_000).toISOString()
   const ACTIVE_STATUSES = ['pending_validation', 'open', 'preparing', 'running'] as const
+  const SLOT_COLUMNS = 'id, title, scheduled_at, planned_duration_min, prep_time_min, actual_duration_min, actual_prep_time_min, started_at, ended_at, prep_started_at'
 
   const [{ data: createdRows }, { data: participantRows }] = await Promise.all([
     db
       .from('animations')
-      .select('id, title, scheduled_at, planned_duration_min, prep_time_min')
+      .select(SLOT_COLUMNS)
       .eq('creator_id', profile.id)
       .neq('id', animation_id)
       .in('status', ACTIVE_STATUSES as unknown as string[])
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
       .lt('scheduled_at', windowToIso),
     db
       .from('animation_participants')
-      .select('animations!inner(id, title, scheduled_at, planned_duration_min, prep_time_min, status)')
+      .select(`animations!inner(${SLOT_COLUMNS}, status)`)
       .eq('user_id', profile.id)
       .in('status', ['pending', 'validated'])
       .neq('animation_id', animation_id)
@@ -72,7 +73,18 @@ Deno.serve(async (req) => {
       .lt('animations.scheduled_at' as never, windowToIso),
   ])
 
-  type CandidateAnim = { id: string; title: string; scheduled_at: string; planned_duration_min: number | null; prep_time_min: number | null }
+  type CandidateAnim = {
+    id: string
+    title: string
+    scheduled_at: string
+    planned_duration_min: number | null
+    prep_time_min: number | null
+    actual_duration_min: number | null
+    actual_prep_time_min: number | null
+    started_at: string | null
+    ended_at: string | null
+    prep_started_at: string | null
+  }
   const candidates = new Map<string, CandidateAnim>()
   for (const row of (createdRows ?? []) as CandidateAnim[]) candidates.set(row.id, row)
   for (const row of (participantRows ?? []) as Array<{ animations: CandidateAnim }>) {
@@ -80,8 +92,7 @@ Deno.serve(async (req) => {
   }
 
   const overlap = Array.from(candidates.values()).find((c) => {
-    const cStart = new Date(c.scheduled_at).getTime() - (c.prep_time_min ?? 0) * 60_000
-    const cEnd = new Date(c.scheduled_at).getTime() + (c.planned_duration_min ?? 0) * 60_000
+    const { startMs: cStart, endMs: cEnd } = animationSlotBounds(c)
     return cStart < animEndMs && cEnd > animStartMs
   })
 

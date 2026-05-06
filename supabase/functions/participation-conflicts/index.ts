@@ -5,6 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { weekStartFor } from '../_shared/week.ts'
+import { animationSlotBounds } from '../_shared/animationSlot.ts'
 
 type AnimRow = {
   id: string
@@ -12,6 +13,11 @@ type AnimRow = {
   scheduled_at: string
   planned_duration_min: number | null
   prep_time_min: number | null
+  actual_duration_min: number | null
+  actual_prep_time_min: number | null
+  started_at: string | null
+  ended_at: string | null
+  prep_started_at: string | null
   status: string
   bdm_mission: boolean | null
   creator_id: string
@@ -26,6 +32,10 @@ type Slot = {
   scheduledAt: string
   plannedDurationMin: number
   prepTimeMin: number
+  actualDurationMin: number | null
+  actualPrepTimeMin: number | null
+  startedAt: string | null
+  endedAt: string | null
   status: string
   bdmMission: boolean
   role: 'creator' | 'participant'
@@ -60,7 +70,9 @@ Deno.serve(async (req) => {
   const { data: anims, error: animsError } = await db
     .from('animations')
     .select(`
-      id, title, scheduled_at, planned_duration_min, prep_time_min, status, bdm_mission, creator_id,
+      id, title, scheduled_at, planned_duration_min, prep_time_min,
+      actual_duration_min, actual_prep_time_min, started_at, ended_at, prep_started_at,
+      status, bdm_mission, creator_id,
       creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)
     `)
     .in('status', ACTIVE_STATUSES)
@@ -94,8 +106,7 @@ Deno.serve(async (req) => {
   }
 
   const animSlot = (a: AnimRow, role: 'creator' | 'participant', participantStatus?: 'pending' | 'validated'): Slot => {
-    const startMs = new Date(a.scheduled_at).getTime() - (a.prep_time_min ?? 0) * 60_000
-    const endMs = new Date(a.scheduled_at).getTime() + (a.planned_duration_min ?? 0) * 60_000
+    const { startMs, endMs } = animationSlotBounds(a)
     return {
       animationId: a.id,
       title: a.title,
@@ -104,6 +115,10 @@ Deno.serve(async (req) => {
       scheduledAt: a.scheduled_at,
       plannedDurationMin: a.planned_duration_min ?? 0,
       prepTimeMin: a.prep_time_min ?? 0,
+      actualDurationMin: a.actual_duration_min,
+      actualPrepTimeMin: a.actual_prep_time_min,
+      startedAt: a.started_at,
+      endedAt: a.ended_at,
       status: a.status,
       bdmMission: !!a.bdm_mission,
       role,
@@ -207,6 +222,12 @@ Deno.serve(async (req) => {
         scheduledAt: s.scheduledAt,
         plannedDurationMin: s.plannedDurationMin,
         prepTimeMin: s.prepTimeMin,
+        actualDurationMin: s.actualDurationMin,
+        actualPrepTimeMin: s.actualPrepTimeMin,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        slotStart: new Date(s.startMs).toISOString(),
+        slotEnd: new Date(s.endMs).toISOString(),
         status: s.status,
         bdmMission: s.bdmMission,
         role: s.role,

@@ -28,6 +28,33 @@ const BDM_TYPE_LABELS = {
   elaboree: 'Élaborée',
   grande_ampleur: 'Grande ampleur',
 } as const
+const BDM_RANK_STYLES = {
+  D: {
+    card: 'border border-zinc-300/25 bg-zinc-400/[0.05] shadow-[0_0_20px_rgba(212,212,216,0.08)]',
+    title: 'text-zinc-100 hover:text-zinc-200',
+    badge: 'border-zinc-300/30 bg-zinc-300/10 text-zinc-100',
+  },
+  C: {
+    card: 'border border-emerald-300/30 bg-emerald-400/[0.06] shadow-[0_0_22px_rgba(52,211,153,0.10)]',
+    title: 'text-emerald-50 hover:text-emerald-200',
+    badge: 'border-emerald-300/35 bg-emerald-300/10 text-emerald-100',
+  },
+  B: {
+    card: 'border border-teal-300/35 bg-teal-500/[0.06] shadow-[0_0_24px_rgba(45,212,191,0.10)]',
+    title: 'text-teal-50 hover:text-teal-200',
+    badge: 'border-teal-300/35 bg-teal-300/10 text-teal-200',
+  },
+  A: {
+    card: 'border border-amber-300/40 bg-amber-400/[0.07] shadow-[0_0_24px_rgba(251,191,36,0.12)]',
+    title: 'text-amber-50 hover:text-amber-200',
+    badge: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
+  },
+  S: {
+    card: 'border border-rose-300/45 bg-rose-400/[0.08] shadow-[0_0_26px_rgba(251,113,133,0.14)]',
+    title: 'text-rose-50 hover:text-rose-200',
+    badge: 'border-rose-300/45 bg-rose-300/10 text-rose-100',
+  },
+} as const
 
 type TabValue = 'active' | 'proposed' | 'all' | 'finished' | 'rejected'
 
@@ -45,6 +72,7 @@ const TABS: Array<{ value: TabValue; label: string }> = [
 
 function AnimationCard({ anim }: { anim: Animation }) {
   const isBdmMission = anim.bdm_mission
+  const bdmStyle = isBdmMission ? BDM_RANK_STYLES[anim.bdm_mission_rank] : null
 
   return (
     <motion.div
@@ -56,14 +84,14 @@ function AnimationCard({ anim }: { anim: Animation }) {
         <GlassCard
           className={cn(
             'p-4 glass-hover cursor-pointer',
-            isBdmMission && 'border border-teal-300/35 bg-teal-500/[0.06] shadow-[0_0_24px_rgba(45,212,191,0.10)]',
+            bdmStyle?.card,
           )}
         >
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1">
               <h3 className={cn(
                 'text-sm font-semibold truncate transition-colors',
-                isBdmMission ? 'text-teal-50 hover:text-teal-200' : 'text-white/90 hover:text-cyan-400',
+                bdmStyle?.title ?? 'text-white/90 hover:text-cyan-400',
               )}>
                 {anim.title}
               </h3>
@@ -85,7 +113,7 @@ function AnimationCard({ anim }: { anim: Animation }) {
 
           <div className="flex items-center gap-2 flex-wrap mb-3">
             {isBdmMission && (
-              <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
+              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold', bdmStyle?.badge)}>
                 BDM rang {anim.bdm_mission_rank} · {BDM_TYPE_LABELS[anim.bdm_mission_type]}
               </span>
             )}
@@ -123,13 +151,14 @@ export default function AnimationsList() {
   const [finishedVillage, setFinishedVillage] = useState(ALL_FILTER)
   const [finishedServer, setFinishedServer] = useState(ALL_FILTER)
   const [finishedMemberId, setFinishedMemberId] = useState(ALL_FILTER)
+  const [bdmOnly, setBdmOnly] = useState(() => searchParams.get('bdm') === '1')
   const asParticipant = searchParams.get('as_participant') === '1'
   const creatorId = searchParams.get('creator_id') ?? undefined
   const { data: members = [] } = useMemberDirectory(activeTab === 'finished')
 
   useEffect(() => {
     setPage(1)
-  }, [asParticipant, creatorId, finishedTitle, finishedVillage, finishedServer, finishedMemberId])
+  }, [asParticipant, bdmOnly, creatorId, finishedTitle, finishedVillage, finishedServer, finishedMemberId])
 
   const finishedTitleSearch = finishedTitle.trim()
   const hasFinishedFilters = finishedTitleSearch.length > 0 ||
@@ -156,6 +185,7 @@ export default function AnimationsList() {
   const filters = {
     ...tabFilters,
     ...finishedFilters,
+    ...(bdmOnly ? { bdm_mission: true } : {}),
     ...(asParticipant ? { as_participant: true } : {}),
     ...(creatorId ? { creator_id: creatorId } : {}),
     page,
@@ -189,15 +219,29 @@ export default function AnimationsList() {
         <div>
           <h1 className="text-2xl font-bold text-white">Animations</h1>
           <p className="text-sm text-white/40 mt-0.5">
-            {asParticipant ? 'Mes inscriptions' : creatorId ? 'Animations du membre' : `${total} animation${total > 1 ? 's' : ''}`}
+            {asParticipant ? 'Mes inscriptions' : creatorId ? 'Animations du membre' : `${total} ${bdmOnly ? 'mission' : 'animation'}${total > 1 ? 's' : ''}`}
           </p>
         </div>
-        <Link to="/panel/animations/new">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Créer
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBdmOnly((value) => !value)}
+            className={cn(
+              'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+              bdmOnly
+                ? 'border-teal-300/40 bg-teal-300/10 text-teal-100'
+                : 'border-white/[0.08] bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/80',
+            )}
+          >
+            BDM uniquement
+          </button>
+          <Link to="/panel/animations/new">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Créer
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>

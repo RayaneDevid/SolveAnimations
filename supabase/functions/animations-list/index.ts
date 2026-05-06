@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     creator_id,
     from,
     to,
+    bdm_mission,
     as_participant,
     order = 'desc',
     page = 1,
@@ -73,6 +74,7 @@ Deno.serve(async (req) => {
   if (server)     query = query.eq('server', server)
   if (village)    query = query.eq('village', village)
   if (type)       query = query.eq('type', type)
+  if (typeof bdm_mission === 'boolean') query = query.eq('bdm_mission', bdm_mission)
   if (titleSearch) query = query.ilike('title', `%${titleSearch}%`)
   if (creator_id) query = query.eq('creator_id', creator_id)
   if (memberId) {

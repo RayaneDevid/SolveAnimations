@@ -15,6 +15,7 @@ export interface AnimationFilters {
   creator_id?: string
   from?: string
   to?: string
+  bdm_mission?: boolean
   as_participant?: boolean
   order?: 'asc' | 'desc'
   page?: number

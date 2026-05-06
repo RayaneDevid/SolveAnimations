@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History, Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, type Village, type AnimationPole, type MissionKind } from '@/lib/schemas/animation'
+import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, BDM_MISSION_RANKS, BDM_MISSION_TYPES, type Village, type AnimationPole, type MissionKind, type BdmMissionRank, type BdmMissionType } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { useMemberDirectory } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { VillageBadge } from '@/components/shared/VillageBadge'
 import { RpDateTimePicker } from '@/components/animations/RpDateTimePicker'
 import { cn } from '@/lib/utils/cn'
-import { hasPermissionRole } from '@/lib/config/discord'
+import { BDM_STAFF_ROLES, hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 
 const TYPE_LABELS_FULL = { moyenne: 'Moyenne', grande: 'Grande' } as const
 const TYPE_DESCRIPTIONS = {
@@ -37,11 +37,26 @@ const MISSION_KIND_CONFIG: Record<MissionKind, { label: string; description: str
   },
   mission_bdm: {
     label: 'Mission BDM',
-    description: 'Créée immédiatement, comptabilisée uniquement côté BDM.',
+    description: 'Mission BDM programmée ou spontanée, comptabilisée côté BDM.',
   },
   passee: {
     label: 'Animation passée',
     description: 'Animation déjà jouée, soumise à validation Responsable.',
+  },
+}
+
+const BDM_MISSION_TYPE_CONFIG: Record<BdmMissionType, { label: string; description: string }> = {
+  jetable: {
+    label: 'Mission jetable',
+    description: 'Simple, avec un personnage non récurrent ou voué à disparaître rapidement.',
+  },
+  elaboree: {
+    label: 'Mission élaborée',
+    description: "Avec un minimum d'écriture, un contexte travaillé et du jeu sur une petite période.",
+  },
+  grande_ampleur: {
+    label: 'Mission grande ampleur',
+    description: 'Sous validation RBDM / GRP, avec préparation importante sur plusieurs jours ou parties.',
   },
 }
 
@@ -92,17 +107,29 @@ export default function NewAnimation() {
       pastParticipantIds: [],
       spontaneous: false,
       bdmMission: false,
+      bdmSpontaneous: false,
+      bdmMissionRank: 'B',
+      bdmMissionType: 'jetable',
     },
   })
 
   const scheduledAt = watch('scheduledAt')
   const missionKind = watch('missionKind')
+  const bdmSpontaneous = watch('bdmSpontaneous')
+  const bdmMissionType = watch('bdmMissionType')
+  const canCreateBdmMission = hasOwnedRole(permissionRoles, BDM_STAFF_ROLES)
+  const missionKindOptions = useMemo(
+    () => MISSION_KINDS.filter((kind) => kind !== 'mission_bdm' || canCreateBdmMission),
+    [canCreateBdmMission],
+  )
   const isBdmMission = missionKind === 'mission_bdm'
-  const isInstantMission = missionKind === 'spontanee' || isBdmMission
+  const isBdmSpontaneous = isBdmMission && bdmSpontaneous
+  const isInstantMission = missionKind === 'spontanee' || isBdmSpontaneous
   const isPastMission = missionKind === 'passee'
   const canSelfValidatePastMission = hasPermissionRole(permissionRoles, 'senior')
   const requiredParticipants = watch('requiredParticipants')
   const isClassicPastDate = missionKind === 'classique' && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
+  const isBdmPastDate = isBdmMission && !isBdmSpontaneous && scheduledAt instanceof Date && scheduledAt.getTime() < Date.now()
   const isPastFutureDate = isPastMission && scheduledAt instanceof Date && scheduledAt.getTime() > Date.now()
   const selectedPastParticipantIds = watch('pastParticipantIds') ?? []
   const { data: memberDirectory = [], isLoading: membersLoading } = useMemberDirectory(isPastMission)
@@ -125,60 +152,70 @@ export default function NewAnimation() {
   }
 
   useEffect(() => {
-    if (isInstantMission) {
+    if (!canCreateBdmMission && isBdmMission) {
+      setValue('missionKind', 'classique', { shouldValidate: true })
+      return
+    }
+
+    if (missionKind === 'spontanee' || isBdmMission) {
       setValue('scheduledAt', undefined, { shouldValidate: true })
       setValue('plannedDurationMin', 15, { shouldValidate: true })
       setValue('prepTimeMin', 0, { shouldValidate: true })
       setValue('requiredParticipants', 0, { shouldValidate: true })
       setValue('type', 'moyenne', { shouldValidate: true })
       setValue('pole', 'animation', { shouldValidate: true })
-      setValue('spontaneous', !isBdmMission)
+      setValue('spontaneous', missionKind === 'spontanee')
       setValue('bdmMission', isBdmMission)
       setValue('requestValidation', false)
       setValue('pingRoles', false)
       setValue('pastParticipantIds', [], { shouldValidate: true })
+      if (isBdmMission) return
       return
     }
 
     if (isPastMission) {
       setValue('spontaneous', false)
       setValue('bdmMission', false)
+      setValue('bdmSpontaneous', false)
       setValue('requestValidation', !canSelfValidatePastMission)
       setValue('pingRoles', false)
       setValue('registrationsLocked', true)
     } else {
       setValue('spontaneous', false)
       setValue('bdmMission', false)
+      setValue('bdmSpontaneous', false)
       setValue('pastParticipantIds', [], { shouldValidate: true })
     }
 
     if (requiredParticipants == null) {
       setValue('requiredParticipants', 4, { shouldValidate: true })
     }
-  }, [canSelfValidatePastMission, isBdmMission, isInstantMission, isPastMission, requiredParticipants, setValue])
+  }, [canCreateBdmMission, canSelfValidatePastMission, isBdmMission, isPastMission, missionKind, requiredParticipants, setValue])
 
   const onSubmit = async (data: CreateAnimationInput) => {
     try {
       const bdmMission = data.missionKind === 'mission_bdm'
-      const instantMission = data.missionKind === 'spontanee' || bdmMission
+      const bdmSpontaneous = bdmMission && data.bdmSpontaneous
+      const instantMission = data.missionKind === 'spontanee' || bdmSpontaneous
       const pastMission = data.missionKind === 'passee'
       const result = await mutateAsync({
         ...data,
-        spontaneous: instantMission && !bdmMission,
+        spontaneous: data.missionKind === 'spontanee',
         bdmMission,
+        bdmSpontaneous,
         scheduledAt: instantMission ? undefined : data.scheduledAt,
-        plannedDurationMin: instantMission ? 15 : data.plannedDurationMin,
-        prepTimeMin: instantMission ? 0 : data.prepTimeMin,
-        requiredParticipants: instantMission ? 0 : data.requiredParticipants,
-        type: instantMission ? 'moyenne' : data.type,
-        pole: instantMission ? 'animation' : data.pole,
+        plannedDurationMin: instantMission || bdmMission ? 15 : data.plannedDurationMin,
+        prepTimeMin: instantMission || bdmMission ? 0 : data.prepTimeMin,
+        requiredParticipants: instantMission || bdmMission ? 0 : data.requiredParticipants,
+        type: instantMission || bdmMission ? 'moyenne' : data.type,
+        pole: instantMission || bdmMission ? 'animation' : data.pole,
         description: data.description,
         registrationsLocked: pastMission ? true : data.registrationsLocked,
         pastParticipantIds: pastMission ? data.pastParticipantIds : [],
-        requestValidation: pastMission ? !canSelfValidatePastMission : instantMission ? false : data.requestValidation,
-        pingRoles: pastMission || instantMission ? false : data.pingRoles,
+        requestValidation: pastMission ? !canSelfValidatePastMission : bdmMission ? data.bdmMissionType === 'grande_ampleur' : instantMission ? false : data.requestValidation,
+        pingRoles: pastMission || instantMission || bdmMission ? false : data.pingRoles,
       })
-      toast.success('Animation créée avec succès !')
+      toast.success(bdmMission ? 'Mission BDM créée avec succès !' : 'Animation créée avec succès !')
       navigate(`/panel/animations/${result.animation.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la création')
@@ -218,7 +255,7 @@ export default function NewAnimation() {
               control={control}
               render={({ field }) => (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {MISSION_KINDS.map((kind) => {
+                  {missionKindOptions.map((kind) => {
                     const config = MISSION_KIND_CONFIG[kind]
                     const selected = field.value === kind
                     const description = kind === 'passee' && canSelfValidatePastMission
@@ -271,6 +308,14 @@ export default function NewAnimation() {
                   </p>
                 </div>
               )}
+              {isBdmPastDate && (
+                <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <History className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-300/80">
+                    Une mission BDM programmée doit être prévue dans le futur. Coche spontanée si elle démarre maintenant.
+                  </p>
+                </div>
+              )}
               {isPastFutureDate && (
                 <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
                   <History className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
@@ -293,6 +338,118 @@ export default function NewAnimation() {
             </div>
           )}
 
+          {isBdmMission && (
+            <div className="space-y-4 rounded-xl border border-teal-300/20 bg-teal-400/[0.04] p-4">
+              <div>
+                <h2 className="text-sm font-semibold text-teal-100/90">Paramètres BDM</h2>
+                <p className="mt-0.5 text-xs text-teal-100/45">
+                  Choisis le rang, le type, puis indique si la mission est spontanée ou programmée.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Rang de la mission</Label>
+                <Controller
+                  name="bdmMissionRank"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex flex-wrap gap-2">
+                      {BDM_MISSION_RANKS.map((rank: BdmMissionRank) => (
+                        <button
+                          key={rank}
+                          type="button"
+                          onClick={() => field.onChange(rank)}
+                          className={cn(
+                            'h-10 min-w-10 rounded-lg border px-3 text-sm font-bold transition-all',
+                            field.value === rank
+                              ? 'border-teal-300/50 bg-teal-300/15 text-teal-100'
+                              : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/20 hover:text-white/80',
+                          )}
+                        >
+                          {rank}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                />
+                {errors.bdmMissionRank && <p className="text-xs text-red-400">{errors.bdmMissionRank.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Type de mission BDM</Label>
+                <Controller
+                  name="bdmMissionType"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="grid grid-cols-1 gap-3">
+                      {BDM_MISSION_TYPES.map((type: BdmMissionType) => {
+                        const cfg = BDM_MISSION_TYPE_CONFIG[type]
+                        const selected = field.value === type
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => field.onChange(type)}
+                            className={cn(
+                              'rounded-xl border p-4 text-left transition-all',
+                              selected
+                                ? 'border-teal-300/40 bg-teal-300/10 shadow-[0_0_18px_rgba(45,212,191,0.10)]'
+                                : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20',
+                            )}
+                          >
+                            <span className={cn('block text-sm font-bold', selected ? 'text-teal-100' : 'text-white')}>
+                              {cfg.label}
+                            </span>
+                            <span className="mt-1 block text-xs leading-relaxed text-white/40">{cfg.description}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                />
+                {errors.bdmMissionType && <p className="text-xs text-red-400">{errors.bdmMissionType.message}</p>}
+              </div>
+
+              <Controller
+                name="bdmSpontaneous"
+                control={control}
+                render={({ field }) => (
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(!field.value)}
+                    className="flex w-full items-start gap-3 rounded-lg border border-white/[0.08] bg-black/10 p-3 text-left transition-colors hover:bg-white/[0.04]"
+                  >
+                    <div className={cn(
+                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
+                      field.value ? 'border-teal-300/60 bg-teal-300/20' : 'border-white/20 bg-white/[0.04]',
+                    )}>
+                      {field.value && (
+                        <svg className="h-3 w-3 text-teal-200" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-white/80">Mission spontanée</span>
+                      <p className="mt-0.5 text-xs text-white/40">
+                        {field.value
+                          ? 'La mission démarre maintenant et ne demande pas de date.'
+                          : 'La mission sera programmée à la date choisie.'
+                        }
+                      </p>
+                    </div>
+                  </button>
+                )}
+              />
+
+              {bdmMissionType === 'grande_ampleur' && (
+                <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2.5 text-xs leading-relaxed text-amber-200/80">
+                  Ce type passera en validation RBDM / GRP avant ouverture.
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="description">Description de l'animation</Label>
             <Textarea
@@ -308,7 +465,7 @@ export default function NewAnimation() {
         </GlassCard>
 
         {/* Details */}
-        {!isInstantMission && <GlassCard className="p-5 space-y-4">
+        {!isInstantMission && !isBdmMission && <GlassCard className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Détails</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -417,7 +574,7 @@ export default function NewAnimation() {
         )}
 
         {/* Registrations */}
-        {!isPastMission && <GlassCard className="p-5">
+        {!isPastMission && !isBdmMission && <GlassCard className="p-5">
           <Controller
             name="registrationsLocked"
             control={control}
@@ -522,7 +679,7 @@ export default function NewAnimation() {
         </GlassCard>
 
         {/* Type */}
-        {!isInstantMission && <GlassCard className="p-5 space-y-3">
+        {!isInstantMission && !isBdmMission && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Type</h2>
           <Controller
             name="type"
@@ -552,7 +709,7 @@ export default function NewAnimation() {
         </GlassCard>}
 
         {/* Pole */}
-        {!isInstantMission && <GlassCard className="p-5 space-y-3">
+        {!isInstantMission && !isBdmMission && <GlassCard className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Pôle</h2>
           <Controller
             name="pole"
@@ -611,7 +768,7 @@ export default function NewAnimation() {
           </div>
         </GlassCard>}
 
-        {!isInstantMission && !isPastMission && <GlassCard className="p-5">
+        {!isInstantMission && !isPastMission && !isBdmMission && <GlassCard className="p-5">
           <Controller
             name="requestValidation"
             control={control}
@@ -656,7 +813,7 @@ export default function NewAnimation() {
         </GlassCard>}
 
         {/* Ping roles */}
-        {!isInstantMission && !isPastMission && <GlassCard className="p-5">
+        {!isInstantMission && !isPastMission && !isBdmMission && <GlassCard className="p-5">
           <Controller
             name="pingRoles"
             control={control}
@@ -706,7 +863,7 @@ export default function NewAnimation() {
             Annuler
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Création...' : isPastMission ? 'Créer la mission passée' : isInstantMission ? 'Créer maintenant' : "Créer l'animation"}
+            {isPending ? 'Création...' : isBdmMission ? 'Créer la mission BDM' : isPastMission ? 'Créer la mission passée' : isInstantMission ? 'Créer maintenant' : "Créer l'animation"}
           </Button>
         </div>
       </form>

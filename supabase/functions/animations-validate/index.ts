@@ -2,7 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
-import { requireResponsable, requireRole } from '../_shared/guards.ts'
+import { hasAnyRole, requireResponsable, requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -27,6 +27,8 @@ Deno.serve(async (req) => {
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
   if (anim.status !== 'pending_validation')
     return errorResponse('CONFLICT', 'Animation non en attente de validation')
+  if (anim.bdm_mission && !hasAnyRole(profile, ['responsable_bdm', 'direction', 'gerance']))
+    return errorResponse('FORBIDDEN', 'Validation réservée aux RBDM / GRP')
 
   const isPastMission = anim.actual_duration_min != null && new Date(anim.scheduled_at).getTime() <= Date.now()
   const validatedAt = new Date().toISOString()
@@ -154,6 +156,11 @@ Deno.serve(async (req) => {
     server: anim.server,
     village: anim.village,
     type: anim.type,
+    pole: anim.pole,
+    bdmMission: anim.bdm_mission,
+    bdmMissionRank: anim.bdm_mission_rank,
+    bdmMissionType: anim.bdm_mission_type,
+    bdmSpontaneous: anim.bdm_spontaneous,
     documentUrl: anim.document_url,
     creatorUsername: anim.creator?.username,
     adminMessageId: anim.discord_message_id ?? undefined,

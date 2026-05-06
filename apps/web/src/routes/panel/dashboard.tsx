@@ -404,6 +404,7 @@ export default function Dashboard() {
 
   const profileIncomplete = !user.steam_id || !user.arrival_date
   const canManageBroadcasts = hasOwnedRole(permissionRoles, ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm'])
+  const canCreateBdmMission = hasOwnedRole(permissionRoles, ['bdm', 'responsable_bdm'])
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
   const statsPeriodLabel = isCurrentWeek() ? 'cette semaine' : `semaine du ${weekLabel}`
 
@@ -546,9 +547,11 @@ export default function Dashboard() {
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">
-                Créer une animation
+                {canCreateBdmMission ? 'Créer une mission BDM' : 'Créer une animation'}
               </p>
-              <p className="text-xs text-white/30 mt-0.5">Proposer une nouvelle session</p>
+              <p className="text-xs text-white/30 mt-0.5">
+                {canCreateBdmMission ? 'Programmer ou déclarer une mission' : 'Proposer une nouvelle session'}
+              </p>
             </div>
           </GlassCard>
         </Link>

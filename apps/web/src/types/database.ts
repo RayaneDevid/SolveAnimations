@@ -1,5 +1,5 @@
 import type { StaffRoleKey } from '@/lib/config/discord'
-import type { AnimationServer, AnimationType, Village } from '@/lib/schemas/animation'
+import type { AnimationServer, AnimationType, BdmMissionRank, BdmMissionType, Village } from '@/lib/schemas/animation'
 
 export type AnimationStatus =
   | 'pending_validation'
@@ -45,6 +45,9 @@ export interface Animation {
   description: string | null
   registrations_locked: boolean
   bdm_mission: boolean
+  bdm_spontaneous: boolean
+  bdm_mission_rank: BdmMissionRank
+  bdm_mission_type: BdmMissionType
   pole: 'animation' | 'mj' | 'les_deux'
   creator_id: string
   status: AnimationStatus

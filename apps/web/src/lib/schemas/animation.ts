@@ -4,6 +4,8 @@ export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as co
 export const TYPES = ['moyenne', 'grande'] as const
 export const POLES = ['animation', 'mj', 'les_deux'] as const
 export const MISSION_KINDS = ['classique', 'spontanee', 'mission_bdm', 'passee'] as const
+export const BDM_MISSION_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+export const BDM_MISSION_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
 export const VILLAGES = [
   'konoha',
   'suna',
@@ -18,6 +20,8 @@ export type AnimationServer = (typeof SERVERS)[number]
 export type AnimationType = (typeof TYPES)[number]
 export type AnimationPole = (typeof POLES)[number]
 export type MissionKind = (typeof MISSION_KINDS)[number]
+export type BdmMissionRank = (typeof BDM_MISSION_RANKS)[number]
+export type BdmMissionType = (typeof BDM_MISSION_TYPES)[number]
 export type Village = (typeof VILLAGES)[number]
 
 export const createAnimationSchema = z
@@ -26,6 +30,9 @@ export const createAnimationSchema = z
     missionKind: z.enum(MISSION_KINDS).default('classique'),
     spontaneous: z.boolean().default(false),
     bdmMission: z.boolean().default(false),
+    bdmSpontaneous: z.boolean().default(false),
+    bdmMissionRank: z.enum(BDM_MISSION_RANKS).default('B'),
+    bdmMissionType: z.enum(BDM_MISSION_TYPES).default('jetable'),
     scheduledAt: z.coerce.date().optional(),
     plannedDurationMin: z
       .number({ required_error: 'Durée requise' })
@@ -54,7 +61,9 @@ export const createAnimationSchema = z
     pingRoles: z.boolean().default(true),
   })
   .superRefine((value, ctx) => {
-    const isInstantMission = value.spontaneous || value.bdmMission || value.missionKind === 'spontanee' || value.missionKind === 'mission_bdm'
+    const isBdmMission = value.bdmMission || value.missionKind === 'mission_bdm'
+    const isBdmSpontaneous = isBdmMission && value.bdmSpontaneous
+    const isInstantMission = value.spontaneous || value.missionKind === 'spontanee' || isBdmSpontaneous
     const isPastMission = value.missionKind === 'passee'
     if (!isInstantMission && !value.scheduledAt) {
       ctx.addIssue({
@@ -67,6 +76,13 @@ export const createAnimationSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Une animation classique ne peut pas être antidatée',
+        path: ['scheduledAt'],
+      })
+    }
+    if (value.scheduledAt && isBdmMission && !isBdmSpontaneous && value.scheduledAt.getTime() < Date.now()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Une mission BDM programmée ne peut pas être antidatée',
         path: ['scheduledAt'],
       })
     }

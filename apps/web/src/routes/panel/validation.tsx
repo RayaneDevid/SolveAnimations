@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime, formatDuration } from '@/lib/utils/format'
 import type { Animation } from '@/types/database'
 import { useRequiredAuth } from '@/hooks/useAuth'
-import { hasPermissionRole } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 
 function isPastMissionForSeniorValidation(animation: Animation): boolean {
   return animation.status === 'pending_validation' &&
@@ -348,6 +348,8 @@ function TimeCorrectionRequestCard({ request }: { request: TimeCorrectionRequest
 export default function Validation() {
   const { permissionRoles } = useRequiredAuth()
   const canManageFullValidation = hasPermissionRole(permissionRoles, 'responsable')
+  const canManageBdmValidation = hasOwnedRole(permissionRoles, ['responsable_bdm', 'direction', 'gerance'])
+  const canManageAnyValidation = canManageFullValidation || canManageBdmValidation
   const [tab, setTab] = useState<'pending' | 'open' | 'rejected' | 'deletion' | 'time'>('pending')
 
   const statusMap: Record<'pending' | 'open' | 'rejected', AnimationStatus> = {
@@ -365,7 +367,9 @@ export default function Validation() {
   const animations = tab !== 'deletion' && tab !== 'time' ? (data?.animations ?? []) : []
   const visibleAnimations = canManageFullValidation
     ? animations
-    : animations.filter(isPastMissionForSeniorValidation)
+    : canManageBdmValidation
+      ? animations.filter((animation) => animation.bdm_mission)
+      : animations.filter(isPastMissionForSeniorValidation)
   const deletionRequests = deletionData?.requests ?? []
   const timeCorrectionRequests = timeCorrectionData?.requests ?? []
 
@@ -379,10 +383,14 @@ export default function Validation() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="pending">En attente</TabsTrigger>
-          {canManageFullValidation && (
+          {canManageAnyValidation && (
             <>
               <TabsTrigger value="open">Validées récemment</TabsTrigger>
               <TabsTrigger value="rejected">Refusées</TabsTrigger>
+            </>
+          )}
+          {canManageFullValidation && (
+            <>
               <TabsTrigger value="deletion" className="relative">
                 Supp. demandées
                 {deletionRequests.length > 0 && (
@@ -403,7 +411,7 @@ export default function Validation() {
           )}
         </TabsList>
 
-        {(canManageFullValidation ? (['pending', 'open', 'rejected'] as const) : (['pending'] as const)).map((t) => (
+        {(canManageAnyValidation ? (['pending', 'open', 'rejected'] as const) : (['pending'] as const)).map((t) => (
           <TabsContent key={t} value={t}>
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -412,13 +420,13 @@ export default function Validation() {
             ) : visibleAnimations.length === 0 ? (
               <GlassCard className="p-12 text-center">
                 <p className="text-white/30 text-sm">
-                  {canManageFullValidation ? 'Aucune animation' : 'Aucune mission passée à valider'}
+                  {canManageAnyValidation ? 'Aucune animation' : 'Aucune mission passée à valider'}
                 </p>
               </GlassCard>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {visibleAnimations.map((a) => (
-                  <ValidationCard key={a.id} animation={a} canReject={canManageFullValidation} />
+                  <ValidationCard key={a.id} animation={a} canReject={canManageFullValidation || (canManageBdmValidation && a.bdm_mission)} />
                 ))}
               </div>
             )}

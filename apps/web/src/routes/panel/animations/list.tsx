@@ -23,6 +23,11 @@ const TYPE_STYLES: Record<string, string> = {
   moyenne: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
   grande: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
 }
+const BDM_TYPE_LABELS = {
+  jetable: 'Jetable',
+  elaboree: 'Élaborée',
+  grande_ampleur: 'Grande ampleur',
+} as const
 
 type TabValue = 'active' | 'proposed' | 'all' | 'finished' | 'rejected'
 
@@ -81,7 +86,7 @@ function AnimationCard({ anim }: { anim: Animation }) {
           <div className="flex items-center gap-2 flex-wrap mb-3">
             {isBdmMission && (
               <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
-                Mission BDM
+                BDM rang {anim.bdm_mission_rank} · {BDM_TYPE_LABELS[anim.bdm_mission_type]}
               </span>
             )}
             <ServerBadge server={anim.server} />

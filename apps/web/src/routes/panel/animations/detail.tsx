@@ -37,6 +37,12 @@ import { hasPermissionRole } from '@/lib/config/discord'
 import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
 import type { AnimationParticipant, Animation, TimeCorrectionRequest } from '@/types/database'
 
+const BDM_TYPE_LABELS = {
+  jetable: 'Jetable',
+  elaboree: 'Élaborée',
+  grande_ampleur: 'Grande ampleur',
+} as const
+
 function FinishedEditForm({ animation }: { animation: Animation }) {
   const { mutateAsync: correct, isPending } = useCorrectFinishedAnimation()
   const [editing, setEditing] = useState(false)
@@ -703,7 +709,7 @@ export default function AnimationDetail() {
             )}
             {animation.bdm_mission && (
               <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
-                Mission BDM
+                BDM rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
               </span>
             )}
           </div>
@@ -748,7 +754,8 @@ export default function AnimationDetail() {
           </div>
           {animation.bdm_mission && (
             <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2.5 py-1 text-xs font-bold text-teal-200">
-              Mission BDM
+              BDM rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
+              {animation.bdm_spontaneous ? ' · Spontanée' : ''}
             </span>
           )}
           <ServerBadge server={animation.server} />

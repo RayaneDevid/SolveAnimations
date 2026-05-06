@@ -2,7 +2,7 @@ import { handleCors } from '../_shared/cors.ts'
 import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
-import { hasEffectiveRole } from '../_shared/guards.ts'
+import { hasAnyRole, hasEffectiveRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
@@ -11,6 +11,10 @@ const TYPES    = ['moyenne','grande'] as const
 const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 const MISSION_KINDS = ['classique','spontanee','mission_bdm','passee'] as const
+const BDM_MISSION_RANKS = ['D','C','B','A','S'] as const
+const BDM_MISSION_TYPES = ['jetable','elaboree','grande_ampleur'] as const
+type BdmMissionRank = (typeof BDM_MISSION_RANKS)[number]
+type BdmMissionType = (typeof BDM_MISSION_TYPES)[number]
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -25,18 +29,23 @@ Deno.serve(async (req) => {
     server, type, pole = 'animation', prepTimeMin = 0, village, description,
     registrationsLocked = false,
     pastParticipantIds = [],
-    requestValidation = true, pingRoles = true, spontaneous = false, bdmMission = false, missionKind = 'classique',
+    requestValidation = true, pingRoles = true, spontaneous = false, bdmMission = false, bdmSpontaneous = false,
+    bdmMissionRank = 'B', bdmMissionType = 'jetable', missionKind = 'classique',
   } = body
   const isBdmMission = bdmMission === true || missionKind === 'mission_bdm'
-  const isInstantMission = spontaneous === true || isBdmMission || missionKind === 'spontanee'
+  const isBdmSpontaneous = isBdmMission && bdmSpontaneous === true
+  const isInstantMission = spontaneous === true || isBdmSpontaneous || missionKind === 'spontanee'
+  const isBdmLikeMission = isBdmMission || isInstantMission
   const isPastMission = missionKind === 'passee'
   const resolvedScheduledAt = isInstantMission ? new Date().toISOString() : scheduledAt
-  const resolvedPlannedDurationMin = isInstantMission ? 15 : plannedDurationMin
-  const resolvedRequiredParticipants = isInstantMission ? 0 : requiredParticipants
-  const resolvedType = isInstantMission ? 'moyenne' : type
-  const resolvedPole = isInstantMission ? 'animation' : pole
-  const resolvedPrepTimeMin = isInstantMission ? 0 : prepTimeMin
-  const shouldPingRoles = isInstantMission ? false : pingRoles
+  const resolvedPlannedDurationMin = isBdmLikeMission ? 15 : plannedDurationMin
+  const resolvedRequiredParticipants = isBdmLikeMission ? 0 : requiredParticipants
+  const resolvedType = isBdmLikeMission ? 'moyenne' : type
+  const resolvedPole = isBdmLikeMission ? 'animation' : pole
+  const resolvedPrepTimeMin = isBdmLikeMission ? 0 : prepTimeMin
+  const resolvedBdmMissionRank = typeof bdmMissionRank === 'string' ? bdmMissionRank : 'B'
+  const resolvedBdmMissionType = typeof bdmMissionType === 'string' ? bdmMissionType : 'jetable'
+  const shouldPingRoles = isBdmLikeMission ? false : pingRoles
   const shouldLockRegistrations = registrationsLocked === true
   if (pastParticipantIds !== undefined && !Array.isArray(pastParticipantIds))
     return errorResponse('VALIDATION_ERROR', 'Participants passés invalides')
@@ -50,6 +59,12 @@ Deno.serve(async (req) => {
   // Basic validation
   if (!MISSION_KINDS.includes(missionKind))
     return errorResponse('VALIDATION_ERROR', 'Type de mission invalide')
+  if (isBdmMission && !hasAnyRole(profile, ['bdm', 'responsable_bdm']))
+    return errorResponse('FORBIDDEN', 'Accès réservé au pôle BDM')
+  if (isBdmMission && !BDM_MISSION_RANKS.includes(resolvedBdmMissionRank as BdmMissionRank))
+    return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+  if (isBdmMission && !BDM_MISSION_TYPES.includes(resolvedBdmMissionType as BdmMissionType))
+    return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
   if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 120)
     return errorResponse('VALIDATION_ERROR', 'Titre invalide (3–120 caractères)')
   if (!resolvedScheduledAt || isNaN(new Date(resolvedScheduledAt).getTime()))
@@ -75,11 +90,14 @@ Deno.serve(async (req) => {
   const scheduledTime = scheduledDate.getTime()
   if (isPastMission && scheduledTime > Date.now())
     return errorResponse('VALIDATION_ERROR', 'Une mission passée ne peut pas être dans le futur')
+  if (isBdmMission && !isBdmSpontaneous && scheduledTime < Date.now())
+    return errorResponse('VALIDATION_ERROR', 'Une mission BDM programmée ne peut pas être antidatée')
   if (!isInstantMission && !isPastMission && scheduledTime < Date.now())
     return errorResponse('VALIDATION_ERROR', 'Une mission classique ne peut pas être antidatée')
 
   const canSelfValidatePastMission = isPastMission && hasEffectiveRole(profile, 'senior')
-  const autoValidate = isInstantMission || (!isPastMission && requestValidation === false)
+  const bdmNeedsValidation = isBdmMission && resolvedBdmMissionType === 'grande_ampleur'
+  const autoValidate = !bdmNeedsValidation && (isInstantMission || isBdmMission || (!isPastMission && requestValidation === false))
   const autoFinishPastMission = isPastMission && canSelfValidatePastMission
   const actualDurationMin = Math.max(1, Number(resolvedPlannedDurationMin))
   const actualPrepTimeMin = Math.max(0, Number(resolvedPrepTimeMin ?? 0))
@@ -111,6 +129,9 @@ Deno.serve(async (req) => {
       description: description?.trim() || null,
       registrations_locked: shouldLockRegistrations,
       bdm_mission: isBdmMission,
+      bdm_spontaneous: isBdmSpontaneous,
+      bdm_mission_rank: isBdmMission ? resolvedBdmMissionRank : 'B',
+      bdm_mission_type: isBdmMission ? resolvedBdmMissionType : 'jetable',
       creator_id: profile.id,
       status: autoFinishPastMission ? 'finished' : isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
       ...(isPastMission ? {
@@ -189,6 +210,10 @@ Deno.serve(async (req) => {
       village: animation.village,
       type: animation.type,
       pole: animation.pole,
+      bdmMission: animation.bdm_mission,
+      bdmMissionRank: animation.bdm_mission_rank,
+      bdmMissionType: animation.bdm_mission_type,
+      bdmSpontaneous: animation.bdm_spontaneous,
       pingRoles: shouldPingRoles,
       documentUrl: animation.document_url ?? undefined,
       creatorUsername: profile.username,
@@ -211,6 +236,10 @@ Deno.serve(async (req) => {
       village: animation.village,
       type: animation.type,
       pole: animation.pole,
+      bdmMission: animation.bdm_mission,
+      bdmMissionRank: animation.bdm_mission_rank,
+      bdmMissionType: animation.bdm_mission_type,
+      bdmSpontaneous: animation.bdm_spontaneous,
       creatorUsername: profile.username,
       creatorDiscordId: profile.discord_id,
       ...(animation.document_url ? { documentUrl: animation.document_url } : {}),

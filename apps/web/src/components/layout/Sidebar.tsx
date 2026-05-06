@@ -27,7 +27,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasPermissionRole } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 import type { StaffRoleKey } from '@/lib/config/discord'
 
 interface NavItem {
@@ -91,12 +91,17 @@ export function Sidebar() {
   if (auth.status !== 'authenticated') return null
 
   const { user, role, permissionRoles } = auth
+  const canSeeBdmValidation = hasOwnedRole(permissionRoles, ['responsable_bdm'])
 
   const visibleSections = NAV_SECTIONS
     .map((section) => ({
       ...section,
       items: section.minRole
-        ? (hasPermissionRole(permissionRoles, section.minRole) ? section.items : [])
+        ? (hasPermissionRole(permissionRoles, section.minRole)
+          ? section.items
+          : section.id === 'senior' && canSeeBdmValidation
+            ? section.items.filter((item) => item.to === '/panel/validation')
+            : [])
         : section.items,
     }))
     .filter((s) => s.items.length > 0)

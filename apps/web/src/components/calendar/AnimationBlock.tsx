@@ -17,6 +17,12 @@ const TYPE_LABELS: Record<string, string> = {
   grande: 'Grande',
 }
 
+const BDM_TYPE_LABELS = {
+  jetable: 'Jetable',
+  elaboree: 'Élaborée',
+  grande_ampleur: 'Grande ampleur',
+} as const
+
 const VILLAGE_LABELS: Record<string, string> = {
   konoha: 'Konoha',
   suna: 'Suna',
@@ -169,7 +175,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
               BDM
             </span>
             <span className="truncate text-[8px] font-medium leading-3 text-teal-50/70">
-              Mission
+              Rang {animation.bdm_mission_rank}
             </span>
           </div>
         )}
@@ -181,7 +187,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
         </p>
         {animHeight >= 40 && (
           <p className="text-[9px] opacity-60 leading-tight truncate">
-            {animation.server} · {isBdmMission ? 'Mission BDM' : TYPE_LABELS[animation.type]}
+            {animation.server} · {isBdmMission ? BDM_TYPE_LABELS[animation.bdm_mission_type] : TYPE_LABELS[animation.type]}
           </p>
         )}
         {animHeight >= 56 && (

@@ -14,7 +14,12 @@ export function RoleGate({ allow, children, fallback, redirectTo }: RoleGateProp
 
   if (auth.status !== 'authenticated') return null
 
-  const allowed = allow.some((r) => hasPermissionRole(auth.permissionRoles, r))
+  const exactOnlyRoles = new Set<StaffRoleKey>(['bdm', 'responsable_bdm'])
+  const allowed = allow.some((r) =>
+    exactOnlyRoles.has(r)
+      ? auth.permissionRoles.includes(r)
+      : hasPermissionRole(auth.permissionRoles, r),
+  )
 
   if (!allowed) {
     if (redirectTo) return <Navigate to={redirectTo} replace />

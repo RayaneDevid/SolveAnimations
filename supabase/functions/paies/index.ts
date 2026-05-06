@@ -23,7 +23,7 @@ const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
 const BDM_HOURLY_RATE = 650
 const SENIOR_BASE_PAY = 2_000
-const MJ_HOURLY_RATE = 500
+const MJ_HOURLY_RATE = 800
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
 

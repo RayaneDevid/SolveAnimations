@@ -5,6 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
+import { defaultReportPole } from '../_shared/reportPole.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
 
   const { data: creatorProfile } = await db
     .from('profiles')
-    .select('role')
+    .select('role, available_roles')
     .eq('id', anim.creator_id)
     .single()
 
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
   reports.push({
     animation_id: id,
     user_id: anim.creator_id,
-    pole: ['mj', 'mj_senior', 'responsable_mj'].includes(creatorProfile?.role ?? '') ? 'mj' : 'animateur',
+    pole: defaultReportPole(creatorProfile, anim),
     character_name: null,
   })
 
@@ -82,13 +83,13 @@ Deno.serve(async (req) => {
     if (p.user_id === anim.creator_id) continue
     const { data: pProfile } = await db
       .from('profiles')
-      .select('role')
+      .select('role, available_roles')
       .eq('id', p.user_id)
       .single()
     reports.push({
       animation_id: id,
       user_id: p.user_id,
-      pole: pProfile?.role === 'mj' ? 'mj' : 'animateur',
+      pole: defaultReportPole(pProfile, anim),
       character_name: null,
     })
   }

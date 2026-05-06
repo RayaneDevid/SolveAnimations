@@ -5,6 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { hasAnyRole, hasEffectiveRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
+import { defaultReportPole } from '../_shared/reportPole.ts'
 
 const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
 const TYPES    = ['moyenne','grande'] as const
@@ -177,11 +178,17 @@ Deno.serve(async (req) => {
 
   if (autoFinishPastMission) {
     const reportUserIds = [profile.id, ...selectedPastParticipantIds]
+    const { data: reportProfiles } = await db
+      .from('profiles')
+      .select('id, role, available_roles')
+      .in('id', reportUserIds)
+    const profileById = new Map((reportProfiles ?? []).map((p) => [p.id, p]))
+
     await db.from('animation_reports').upsert(
       reportUserIds.map((userId) => ({
         animation_id: animation.id,
         user_id: userId,
-        pole: animation.pole === 'mj' ? 'mj' : 'animateur',
+        pole: defaultReportPole(profileById.get(userId) ?? (userId === profile.id ? profile : null), animation),
         character_name: '—',
         comments: null,
         submitted_at: null,

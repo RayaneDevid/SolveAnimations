@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { defaultReportPole } from '../_shared/reportPole.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
 
   const { data: animation, error: animError } = await db
     .from('animations')
-    .select('id, status, pole')
+    .select('id, status, pole, bdm_mission')
     .eq('id', animationId)
     .single()
 
@@ -37,7 +38,6 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'L\'animation doit être terminée')
 
   const now = new Date().toISOString()
-  const pole = animation.pole === 'mj' ? 'mj' : 'animateur'
 
   // Fetch all existing participant rows for these users in one query
   const { data: existingRows } = await db
@@ -97,11 +97,17 @@ Deno.serve(async (req) => {
   const reportsToInsert = userIds.filter((uid) => !reportedUserIds.has(uid))
 
   if (reportsToInsert.length > 0) {
+    const { data: reportProfiles } = await db
+      .from('profiles')
+      .select('id, role, available_roles')
+      .in('id', reportsToInsert)
+    const profileById = new Map((reportProfiles ?? []).map((p) => [p.id, p]))
+
     await db.from('animation_reports').insert(
       reportsToInsert.map((userId) => ({
         animation_id: animationId,
         user_id: userId,
-        pole,
+        pole: defaultReportPole(profileById.get(userId), animation),
         character_name: '—',
         comments: null,
         submitted_at: null,

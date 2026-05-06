@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils/cn'
 import type { AnimationReport } from '@/types/database'
 import { ReportModal } from './reports'
 
-type ReportPole = 'animation' | 'mj'
+type ReportPole = 'animation' | 'mj' | 'bdm'
 
 const PAGE_SIZE = 6
 
@@ -27,6 +27,11 @@ const POLE_CONFIG: Record<ReportPole, { title: string; tone: string; dot: string
     title: 'Pôle MJ',
     tone: 'text-violet-300 border-violet-500/20 bg-violet-500/5',
     dot: 'bg-violet-400',
+  },
+  bdm: {
+    title: 'Pôle BDM',
+    tone: 'text-cyan-300 border-cyan-500/20 bg-cyan-500/5',
+    dot: 'bg-cyan-400',
   },
 }
 
@@ -187,8 +192,9 @@ export default function TeamReports() {
       return (b.animation?.scheduled_at ?? '').localeCompare(a.animation?.scheduled_at ?? '')
     })
     return {
-      animation: sorted.filter((report) => report.pole !== 'mj'),
+      animation: sorted.filter((report) => report.pole !== 'mj' && report.pole !== 'bdm'),
       mj: sorted.filter((report) => report.pole === 'mj'),
+      bdm: sorted.filter((report) => report.pole === 'bdm'),
     }
   }, [reports])
 
@@ -236,9 +242,10 @@ export default function TeamReports() {
           <p className="text-sm text-white/30">Aucun rapport équipe sur cette semaine</p>
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
           <PoleReportsCard pole="animation" reports={byPole.animation} onSelect={setSelected} />
           <PoleReportsCard pole="mj" reports={byPole.mj} onSelect={setSelected} />
+          <PoleReportsCard pole="bdm" reports={byPole.bdm} onSelect={setSelected} />
         </div>
       )}
 

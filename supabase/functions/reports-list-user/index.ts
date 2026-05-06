@@ -25,9 +25,9 @@ Deno.serve(async (req) => {
     .from('animation_reports')
     .select(`
       *,
-      user:profiles!animation_reports_user_id_fkey(id, username, avatar_url, role),
+      user:profiles!animation_reports_user_id_fkey(id, username, avatar_url, role, available_roles),
       animation:animations!animation_reports_animation_id_fkey(
-        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, status, server, type
+        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, status, server, type, bdm_mission, bdm_mission_rank, bdm_mission_type, bdm_spontaneous
       )
     `)
     .eq('user_id', user_id)

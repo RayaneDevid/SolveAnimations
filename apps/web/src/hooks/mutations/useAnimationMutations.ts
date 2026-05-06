@@ -325,8 +325,18 @@ export function useDecideParticipant() {
 export function useSubmitReport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ reportId, characterName, comments }: { reportId: string; characterName: string; comments: string }) =>
-      invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments }),
+    mutationFn: ({
+      reportId,
+      characterName,
+      comments,
+      pole,
+    }: {
+      reportId: string
+      characterName: string
+      comments: string
+      pole?: 'animateur' | 'mj' | 'bdm'
+    }) =>
+      invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments, pole }),
     onSuccess: () => {
       invalidateReportCaches(qc)
     },

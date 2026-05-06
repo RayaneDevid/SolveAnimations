@@ -5,6 +5,18 @@ import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 
+function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
+  if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
+  if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
+  return role
+}
+
+function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+  if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
+  if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
+  return 'animateur'
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -30,12 +42,17 @@ Deno.serve(async (req) => {
   if (profilesError) return errorResponse('INTERNAL_ERROR', profilesError.message)
 
   const profileIds = (profiles ?? []).map((p) => p.id)
+  const quotaPoleById = new Map((profiles ?? []).map((p) => [
+    p.id,
+    reportPoleForRole(resolveQuotaRole(p.role, p.pay_pole)),
+  ]))
 
   // Weekly finished animations per creator
   const { data: weeklyAnims } = await db
     .from('animations')
     .select('creator_id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
+    .eq('bdm_mission', false)
     .gte('started_at', weekStart.toISOString())
     .lt('started_at', weekEnd.toISOString())
     .in('creator_id', profileIds)
@@ -45,6 +62,7 @@ Deno.serve(async (req) => {
     .from('animations')
     .select('creator_id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
+    .eq('bdm_mission', false)
     .in('creator_id', profileIds)
 
   // Weekly validated participations
@@ -53,6 +71,16 @@ Deno.serve(async (req) => {
     .select('user_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, false)
+    .gte('animations.started_at' as never, weekStart.toISOString())
+    .lt('animations.started_at' as never, weekEnd.toISOString())
+    .in('user_id', profileIds)
+
+  const { data: bdmReportRows } = await db
+    .from('animation_reports')
+    .select('user_id, pole, animations!inner(creator_id, started_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, true)
     .gte('animations.started_at' as never, weekStart.toISOString())
     .lt('animations.started_at' as never, weekEnd.toISOString())
     .in('user_id', profileIds)
@@ -137,6 +165,23 @@ Deno.serve(async (req) => {
     weeklyPartMap.set(p.user_id, existing)
   }
 
+  for (const report of bdmReportRows ?? []) {
+    if (report.pole !== quotaPoleById.get(report.user_id)) continue
+    const anim = (report as unknown as { animations: { creator_id: string; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+    const minutes = (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+    if (anim?.creator_id === report.user_id) {
+      const existing = weeklyAnimMap.get(report.user_id) ?? { count: 0, minutes: 0 }
+      existing.count++
+      existing.minutes += minutes
+      weeklyAnimMap.set(report.user_id, existing)
+    } else {
+      const existing = weeklyPartMap.get(report.user_id) ?? { count: 0, minutes: 0 }
+      existing.count++
+      existing.minutes += minutes
+      weeklyPartMap.set(report.user_id, existing)
+    }
+  }
+
 const QUOTA_MAX: Record<string, number | null> = {
   direction: null,
   gerance: null,
@@ -146,6 +191,8 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  bdm: 3,
+  responsable_bdm: 3,
 }
 
 function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {

@@ -19,8 +19,43 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDate, formatDateTime, formatDuration, formatWeekLabel } from '@/lib/utils/format'
 import { getWeekBoundsFor } from '@/lib/utils/week'
 import { cn } from '@/lib/utils/cn'
-import { hasPermissionRole } from '@/lib/config/discord'
+import { hasPermissionRole, type StaffRoleKey } from '@/lib/config/discord'
 import type { AnimationReport } from '@/types/database'
+
+type ReportPole = 'animateur' | 'mj' | 'bdm'
+
+const REPORT_POLE_LABELS: Record<ReportPole, string> = {
+  animateur: 'Animateur',
+  mj: 'Maître du Jeu',
+  bdm: 'BDM',
+}
+
+const REPORT_POLE_SHORT_LABELS: Record<ReportPole, string> = {
+  animateur: 'Anim.',
+  mj: 'MJ',
+  bdm: 'BDM',
+}
+
+const ANIMATION_ROLES = new Set<StaffRoleKey>(['animateur', 'senior', 'responsable', 'direction', 'gerance'])
+const MJ_ROLES = new Set<StaffRoleKey>(['mj', 'mj_senior', 'responsable_mj'])
+const BDM_ROLES = new Set<StaffRoleKey>(['bdm', 'responsable_bdm'])
+
+function profileRoles(user: { role: StaffRoleKey; available_roles?: StaffRoleKey[] | null }): StaffRoleKey[] {
+  return Array.from(new Set([...(user.available_roles ?? []), user.role]))
+}
+
+function allowedReportPoles(user: { role: StaffRoleKey; available_roles?: StaffRoleKey[] | null }): ReportPole[] {
+  const roles = profileRoles(user)
+  const poles: ReportPole[] = []
+  if (roles.some((role) => ANIMATION_ROLES.has(role))) poles.push('animateur')
+  if (roles.some((role) => MJ_ROLES.has(role))) poles.push('mj')
+  if (roles.some((role) => BDM_ROLES.has(role))) poles.push('bdm')
+  return poles
+}
+
+function normalizeReportPole(pole: string | null | undefined): ReportPole {
+  return pole === 'mj' || pole === 'bdm' ? pole : 'animateur'
+}
 
 // ─── Report detail modal ──────────────────────────────────────────────────────
 
@@ -35,12 +70,28 @@ export function ReportModal({
 }) {
   const [characterName, setCharacterName] = useState(report.character_name ?? '')
   const [comments, setComments] = useState(report.comments ?? '')
+  const [quotaPole, setQuotaPole] = useState<ReportPole>(normalizeReportPole(report.pole))
   const [editing, setEditing] = useState(!readOnly && !report.submitted_at)
+  const { user } = useRequiredAuth()
   const { mutateAsync, isPending } = useSubmitReport()
 
   const isSubmitted = !!report.submitted_at
   const anim = report.animation
   const showReadOnly = readOnly || (isSubmitted && !editing)
+  const quotaOptions = useMemo(() => {
+    if (!anim?.bdm_mission || readOnly) return []
+    const options = allowedReportPoles(user)
+    const hasBdmChoice = options.includes('bdm')
+    const hasOtherChoice = options.some((pole) => pole !== 'bdm')
+    return hasBdmChoice && hasOtherChoice ? options : []
+  }, [anim?.bdm_mission, readOnly, user])
+
+  useEffect(() => {
+    setCharacterName(report.character_name ?? '')
+    setComments(report.comments ?? '')
+    setQuotaPole(normalizeReportPole(report.pole))
+    setEditing(!readOnly && !report.submitted_at)
+  }, [readOnly, report])
 
   const handleSubmit = async () => {
     if (!characterName.trim()) {
@@ -48,7 +99,7 @@ export function ReportModal({
       return
     }
     try {
-      await mutateAsync({ reportId: report.id, characterName, comments })
+      await mutateAsync({ reportId: report.id, characterName, comments, pole: anim?.bdm_mission ? quotaPole : undefined })
       toast.success(isSubmitted ? 'Rapport mis à jour !' : 'Rapport soumis !')
       onClose()
     } catch {
@@ -85,7 +136,7 @@ export function ReportModal({
           <div className="grid grid-cols-2 gap-3">
             {[
               { icon: Calendar, label: 'Date', value: anim ? formatDateTime(anim.scheduled_at) : '—' },
-              { icon: Sword, label: 'Pôle', value: report.pole === 'mj' ? 'Maître du Jeu' : 'Animateur' },
+              { icon: Sword, label: 'Quota', value: REPORT_POLE_LABELS[normalizeReportPole(report.pole)] },
               { icon: Clock, label: 'Durée animation', value: anim ? formatDuration(anim.actual_duration_min ?? anim.planned_duration_min) : '—' },
               { icon: Clock, label: 'Débrief / préparation', value: anim ? formatDuration(anim.actual_prep_time_min ?? anim.prep_time_min) : '—' },
             ].map(({ icon: Icon, label, value }) => (
@@ -166,6 +217,28 @@ export function ReportModal({
                   rows={4}
                 />
               </div>
+              {quotaOptions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-white/50">Compter cette mission pour</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {quotaOptions.map((pole) => (
+                      <button
+                        key={pole}
+                        type="button"
+                        onClick={() => setQuotaPole(pole)}
+                        className={cn(
+                          'h-9 rounded-lg border px-3 text-xs font-medium transition-colors',
+                          quotaPole === pole
+                            ? 'border-cyan-400/45 bg-cyan-500/15 text-cyan-100'
+                            : 'border-white/10 bg-white/[0.03] text-white/55 hover:bg-white/[0.06] hover:text-white/80',
+                        )}
+                      >
+                        {pole === 'bdm' ? 'Quota BDM' : `Quota ${REPORT_POLE_LABELS[pole]}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2 justify-end">
                 {isSubmitted && (
                   <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
@@ -216,7 +289,7 @@ export function ReportRow({ report, onClick }: { report: AnimationReport; onClic
 
       <div className="flex items-center gap-2 shrink-0">
         <span className="hidden sm:block text-[10px] text-white/30 uppercase">
-          {report.pole === 'mj' ? 'MJ' : 'Anim.'}
+          {REPORT_POLE_SHORT_LABELS[normalizeReportPole(report.pole)]}
         </span>
         <span className={cn(
           'text-[10px] rounded-full px-2 py-0.5 font-medium',

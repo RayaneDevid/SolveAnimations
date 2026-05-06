@@ -132,7 +132,7 @@ export interface AnimationReport {
   id: string
   animation_id: string
   user_id: string
-  pole: string
+  pole: 'animateur' | 'mj' | 'bdm' | string
   character_name: string | null
   comments: string | null
   submitted_at: string | null

@@ -713,7 +713,7 @@ export default function Dashboard() {
                       {report.animation?.title ?? 'Animation'}
                     </p>
                     <p className="text-xs text-white/40">
-                      En tant que {report.pole} · {report.character_name}
+                      En tant que {report.pole === 'bdm' ? 'BDM' : report.pole === 'mj' ? 'MJ' : 'Animateur'} · {report.character_name}
                     </p>
                   </div>
                 </Link>

@@ -20,6 +20,10 @@ function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | und
   return null
 }
 
+function reportPoleForRole(role: string): 'animateur' | 'mj' {
+  return role in MJ_QUOTA ? 'mj' : 'animateur'
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req)
   if (cors) return cors
@@ -111,6 +115,10 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     .filter((profile: { quotaRole: string | null }) => profile.quotaRole !== null)
 
   const profileIds = quotaProfiles.map((p: { id: string }) => p.id)
+  const quotaPoleById = new Map(quotaProfiles.map((p: { id: string; quotaRole: string }) => [
+    p.id,
+    reportPoleForRole(p.quotaRole),
+  ]))
   if (profileIds.length === 0) {
     return {
       animation: buildQuotaSummary(0, 0),
@@ -126,6 +134,7 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
       .from('animations')
       .select('id, creator_id')
       .eq('status', 'finished')
+      .eq('bdm_mission', false)
       .gte('started_at', weekStart.toISOString())
       .lt('started_at', weekEnd.toISOString()),
     db
@@ -152,6 +161,18 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
         .select('user_id, animations!inner(started_at)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
+        .eq('animations.bdm_mission' as never, false)
+        .gte('animations.started_at' as never, weekStart.toISOString())
+        .lt('animations.started_at' as never, weekEnd.toISOString())
+        .in('user_id', profileIds)
+    : { data: [] }
+
+  const { data: bdmReports } = profileIds.length > 0
+    ? await db
+        .from('animation_reports')
+        .select('user_id, pole, animations!inner(started_at, status, bdm_mission)')
+        .eq('animations.status' as never, 'finished')
+        .eq('animations.bdm_mission' as never, true)
         .gte('animations.started_at' as never, weekStart.toISOString())
         .lt('animations.started_at' as never, weekEnd.toISOString())
         .in('user_id', profileIds)
@@ -164,6 +185,10 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   }
   for (const participation of participations ?? []) {
     missionCount.set(participation.user_id, (missionCount.get(participation.user_id) ?? 0) + 1)
+  }
+  for (const report of bdmReports ?? []) {
+    if (report.pole !== quotaPoleById.get(report.user_id)) continue
+    missionCount.set(report.user_id, (missionCount.get(report.user_id) ?? 0) + 1)
   }
   for (const training of trainingRows ?? []) {
     missionCount.set(training.user_id, (missionCount.get(training.user_id) ?? 0) + 1)

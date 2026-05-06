@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
 
   const profileIds = eligibleProfiles.map((p) => p.id)
   const profileIdSet = new Set(profileIds)
+  const profilePayPoleById = new Map(eligibleProfiles.map((p) => [p.id, p.payPole]))
   const bdmProfileIds = bdmProfiles.map((p) => p.id)
   const bdmProfileIdSet = new Set(bdmProfileIds)
   const participationProfileIds = Array.from(new Set([...profileIds, ...bdmProfileIds]))
@@ -220,6 +221,17 @@ Deno.serve(async (req) => {
         .select('user_id, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
+        .gte('animations.started_at' as never, weekStart.toISOString())
+        .lt('animations.started_at' as never, weekEnd.toISOString())
+        .in('user_id', participationProfileIds)
+    : { data: [] }
+
+  const { data: bdmReportRows } = participationProfileIds.length > 0
+    ? await db
+        .from('animation_reports')
+        .select('user_id, pole, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .eq('animations.status' as never, 'finished')
+        .eq('animations.bdm_mission' as never, true)
         .gte('animations.started_at' as never, weekStart.toISOString())
         .lt('animations.started_at' as never, weekEnd.toISOString())
         .in('user_id', participationProfileIds)
@@ -273,16 +285,6 @@ Deno.serve(async (req) => {
   // Created animations
   for (const a of anims ?? []) {
     if (a.bdm_mission) {
-      if (!bdmProfileIdSet.has(a.creator_id)) continue
-      const entry = getBdmEntry(a.creator_id)
-      entry.animationsCount++
-      entry.createdAnimationsCount++
-      entry.animationMin += a.actual_duration_min ?? 0
-      entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
-      entry.bdmMissionPay += computeBdmMissionPay(a.bdm_mission_rank, a.bdm_mission_type)
-      if (a.type === 'moyenne' || a.type === 'petite') entry.moyenne++
-      else if (a.type === 'grande') entry.grande++
-      bdmMap.set(a.creator_id, entry)
       continue
     }
 
@@ -312,16 +314,6 @@ Deno.serve(async (req) => {
     const anim = p.animations
     if (!anim || anim.creator_id === p.user_id) continue
     if (anim.bdm_mission) {
-      if (!bdmProfileIdSet.has(p.user_id)) continue
-      const entry = getBdmEntry(p.user_id)
-      entry.animationsCount++
-      entry.participationsCount++
-      entry.animationMin += anim.actual_duration_min ?? 0
-      entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
-      entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
-      if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
-      else if (anim.type === 'grande') entry.grande++
-      bdmMap.set(p.user_id, entry)
       continue
     }
 
@@ -334,6 +326,39 @@ Deno.serve(async (req) => {
     if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
     else if (anim.type === 'grande') entry.grande++
     map.set(p.user_id, entry)
+  }
+
+  for (const report of (bdmReportRows ?? []) as Array<{ user_id: string; pole: string; animations: AnimJoin }>) {
+    const anim = report.animations
+    if (!anim) continue
+    const isCreator = anim.creator_id === report.user_id
+
+    if (report.pole === 'bdm') {
+      if (!bdmProfileIdSet.has(report.user_id)) continue
+      const entry = getBdmEntry(report.user_id)
+      entry.animationsCount++
+      if (isCreator) entry.createdAnimationsCount++
+      else entry.participationsCount++
+      entry.animationMin += anim.actual_duration_min ?? 0
+      entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
+      entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
+      if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
+      else if (anim.type === 'grande') entry.grande++
+      bdmMap.set(report.user_id, entry)
+      continue
+    }
+
+    if ((report.pole === 'animateur' || report.pole === 'mj') && profilePayPoleById.get(report.user_id) === (report.pole === 'animateur' ? 'animation' : 'mj')) {
+      const entry = getEntry(report.user_id)
+      entry.animationsCount++
+      if (isCreator) entry.createdAnimationsCount++
+      else entry.participationsCount++
+      entry.animationMin += anim.actual_duration_min ?? 0
+      entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
+      if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
+      else if (anim.type === 'grande') entry.grande++
+      map.set(report.user_id, entry)
+    }
   }
 
   // Formation sessions where user is a trainer this week

@@ -14,12 +14,20 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  bdm: 3,
+  responsable_bdm: 3,
 }
 
 function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
   if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
   return role
+}
+
+function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+  if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
+  if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
+  return 'animateur'
 }
 
 Deno.serve(async (req) => {
@@ -64,12 +72,23 @@ Deno.serve(async (req) => {
     }
   }
 
+  const { data: targetProfile } = await db
+    .from('profiles')
+    .select('role, pay_pole')
+    .eq('id', targetId)
+    .single()
+
+  const role = resolvePayRole(targetProfile?.role ?? profile.role, targetProfile?.pay_pole ?? null)
+  const quotaMax = QUOTA_MAX[role] ?? null
+  const quotaPole = reportPoleForRole(role)
+
   // Finished animations created by target this week
   const { data: finishedAnims } = await db
     .from('animations')
     .select('id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('creator_id', targetId)
     .eq('status', 'finished')
+    .eq('bdm_mission', false)
     .gte('started_at', weekStart)
     .lt('started_at', weekEnd)
 
@@ -86,6 +105,17 @@ Deno.serve(async (req) => {
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, false)
+    .gte('animations.started_at' as never, weekStart)
+    .lt('animations.started_at' as never, weekEnd)
+
+  const { data: bdmReportRows } = await db
+    .from('animation_reports')
+    .select('user_id, pole, animations!inner(creator_id, started_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .eq('user_id', targetId)
+    .eq('pole', quotaPole)
+    .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, true)
     .gte('animations.started_at' as never, weekStart)
     .lt('animations.started_at' as never, weekEnd)
 
@@ -98,22 +128,28 @@ Deno.serve(async (req) => {
     0,
   )
 
-  const { data: targetProfile } = await db
-    .from('profiles')
-    .select('role, pay_pole')
-    .eq('id', targetId)
-    .single()
+  const bdmCreatedRows = (bdmReportRows ?? []).filter((report) => {
+    const anim = (report as unknown as { animations: { creator_id: string } }).animations
+    return anim?.creator_id === targetId
+  })
+  const bdmParticipationRows = (bdmReportRows ?? []).filter((report) => {
+    const anim = (report as unknown as { animations: { creator_id: string } }).animations
+    return anim?.creator_id !== targetId
+  })
+  const minutesFromBdmReports = (bdmReportRows ?? []).reduce((sum, report) => {
+    const anim = (report as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+    return sum + (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+  }, 0)
 
-  const role = resolvePayRole(targetProfile?.role ?? profile.role, targetProfile?.pay_pole ?? null)
-  const quotaMax = QUOTA_MAX[role] ?? null
-
-  const hoursAnimated = hoursFromCreated + hoursFromParticipations
+  const bdmCreated = bdmCreatedRows.length
+  const bdmParticipations = bdmParticipationRows.length
+  const hoursAnimated = hoursFromCreated + hoursFromParticipations + minutesFromBdmReports
 
   return jsonResponse({
-    animationsCreated,
+    animationsCreated: animationsCreated + bdmCreated,
     hoursAnimated,
-    participationsValidated,
-    quota: animationsCreated + participationsValidated,
+    participationsValidated: participationsValidated + bdmParticipations,
+    quota: animationsCreated + participationsValidated + bdmCreated + bdmParticipations,
     quotaMax,
     weekStart,
     weekEnd,

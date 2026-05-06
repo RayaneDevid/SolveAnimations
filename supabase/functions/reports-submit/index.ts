@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
+import { getAllowedReportPoles, type ReportPole } from '../_shared/reportPole.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  const { report_id, character_name, comments } = await req.json()
+  const { report_id, character_name, comments, pole } = await req.json()
   if (!report_id) return errorResponse('VALIDATION_ERROR', 'report_id requis')
   if (!character_name || character_name.trim().length === 0)
     return errorResponse('VALIDATION_ERROR', 'Nom du personnage requis')
@@ -23,7 +24,10 @@ Deno.serve(async (req) => {
 
   const { data: report } = await db
     .from('animation_reports')
-    .select('*')
+    .select(`
+      *,
+      animation:animations!animation_reports_animation_id_fkey(id, bdm_mission)
+    `)
     .eq('id', report_id)
     .single()
 
@@ -32,10 +36,28 @@ Deno.serve(async (req) => {
     return errorResponse('FORBIDDEN', 'Ce rapport ne t\'appartient pas')
 
   const wasSubmitted = !!report.submitted_at
+  const requestedPole = typeof pole === 'string' ? pole as ReportPole : null
+  const updatePole = requestedPole && report.animation?.bdm_mission
+    ? requestedPole
+    : report.pole
+
+  if (requestedPole) {
+    if (!['animateur', 'mj', 'bdm'].includes(requestedPole)) {
+      return errorResponse('VALIDATION_ERROR', 'Pôle de quota invalide')
+    }
+    if (!report.animation?.bdm_mission && requestedPole !== report.pole) {
+      return errorResponse('VALIDATION_ERROR', 'Le pôle de quota ne peut être modifié que pour une mission BDM')
+    }
+    const allowedPoles = getAllowedReportPoles(profile)
+    if (!allowedPoles.includes(requestedPole)) {
+      return errorResponse('FORBIDDEN', 'Ce quota ne correspond pas à tes rôles')
+    }
+  }
 
   const { data: updated, error } = await db
     .from('animation_reports')
     .update({
+      pole: updatePole,
       character_name: character_name.trim(),
       comments: comments?.trim() ?? null,
       submitted_at: new Date().toISOString(),

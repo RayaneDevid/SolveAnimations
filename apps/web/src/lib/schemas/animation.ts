@@ -107,6 +107,7 @@ export const submitReportSchema = z.object({
   reportId: z.string().uuid(),
   characterName: z.string().trim().min(1, 'Nom du personnage requis').max(64),
   comments: z.string().trim().max(2000).optional(),
+  pole: z.enum(['animateur', 'mj', 'bdm']).optional(),
 })
 
 export type SubmitReportInput = z.infer<typeof submitReportSchema>

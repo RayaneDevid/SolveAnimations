@@ -14,6 +14,8 @@ const QUOTA_MAX: Record<string, number | null> = {
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  bdm: 3,
+  responsable_bdm: 3,
 }
 
 const PANEL_FIRST_WEEK_START_DATE = '2026-04-25'
@@ -57,6 +59,12 @@ function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undef
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
   if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
   return role
+}
+
+function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+  if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
+  if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
+  return 'animateur'
 }
 
 function profileSummary(profile: ProfileRow, quota: number, quotaMax: number) {
@@ -111,9 +119,13 @@ Deno.serve(async (req) => {
       return { ...p, quotaMax: QUOTA_MAX[payRole] ?? null }
     })
     .filter((p): p is ProfileRow & { quotaMax: number } => typeof p.quotaMax === 'number')
+  const quotaPoleById = new Map(quotaProfiles.map((p) => [
+    p.id,
+    reportPoleForRole(resolvePayRole(p.role, p.pay_pole)),
+  ]))
 
-  const currentQuota = await buildMissionCounts(db, currentStart, currentEnd)
-  const previousQuota = hasTwoWeekHistory ? await buildMissionCounts(db, previousStart, previousEnd) : new Map<string, number>()
+  const currentQuota = await buildMissionCounts(db, currentStart, currentEnd, quotaPoleById)
+  const previousQuota = hasTwoWeekHistory ? await buildMissionCounts(db, previousStart, previousEnd, quotaPoleById) : new Map<string, number>()
   const currentAbsences = await buildAbsences(db, currentStartDate, currentEndDate)
   const currentAbsenceIds = new Set(currentAbsences.map((absence) => absence.user_id))
   const previousAbsences = hasTwoWeekHistory ? await buildAbsenceSet(db, previousStartDate, previousEndDate) : new Set<string>()
@@ -212,13 +224,15 @@ Deno.serve(async (req) => {
 })
 
 // deno-lint-ignore no-explicit-any
-async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<string, number>> {
+async function buildMissionCounts(db: any, start: Date, end: Date, quotaPoleById: Map<string, 'animateur' | 'mj' | 'bdm'>): Promise<Map<string, number>> {
   const counts = new Map<string, number>()
+  const profileIds = Array.from(quotaPoleById.keys())
 
   const { data: animations } = await db
     .from('animations')
     .select('creator_id')
     .eq('status', 'finished')
+    .eq('bdm_mission', false)
     .gte('started_at', start.toISOString())
     .lt('started_at', end.toISOString())
 
@@ -231,11 +245,28 @@ async function buildMissionCounts(db: any, start: Date, end: Date): Promise<Map<
     .select('user_id, animations!inner(started_at)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, false)
     .gte('animations.started_at' as never, start.toISOString())
     .lt('animations.started_at' as never, end.toISOString())
 
   for (const participation of participations ?? []) {
     counts.set(participation.user_id, (counts.get(participation.user_id) ?? 0) + 1)
+  }
+
+  const { data: bdmReports } = profileIds.length > 0
+    ? await db
+        .from('animation_reports')
+        .select('user_id, pole, animations!inner(started_at, status, bdm_mission)')
+        .eq('animations.status' as never, 'finished')
+        .eq('animations.bdm_mission' as never, true)
+        .gte('animations.started_at' as never, start.toISOString())
+        .lt('animations.started_at' as never, end.toISOString())
+        .in('user_id', profileIds)
+    : { data: [] }
+
+  for (const report of bdmReports ?? []) {
+    if (report.pole !== quotaPoleById.get(report.user_id)) continue
+    counts.set(report.user_id, (counts.get(report.user_id) ?? 0) + 1)
   }
 
   return counts

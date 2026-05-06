@@ -179,6 +179,8 @@ export interface WeeklyStats {
   participationsValidated: number
   quota: number
   quotaMax: number | null
+  pole: 'animateur' | 'mj' | 'bdm'
+  availablePoles: Array<'animateur' | 'mj' | 'bdm'>
   weekStart: string
   weekEnd: string
 }

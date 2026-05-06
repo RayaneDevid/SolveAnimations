@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { isResponsableRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { getAllowedReportPoles, type ReportPole } from '../_shared/reportPole.ts'
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction: null,
@@ -24,9 +25,19 @@ function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undef
   return role
 }
 
-function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+function reportPoleForRole(role: string): ReportPole {
   if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
   if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
+  return 'animateur'
+}
+
+function quotaRoleForPole(pole: ReportPole, roles: string[]): string {
+  if (pole === 'bdm') return roles.includes('responsable_bdm') ? 'responsable_bdm' : 'bdm'
+  if (pole === 'mj') return roles.includes('responsable_mj') ? 'responsable_mj' : roles.includes('mj_senior') ? 'mj_senior' : 'mj'
+  if (roles.includes('direction')) return 'direction'
+  if (roles.includes('gerance')) return 'gerance'
+  if (roles.includes('responsable')) return 'responsable'
+  if (roles.includes('senior')) return 'senior'
   return 'animateur'
 }
 
@@ -38,13 +49,20 @@ Deno.serve(async (req) => {
   if (profile instanceof Response) return profile
 
   const body = await req.json().catch(() => ({}))
-  const { user_id, week_start } = body
+  const { user_id, week_start, pole: requestedPoleRaw } = body
 
   if (user_id && user_id !== profile.id && !isResponsableRole(profile))
     return errorResponse('FORBIDDEN', 'Accès refusé')
 
   if (week_start && Number.isNaN(new Date(week_start).getTime()))
     return errorResponse('VALIDATION_ERROR', 'week_start invalide')
+
+  const requestedPole: ReportPole | null =
+    requestedPoleRaw === 'animateur' || requestedPoleRaw === 'mj' || requestedPoleRaw === 'bdm'
+      ? requestedPoleRaw
+      : null
+  if (requestedPoleRaw && !requestedPole)
+    return errorResponse('VALIDATION_ERROR', 'pole invalide')
 
   const targetId = user_id ?? profile.id
 
@@ -74,23 +92,46 @@ Deno.serve(async (req) => {
 
   const { data: targetProfile } = await db
     .from('profiles')
-    .select('role, pay_pole')
+    .select('role, pay_pole, available_roles')
     .eq('id', targetId)
     .single()
 
-  const role = resolvePayRole(targetProfile?.role ?? profile.role, targetProfile?.pay_pole ?? null)
-  const quotaMax = QUOTA_MAX[role] ?? null
-  const quotaPole = reportPoleForRole(role)
+  const targetRole = targetProfile?.role ?? profile.role
+  const targetPayPole = targetProfile?.pay_pole ?? null
+  const targetRoles = Array.from(new Set([
+    ...(targetProfile?.available_roles ?? []),
+    targetRole,
+  ].filter(Boolean) as string[]))
+  const allowedPoles = getAllowedReportPoles({
+    role: targetRole,
+    available_roles: targetProfile?.available_roles ?? null,
+  })
+
+  let quotaPole: ReportPole
+  let quotaMax: number | null
+
+  if (requestedPole) {
+    if (!allowedPoles.includes(requestedPole))
+      return errorResponse('FORBIDDEN', 'Pôle non disponible pour ce membre')
+    quotaPole = requestedPole
+    quotaMax = QUOTA_MAX[quotaRoleForPole(requestedPole, targetRoles)] ?? null
+  } else {
+    const inferredRole = resolvePayRole(targetRole, targetPayPole)
+    quotaMax = QUOTA_MAX[inferredRole] ?? null
+    quotaPole = reportPoleForRole(inferredRole)
+  }
+
+  const includeNonBdm = quotaPole !== 'bdm'
 
   // Finished animations created by target this week
-  const { data: finishedAnims } = await db
+  const { data: finishedAnims } = includeNonBdm ? await db
     .from('animations')
     .select('id, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('creator_id', targetId)
     .eq('status', 'finished')
     .eq('bdm_mission', false)
     .gte('started_at', weekStart)
-    .lt('started_at', weekEnd)
+    .lt('started_at', weekEnd) : { data: [] }
 
   const animationsCreated = finishedAnims?.length ?? 0
   const hoursFromCreated = (finishedAnims ?? []).reduce(
@@ -99,7 +140,7 @@ Deno.serve(async (req) => {
   )
 
   // Participations validated on finished animations this week
-  const { data: participationRows } = await db
+  const { data: participationRows } = includeNonBdm ? await db
     .from('animation_participants')
     .select('animation_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
@@ -107,7 +148,7 @@ Deno.serve(async (req) => {
     .eq('animations.status' as never, 'finished')
     .eq('animations.bdm_mission' as never, false)
     .gte('animations.started_at' as never, weekStart)
-    .lt('animations.started_at' as never, weekEnd)
+    .lt('animations.started_at' as never, weekEnd) : { data: [] }
 
   const { data: bdmReportRows } = await db
     .from('animation_reports')
@@ -151,6 +192,8 @@ Deno.serve(async (req) => {
     participationsValidated: participationsValidated + bdmParticipations,
     quota: animationsCreated + participationsValidated + bdmCreated + bdmParticipations,
     quotaMax,
+    pole: quotaPole,
+    availablePoles: allowedPoles,
     weekStart,
     weekEnd,
   })

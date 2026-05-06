@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Sword, Clock, Users, Target, AlertCircle, ChevronRight, ChevronDown, Plus, Calendar, UserCog, ChevronLeft, CalendarDays, Megaphone, Send, X, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -20,9 +20,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime, formatTime } from '@/lib/utils/format'
-import { hasOwnedRole, ROLE_LABELS } from '@/lib/config/discord'
+import { BDM_STAFF_ROLES, MJ_STAFF_ROLES, hasOwnedRole, ROLE_LABELS, type StaffRoleKey } from '@/lib/config/discord'
 import { cn } from '@/lib/utils/cn'
 import type { Broadcast } from '@/types/database'
+
+type DashboardPole = 'animateur' | 'mj' | 'bdm'
+
+const POLE_LABELS: Record<DashboardPole, string> = {
+  animateur: 'Animation',
+  mj: 'MJ',
+  bdm: 'BDM',
+}
+
+const ANIMATION_STAFF_ROLES: StaffRoleKey[] = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
+
+function getEligiblePoles(roles: StaffRoleKey[]): DashboardPole[] {
+  const poles: DashboardPole[] = []
+  if (hasOwnedRole(roles, ANIMATION_STAFF_ROLES)) poles.push('animateur')
+  if (hasOwnedRole(roles, MJ_STAFF_ROLES)) poles.push('mj')
+  if (hasOwnedRole(roles, BDM_STAFF_ROLES)) poles.push('bdm')
+  return poles
+}
 
 type BroadcastAudience = Broadcast['audience']
 
@@ -38,16 +56,6 @@ function broadcastAudienceLabel(audience: BroadcastAudience): string {
   return BROADCAST_AUDIENCE_OPTIONS.find((option) => option.value === audience)?.label ?? 'Ciblé'
 }
 
-const QUOTA_MAX: Record<string, number | null> = {
-  direction: null,
-  gerance: null,
-  responsable: null,
-  responsable_mj: null,
-  senior: 5,
-  mj_senior: 3,
-  animateur: 5,
-  mj: 3,
-}
 
 function StatCard({
   icon: Icon,
@@ -365,7 +373,10 @@ function BroadcastCenter({
 export default function Dashboard() {
   const { user, role, permissionRoles } = useRequiredAuth()
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
-  const { data: stats, isLoading: statsLoading } = useWeeklyStats(undefined, bounds.start)
+  const eligiblePoles = useMemo(() => getEligiblePoles(permissionRoles), [permissionRoles])
+  const [selectedPole, setSelectedPole] = useState<DashboardPole | undefined>(undefined)
+  const activePole = selectedPole && eligiblePoles.includes(selectedPole) ? selectedPole : undefined
+  const { data: stats, isLoading: statsLoading } = useWeeklyStats(undefined, bounds.start, activePole)
   const { data: animsResult, isLoading: animsLoading } = useAnimations({
     status: ['pending_validation', 'open', 'preparing', 'running'],
     order: 'asc',
@@ -386,7 +397,8 @@ export default function Dashboard() {
   const { data: reports, isLoading: reportsLoading } = useMyReports()
   const { data: broadcastData, isLoading: broadcastsLoading } = useBroadcasts()
 
-  const quotaMax = QUOTA_MAX[role] ?? null
+  const quotaMax = stats?.quotaMax ?? null
+  const currentPole = stats?.pole ?? activePole ?? eligiblePoles[0] ?? 'animateur'
   const quotaPercent = quotaMax ? Math.min(100, ((stats?.quota ?? 0) / quotaMax) * 100) : 100
 
   const pendingReports = reports?.filter((r) => !r.submitted_at) ?? []
@@ -460,31 +472,60 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-sm font-semibold text-white/80">Stats hebdomadaires</h2>
+          <h2 className="text-sm font-semibold text-white/80">
+            Stats hebdomadaires
+            {eligiblePoles.length > 1 && (
+              <span className="ml-2 text-xs font-normal text-white/40">· Pôle {POLE_LABELS[currentPole]}</span>
+            )}
+          </h2>
           <p className="text-xs text-white/35">{statsPeriodLabel}</p>
         </div>
-        <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
-          <Button variant="ghost" size="sm" onClick={goPrev} className="h-8 w-8 p-0">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <button
-            type="button"
-            onClick={goToday}
-            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
-          >
-            <CalendarDays className="h-3.5 w-3.5 text-cyan-400" />
-            {isCurrentWeek() ? 'Cette sem.' : weekLabel}
-          </button>
-          <Button variant="ghost" size="sm" onClick={goNext} disabled={isCurrentWeek()} className="h-8 w-8 p-0">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {eligiblePoles.length > 1 && (
+            <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+              {eligiblePoles.map((pole) => {
+                const isActive = currentPole === pole
+                return (
+                  <button
+                    key={pole}
+                    type="button"
+                    onClick={() => setSelectedPole(pole)}
+                    className={cn(
+                      'h-8 rounded-lg px-3 text-xs font-medium transition-colors',
+                      isActive
+                        ? 'bg-cyan-400/15 text-cyan-200'
+                        : 'text-white/50 hover:bg-white/[0.05] hover:text-white/80',
+                    )}
+                  >
+                    {POLE_LABELS[pole]}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+            <Button variant="ghost" size="sm" onClick={goPrev} className="h-8 w-8 p-0">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <button
+              type="button"
+              onClick={goToday}
+              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
+            >
+              <CalendarDays className="h-3.5 w-3.5 text-cyan-400" />
+              {isCurrentWeek() ? 'Cette sem.' : weekLabel}
+            </button>
+            <Button variant="ghost" size="sm" onClick={goNext} disabled={isCurrentWeek()} className="h-8 w-8 p-0">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Sword}
-          label="Animations créées"
+          label={currentPole === 'bdm' ? 'Missions créées' : 'Animations créées'}
           value={stats?.animationsCreated ?? 0}
           sub={statsPeriodLabel}
           color="cyan"
@@ -500,7 +541,7 @@ export default function Dashboard() {
         />
         <StatCard
           icon={Clock}
-          label="Heures animées"
+          label={currentPole === 'bdm' ? 'Temps mission' : 'Heures animées'}
           value={stats ? `${(stats.hoursAnimated / 60).toFixed(1)}h` : '0h'}
           sub={statsPeriodLabel}
           color="violet"

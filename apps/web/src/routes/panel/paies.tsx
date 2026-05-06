@@ -732,13 +732,9 @@ export default function Paies() {
     for (const conflict of conflictsData?.conflicts ?? []) {
       const userTabs = userPoles.get(conflict.user.id)
       if (!userTabs) continue
-      const hasBdm = conflict.animations.some((a) => a.bdmMission)
-      const nonBdm = conflict.animations.filter((a) => !a.bdmMission)
-      const hasAnim = nonBdm.some((a) => a.pole === 'animation' || a.pole === 'les_deux')
-      const hasMj = nonBdm.some((a) => a.pole === 'mj' || a.pole === 'les_deux')
-      if (userTabs.has('bdm') && hasBdm) bdmConflicts.push(conflict)
-      if (userTabs.has('animation') && hasAnim) animConflicts.push(conflict)
-      if (userTabs.has('mj') && hasMj) mjConflicts.push(conflict)
+      if (userTabs.has('bdm')) bdmConflicts.push(conflict)
+      if (userTabs.has('animation')) animConflicts.push(conflict)
+      if (userTabs.has('mj')) mjConflicts.push(conflict)
     }
     return { animation: animConflicts, mj: mjConflicts, bdm: bdmConflicts }
   }, [conflictsData, userPoles])

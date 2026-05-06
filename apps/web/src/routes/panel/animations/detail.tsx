@@ -541,7 +541,7 @@ function ParticipantRow({
           title="Marquer ma participation comme terminée"
           className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
         >
-          Animation terminée
+          J'ai terminé !
         </button>
       )}
       {canRemove && p.status === 'pending' && (

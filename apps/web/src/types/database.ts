@@ -398,6 +398,7 @@ export interface ParticipationConflictAnimation {
   slotStart: string
   slotEnd: string
   status: AnimationStatus
+  pole: 'animation' | 'mj' | 'les_deux'
   bdmMission: boolean
   role: 'creator' | 'participant'
   participantStatus: 'pending' | 'validated' | null

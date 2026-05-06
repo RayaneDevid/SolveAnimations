@@ -686,7 +686,7 @@ export default function Paies() {
   const { data: formerMembers = [] } = useFormerMembers()
   const { data: conflictsData } = useParticipationConflicts(bounds.start)
   const [selectedCasierId, setSelectedCasierId] = useState<string | null>(null)
-  const [showConflicts, setShowConflicts] = useState(true)
+  const [conflictsOpen, setConflictsOpen] = useState<Record<PayTab, boolean>>({ animation: true, mj: true, bdm: true })
 
   const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
@@ -713,6 +713,22 @@ export default function Paies() {
   const poleBdm = useMemo(() =>
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'bdm'), BDM_PAY_ROLE_ORDER)
   , [data])
+
+  const conflictsByTab = useMemo(() => {
+    const animConflicts: ParticipationConflictEntry[] = []
+    const mjConflicts: ParticipationConflictEntry[] = []
+    const bdmConflicts: ParticipationConflictEntry[] = []
+    for (const conflict of conflictsData?.conflicts ?? []) {
+      const hasBdm = conflict.animations.some((a) => a.bdmMission)
+      const nonBdm = conflict.animations.filter((a) => !a.bdmMission)
+      const hasAnim = nonBdm.some((a) => a.pole === 'animation' || a.pole === 'les_deux')
+      const hasMj = nonBdm.some((a) => a.pole === 'mj' || a.pole === 'les_deux')
+      if (hasBdm) bdmConflicts.push(conflict)
+      if (hasAnim) animConflicts.push(conflict)
+      if (hasMj) mjConflicts.push(conflict)
+    }
+    return { animation: animConflicts, mj: mjConflicts, bdm: bdmConflicts }
+  }, [conflictsData])
 
   const selectedActiveMember = useMemo(
     () => members.find((member) => member.id === selectedCasierId) ?? null,
@@ -802,12 +818,6 @@ export default function Paies() {
           </button>
         </div>
       </div>
-
-      <ConflictsBanner
-        conflicts={conflictsData?.conflicts ?? []}
-        open={showConflicts}
-        onToggle={() => setShowConflicts((v) => !v)}
-      />
 
       {/* Summary cards */}
       {isLoading ? (
@@ -923,8 +933,18 @@ export default function Paies() {
           {visibleTabs.map(({ key, entries }) => {
             const poleTotal = entries.reduce((s, e) => s + e.remuneration, 0)
             const poleLabel = key === 'mj' ? 'MJ' : key === 'bdm' ? 'BDM' : 'Animation'
+            const tabConflicts = conflictsByTab[key]
             return (
               <TabsContent key={key} value={key}>
+                {tabConflicts.length > 0 && (
+                  <div className="mb-3">
+                    <ConflictsBanner
+                      conflicts={tabConflicts}
+                      open={conflictsOpen[key]}
+                      onToggle={() => setConflictsOpen((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    />
+                  </div>
+                )}
                 <div className="mb-3 flex justify-end">
                   <button
                     type="button"

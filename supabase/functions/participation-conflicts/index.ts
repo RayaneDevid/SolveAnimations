@@ -19,6 +19,7 @@ type AnimRow = {
   ended_at: string | null
   prep_started_at: string | null
   status: string
+  pole: string | null
   bdm_mission: boolean | null
   creator_id: string
   creator: { id: string; username: string; avatar_url: string | null; role: string } | null
@@ -37,6 +38,7 @@ type Slot = {
   startedAt: string | null
   endedAt: string | null
   status: string
+  pole: string
   bdmMission: boolean
   role: 'creator' | 'participant'
   participantStatus?: 'pending' | 'validated'
@@ -72,7 +74,7 @@ Deno.serve(async (req) => {
     .select(`
       id, title, scheduled_at, planned_duration_min, prep_time_min,
       actual_duration_min, actual_prep_time_min, started_at, ended_at, prep_started_at,
-      status, bdm_mission, creator_id,
+      status, pole, bdm_mission, creator_id,
       creator:profiles!animations_creator_id_fkey(id, username, avatar_url, role)
     `)
     .in('status', ACTIVE_STATUSES)
@@ -120,6 +122,7 @@ Deno.serve(async (req) => {
       startedAt: a.started_at,
       endedAt: a.ended_at,
       status: a.status,
+      pole: a.pole ?? 'animation',
       bdmMission: !!a.bdm_mission,
       role,
       participantStatus,
@@ -229,6 +232,7 @@ Deno.serve(async (req) => {
         slotStart: new Date(s.startMs).toISOString(),
         slotEnd: new Date(s.endMs).toISOString(),
         status: s.status,
+        pole: s.pole,
         bdmMission: s.bdmMission,
         role: s.role,
         participantStatus: s.participantStatus ?? null,

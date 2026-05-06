@@ -371,10 +371,15 @@ export function useUpdateAnimation() {
         ...(body.requiredParticipants !== undefined ? { required_participants: body.requiredParticipants } : {}),
         ...(body.server !== undefined ? { server: body.server } : {}),
         ...(body.type !== undefined ? { type: body.type } : {}),
+        ...(body.pole !== undefined ? { pole: body.pole } : {}),
         ...(body.prepTimeMin !== undefined ? { prep_time_min: body.prepTimeMin } : {}),
         ...(body.village !== undefined ? { village: body.village } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
         ...(body.registrationsLocked !== undefined ? { registrations_locked: body.registrationsLocked } : {}),
+        ...(body.bdmMission !== undefined ? { bdm_mission: body.bdmMission } : {}),
+        ...(body.bdmSpontaneous !== undefined ? { bdm_spontaneous: body.bdmSpontaneous } : {}),
+        ...(body.bdmMissionRank !== undefined ? { bdm_mission_rank: body.bdmMissionRank } : {}),
+        ...(body.bdmMissionType !== undefined ? { bdm_mission_type: body.bdmMissionType } : {}),
       }),
     onSuccess: (_, { id }) => {
       invalidateAnimationCaches(qc, id)

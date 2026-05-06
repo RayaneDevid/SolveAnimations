@@ -7,6 +7,11 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
+const BDM_MISSION_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_MISSION_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
+type BdmMissionRank = (typeof BDM_MISSION_RANKS)[number]
+type BdmMissionType = (typeof BDM_MISSION_TYPES)[number]
+
 function hasScheduleChanged(currentScheduledAt: string, nextScheduledAt: unknown): nextScheduledAt is string {
   if (typeof nextScheduledAt !== 'string') return false
   const currentTime = new Date(currentScheduledAt).getTime()
@@ -143,7 +148,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ animation: updated })
   }
 
-  if (!isCreator && isResponsable && anim.status === 'open') {
+  const onlyScheduleUpdate = Object.keys(updates).every((key) => key === 'scheduled_at')
+
+  if (!isCreator && isResponsable && anim.status === 'open' && onlyScheduleUpdate) {
     if (!('scheduled_at' in updates))
       return errorResponse('VALIDATION_ERROR', 'Date et heure requises')
 
@@ -189,27 +196,74 @@ Deno.serve(async (req) => {
     return jsonResponse({ animation: updated })
   }
 
-  // ── Creator editing a pending/open animation ─────────────────────────────
-  if (!isCreator)
+  // ── Creator/responsable editing a pending/open animation ─────────────────
+  if (!isCreator && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul le créateur ou un responsable peut modifier')
   if (!['pending_validation', 'open'].includes(anim.status))
     return errorResponse('CONFLICT', 'Impossible de modifier cette animation dans son état actuel')
 
   const allowed = [
     'title', 'scheduled_at', 'planned_duration_min', 'required_participants',
-    'server', 'type', 'prep_time_min', 'village', 'description', 'registrations_locked', 'document_url', 'creator_character_name',
+    'server', 'type', 'pole', 'prep_time_min', 'village', 'description', 'registrations_locked',
+    'document_url', 'creator_character_name',
+    'bdm_mission', 'bdm_spontaneous', 'bdm_mission_rank', 'bdm_mission_type',
   ]
+  const bdmFields = ['bdm_mission', 'bdm_spontaneous', 'bdm_mission_rank', 'bdm_mission_type']
+  const touchesBdmFields = bdmFields.some((key) => key in updates)
+  if (touchesBdmFields && !isResponsable)
+    return errorResponse('FORBIDDEN', 'Seul un responsable peut modifier les paramètres BDM')
+
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in updates) patch[key] = updates[key]
   }
+
+  const nextBdmMission = 'bdm_mission' in patch ? patch.bdm_mission === true : anim.bdm_mission === true
+  const nextBdmSpontaneous = nextBdmMission && ('bdm_spontaneous' in patch ? patch.bdm_spontaneous === true : anim.bdm_spontaneous === true)
+  const nextBdmRank = typeof patch.bdm_mission_rank === 'string' ? patch.bdm_mission_rank : anim.bdm_mission_rank ?? 'B'
+  const nextBdmType = typeof patch.bdm_mission_type === 'string' ? patch.bdm_mission_type : anim.bdm_mission_type ?? 'jetable'
+
+  if ('bdm_mission' in patch && typeof patch.bdm_mission !== 'boolean')
+    return errorResponse('VALIDATION_ERROR', 'Mission BDM invalide')
+  if ('bdm_spontaneous' in patch && typeof patch.bdm_spontaneous !== 'boolean')
+    return errorResponse('VALIDATION_ERROR', 'Statut spontané BDM invalide')
+  if (nextBdmMission && !BDM_MISSION_RANKS.includes(nextBdmRank as BdmMissionRank))
+    return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+  if (nextBdmMission && !BDM_MISSION_TYPES.includes(nextBdmType as BdmMissionType))
+    return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
+
+  if (nextBdmMission) {
+    patch.bdm_mission = true
+    patch.bdm_spontaneous = nextBdmSpontaneous
+    patch.bdm_mission_rank = nextBdmRank
+    patch.bdm_mission_type = nextBdmType
+    patch.planned_duration_min = 15
+    patch.required_participants = 0
+    patch.prep_time_min = 0
+    patch.type = 'moyenne'
+    patch.pole = 'animation'
+    if (nextBdmSpontaneous && !('scheduled_at' in patch)) {
+      patch.scheduled_at = new Date().toISOString()
+    }
+  } else if ('bdm_mission' in patch) {
+    const effectiveScheduledAt = typeof patch.scheduled_at === 'string' ? patch.scheduled_at : anim.scheduled_at
+    const scheduleError = validateFutureSchedule(effectiveScheduledAt)
+    if (scheduleError) return scheduleError
+    patch.bdm_mission = false
+    patch.bdm_spontaneous = false
+    patch.bdm_mission_rank = 'B'
+    patch.bdm_mission_type = 'jetable'
+  }
+
   let rescheduledAt: string | null = null
-  if (anim.status === 'open' && hasScheduleChanged(anim.scheduled_at, patch.scheduled_at)) {
+  if (!nextBdmSpontaneous && hasScheduleChanged(anim.scheduled_at, patch.scheduled_at)) {
     rescheduledAt = patch.scheduled_at
     const scheduleError = validateFutureSchedule(rescheduledAt)
     if (scheduleError) return scheduleError
-    patch.postponed_from = anim.scheduled_at
-    patch.postpone_count = (anim.postpone_count ?? 0) + 1
+    if (anim.status === 'open') {
+      patch.postponed_from = anim.scheduled_at
+      patch.postpone_count = (anim.postpone_count ?? 0) + 1
+    }
   }
   if ('scheduled_at' in patch) patch.reminder_15min_sent_at = null
 
@@ -228,6 +282,9 @@ Deno.serve(async (req) => {
   const formerDiscordIds = rescheduledAt
     ? await removeParticipantsForReschedule(db, id, profile.id)
     : []
+  if (!anim.bdm_mission && nextBdmMission) {
+    await removeParticipantsForReschedule(db, id, profile.id)
+  }
 
   if (anim.discord_message_id) {
     await syncEmbed(db, id)

@@ -33,7 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
-import { hasPermissionRole } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
 import type { AnimationParticipant, Animation, TimeCorrectionRequest } from '@/types/database'
 
@@ -573,6 +573,8 @@ export default function AnimationDetail() {
   const { animation, participants, deletionRequest, timeCorrectionRequest } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
+  const isBdmResponsable = hasOwnedRole(permissionRoles, ['responsable_bdm'])
+  const canManageAnimation = isResponsable || isBdmResponsable
   const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
   const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
   const scheduledAtHasPassed = new Date(animation.scheduled_at).getTime() <= Date.now()
@@ -980,17 +982,19 @@ export default function AnimationDetail() {
                 )}
 
                 {/* ── Actions secondaires ── */}
-                {(isCreator || isResponsable) && ['open', 'pending_validation', 'preparing', ...(isResponsable ? ['running'] : [])].includes(animation.status) && (
+                {(isCreator || canManageAnimation) && ['open', 'pending_validation', 'preparing', ...(isResponsable ? ['running'] : [])].includes(animation.status) && (
                   <div className="pt-3 border-t border-white/[0.06] space-y-2">
-                    <Button onClick={handleCancel} disabled={cancelling} variant="destructive" className="w-full gap-2">
-                      <Ban className="h-4 w-4" />
-                      Annuler
-                    </Button>
-                    {animation.status === 'open' && (isCreator || isResponsable) && (
+                    {(isCreator || isResponsable) && (
+                      <Button onClick={handleCancel} disabled={cancelling} variant="destructive" className="w-full gap-2">
+                        <Ban className="h-4 w-4" />
+                        Annuler
+                      </Button>
+                    )}
+                    {['open', 'pending_validation'].includes(animation.status) && (isCreator || canManageAnimation) && (
                       <Link to={`/panel/animations/${animation.id}/edit`} className="block mt-2">
                         <Button variant="outline" className="w-full gap-2">
                           <Pencil className="h-4 w-4" />
-                          {isCreator ? 'Modifier' : 'Modifier date/heure'}
+                          {isCreator || canManageAnimation ? 'Modifier' : 'Modifier date/heure'}
                         </Button>
                       </Link>
                     )}

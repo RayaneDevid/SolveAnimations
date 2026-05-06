@@ -714,21 +714,34 @@ export default function Paies() {
     sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'bdm'), BDM_PAY_ROLE_ORDER)
   , [data])
 
+  const userPoles = useMemo(() => {
+    const map = new Map<string, Set<PayTab>>()
+    for (const entry of data?.entries ?? []) {
+      const tab: PayTab = entry.payPole === 'mj' ? 'mj' : entry.payPole === 'bdm' ? 'bdm' : 'animation'
+      const set = map.get(entry.id) ?? new Set<PayTab>()
+      set.add(tab)
+      map.set(entry.id, set)
+    }
+    return map
+  }, [data])
+
   const conflictsByTab = useMemo(() => {
     const animConflicts: ParticipationConflictEntry[] = []
     const mjConflicts: ParticipationConflictEntry[] = []
     const bdmConflicts: ParticipationConflictEntry[] = []
     for (const conflict of conflictsData?.conflicts ?? []) {
+      const userTabs = userPoles.get(conflict.user.id)
+      if (!userTabs) continue
       const hasBdm = conflict.animations.some((a) => a.bdmMission)
       const nonBdm = conflict.animations.filter((a) => !a.bdmMission)
       const hasAnim = nonBdm.some((a) => a.pole === 'animation' || a.pole === 'les_deux')
       const hasMj = nonBdm.some((a) => a.pole === 'mj' || a.pole === 'les_deux')
-      if (hasBdm) bdmConflicts.push(conflict)
-      if (hasAnim) animConflicts.push(conflict)
-      if (hasMj) mjConflicts.push(conflict)
+      if (userTabs.has('bdm') && hasBdm) bdmConflicts.push(conflict)
+      if (userTabs.has('animation') && hasAnim) animConflicts.push(conflict)
+      if (userTabs.has('mj') && hasMj) mjConflicts.push(conflict)
     }
     return { animation: animConflicts, mj: mjConflicts, bdm: bdmConflicts }
-  }, [conflictsData])
+  }, [conflictsData, userPoles])
 
   const selectedActiveMember = useMemo(
     () => members.find((member) => member.id === selectedCasierId) ?? null,

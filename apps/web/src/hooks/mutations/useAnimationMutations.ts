@@ -297,6 +297,7 @@ export function useRemoveParticipant() {
       invalidateStatsCaches(qc)
       invalidateReportCaches(qc)
       invalidateMemberCaches(qc)
+      qc.invalidateQueries({ queryKey: ['participation-conflicts'] })
     },
   })
 }

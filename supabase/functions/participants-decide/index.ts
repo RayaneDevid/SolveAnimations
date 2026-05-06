@@ -33,12 +33,14 @@ Deno.serve(async (req) => {
   if (participant.status !== 'pending')
     return errorResponse('CONFLICT', 'Ce participant a déjà été traité')
 
+  const now = new Date().toISOString()
   const { data: updated, error } = await db
     .from('animation_participants')
     .update({
       status: decision,
-      decided_at: new Date().toISOString(),
+      decided_at: now,
       decided_by: profile.id,
+      ...(decision === 'validated' ? { joined_at: now } : {}),
     })
     .eq('id', participant_id)
     .select()

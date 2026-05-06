@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
+import { computeParticipantDuration } from '../_shared/participantDuration.ts'
 
 function profileRoles(role: string, availableRoles: string[] | null | undefined): string[] {
   return Array.from(new Set([...(availableRoles ?? []), role].filter(Boolean)))
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
   // Fetch all validated participations on finished animations in the period
   let partQuery = db
     .from('animation_participants')
-    .select('user_id, animations!inner(creator_id, bdm_mission, started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, joined_at, animations!inner(creator_id, bdm_mission, started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
 
@@ -162,15 +163,16 @@ Deno.serve(async (req) => {
   }
 
   for (const p of participations ?? []) {
-    const anim = (p as unknown as { animations: { creator_id: string; bdm_mission: boolean | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+    const row = p as unknown as { joined_at: string | null; animations: { creator_id: string; bdm_mission: boolean | null; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const anim = row.animations
     if (!anim || anim.creator_id === p.user_id) continue
-    const duration = (anim.actual_duration_min ?? 0) + (anim.actual_prep_time_min ?? anim.prep_time_min ?? 0)
+    const dur = computeParticipantDuration(row.joined_at, anim)
 
     if (anim.bdm_mission) {
       const existing = bdmMap.get(p.user_id)
       if (existing) {
         existing.participationsValidated++
-        existing.hoursAnimated += duration
+        existing.hoursAnimated += dur.totalMinutes
       }
       continue
     }
@@ -178,7 +180,7 @@ Deno.serve(async (req) => {
     const existing = userMap.get(p.user_id)
     if (existing) {
       existing.participationsValidated++
-      existing.hoursAnimated += duration
+      existing.hoursAnimated += dur.totalMinutes
     }
   }
 

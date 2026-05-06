@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
   const { data: animation, error: animError } = await db
     .from('animations')
-    .select('id, status, pole, bdm_mission')
+    .select('id, status, pole, bdm_mission, started_at')
     .eq('id', animationId)
     .single()
 
@@ -38,6 +38,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'L\'animation doit être terminée')
 
   const now = new Date().toISOString()
+  // Retroactive add: credit them as if they joined at the animation start.
+  const joinedAt = animation.started_at ?? now
 
   // Fetch all existing participant rows for these users in one query
   const { data: existingRows } = await db
@@ -71,6 +73,7 @@ Deno.serve(async (req) => {
         applied_at: now,
         decided_at: now,
         decided_by: profile.id,
+        joined_at: joinedAt,
       })),
     )
     if (error) {
@@ -82,7 +85,7 @@ Deno.serve(async (req) => {
   if (toUpdate.length > 0) {
     await db
       .from('animation_participants')
-      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null })
+      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null, joined_at: joinedAt })
       .in('id', toUpdate)
   }
 

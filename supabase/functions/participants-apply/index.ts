@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
         applied_at: now,
         decided_at: now,
         decided_by: profile.id,
+        joined_at: now,
       })
       .eq('id', existing.id)
       .select()
@@ -139,6 +140,7 @@ Deno.serve(async (req) => {
       status: 'validated',
       decided_at: now,
       decided_by: profile.id,
+      joined_at: now,
     })
     .select()
     .single()

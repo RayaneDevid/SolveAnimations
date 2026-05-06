@@ -4,6 +4,7 @@ import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { requireResponsable } from '../_shared/guards.ts'
+import { computeParticipantDuration } from '../_shared/participantDuration.ts'
 
 function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string {
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
   // Weekly validated participations
   const { data: weeklyParts } = await db
     .from('animation_participants')
-    .select('user_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, animation_id, joined_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
     .eq('animations.bdm_mission' as never, false)
@@ -78,12 +79,27 @@ Deno.serve(async (req) => {
 
   const { data: bdmReportRows } = await db
     .from('animation_reports')
-    .select('user_id, pole, animations!inner(creator_id, started_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, pole, animation_id, animations!inner(creator_id, started_at, ended_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('animations.status' as never, 'finished')
     .eq('animations.bdm_mission' as never, true)
     .gte('animations.started_at' as never, weekStart.toISOString())
     .lt('animations.started_at' as never, weekEnd.toISOString())
     .in('user_id', profileIds)
+
+  // joined_at lookup for BDM mission participants this week
+  const { data: bdmPartRows } = await db
+    .from('animation_participants')
+    .select('animation_id, user_id, joined_at, animations!inner(bdm_mission, status, started_at)')
+    .eq('status', 'validated')
+    .eq('animations.bdm_mission' as never, true)
+    .eq('animations.status' as never, 'finished')
+    .gte('animations.started_at' as never, weekStart.toISOString())
+    .lt('animations.started_at' as never, weekEnd.toISOString())
+    .in('user_id', profileIds)
+  const bdmJoinedAtByPair = new Map<string, string | null>()
+  for (const row of (bdmPartRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null }>) {
+    bdmJoinedAtByPair.set(`${row.animation_id}:${row.user_id}`, row.joined_at)
+  }
 
   // Current absences: to_date is the return date, so it no longer blocks that day.
   const { data: absences } = await db
@@ -159,25 +175,28 @@ Deno.serve(async (req) => {
   const weeklyPartMap = new Map<string, { count: number; minutes: number }>()
   for (const p of weeklyParts ?? []) {
     const existing = weeklyPartMap.get(p.user_id) ?? { count: 0, minutes: 0 }
-    const anim = (p as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
+    const row = p as unknown as { joined_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const dur = computeParticipantDuration(row.joined_at, row.animations)
     existing.count++
-    existing.minutes += (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+    existing.minutes += dur.totalMinutes
     weeklyPartMap.set(p.user_id, existing)
   }
 
   for (const report of bdmReportRows ?? []) {
     if (report.pole !== quotaPoleById.get(report.user_id)) continue
-    const anim = (report as unknown as { animations: { creator_id: string; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
-    const minutes = (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
-    if (anim?.creator_id === report.user_id) {
+    const row = report as unknown as { animation_id: string; animations: { creator_id: string; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const isCreator = row.animations?.creator_id === report.user_id
+    const joinedAt = isCreator ? null : bdmJoinedAtByPair.get(`${row.animation_id}:${report.user_id}`) ?? null
+    const dur = computeParticipantDuration(joinedAt, row.animations)
+    if (isCreator) {
       const existing = weeklyAnimMap.get(report.user_id) ?? { count: 0, minutes: 0 }
       existing.count++
-      existing.minutes += minutes
+      existing.minutes += dur.totalMinutes
       weeklyAnimMap.set(report.user_id, existing)
     } else {
       const existing = weeklyPartMap.get(report.user_id) ?? { count: 0, minutes: 0 }
       existing.count++
-      existing.minutes += minutes
+      existing.minutes += dur.totalMinutes
       weeklyPartMap.set(report.user_id, existing)
     }
   }

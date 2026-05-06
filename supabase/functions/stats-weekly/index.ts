@@ -5,6 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { isResponsableRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { getAllowedReportPoles, type ReportPole } from '../_shared/reportPole.ts'
+import { computeParticipantDuration } from '../_shared/participantDuration.ts'
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction: null,
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
   // Participations validated on finished animations this week
   const { data: participationRows } = includeNonBdm ? await db
     .from('animation_participants')
-    .select('animation_id, animations!inner(started_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('animation_id, joined_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
@@ -152,7 +153,7 @@ Deno.serve(async (req) => {
 
   const { data: bdmReportRows } = await db
     .from('animation_reports')
-    .select('user_id, pole, animations!inner(creator_id, started_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, pole, animation_id, animations!inner(creator_id, started_at, ended_at, status, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
     .eq('pole', quotaPole)
     .eq('animations.status' as never, 'finished')
@@ -160,11 +161,27 @@ Deno.serve(async (req) => {
     .gte('animations.started_at' as never, weekStart)
     .lt('animations.started_at' as never, weekEnd)
 
+  // joined_at lookup for the user's BDM participations
+  const { data: bdmParticipationRowsRaw } = await db
+    .from('animation_participants')
+    .select('animation_id, joined_at, animations!inner(bdm_mission, status, started_at)')
+    .eq('user_id', targetId)
+    .eq('status', 'validated')
+    .eq('animations.bdm_mission' as never, true)
+    .eq('animations.status' as never, 'finished')
+    .gte('animations.started_at' as never, weekStart)
+    .lt('animations.started_at' as never, weekEnd)
+  const bdmJoinedAtByAnim = new Map<string, string | null>()
+  for (const row of (bdmParticipationRowsRaw ?? []) as Array<{ animation_id: string; joined_at: string | null }>) {
+    bdmJoinedAtByAnim.set(row.animation_id, row.joined_at)
+  }
+
   const participationsValidated = participationRows?.length ?? 0
   const hoursFromParticipations = (participationRows ?? []).reduce(
     (sum, p) => {
-      const anim = (p as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
-      return sum + (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+      const row = p as unknown as { joined_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+      const dur = computeParticipantDuration(row.joined_at, row.animations)
+      return sum + dur.totalMinutes
     },
     0,
   )
@@ -178,8 +195,11 @@ Deno.serve(async (req) => {
     return anim?.creator_id !== targetId
   })
   const minutesFromBdmReports = (bdmReportRows ?? []).reduce((sum, report) => {
-    const anim = (report as unknown as { animations: { actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }).animations
-    return sum + (anim?.actual_duration_min ?? 0) + (anim?.actual_prep_time_min ?? anim?.prep_time_min ?? 0)
+    const row = report as unknown as { animation_id: string; animations: { creator_id: string; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const isCreator = row.animations?.creator_id === targetId
+    const joinedAt = isCreator ? null : bdmJoinedAtByAnim.get(row.animation_id) ?? null
+    const dur = computeParticipantDuration(joinedAt, row.animations)
+    return sum + dur.totalMinutes
   }, 0)
 
   const bdmCreated = bdmCreatedRows.length

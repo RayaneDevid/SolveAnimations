@@ -421,15 +421,24 @@ function ParticipantRow({
   canRemove,
   isSelf,
   animationId,
+  animationStartedAt,
 }: {
   p: AnimationParticipant
   canDecide: boolean
   canRemove: boolean
   isSelf: boolean
   animationId: string
+  animationStartedAt: string | null
 }) {
   const { mutateAsync: decide, isPending: deciding } = useDecideParticipant()
   const { mutateAsync: remove, isPending: removing } = useRemoveParticipant()
+
+  const joinOffsetMin = (() => {
+    if (!animationStartedAt || !p.joined_at) return null
+    const diff = new Date(p.joined_at).getTime() - new Date(animationStartedAt).getTime()
+    if (diff <= 0) return 0
+    return Math.floor(diff / 60_000)
+  })()
 
   const handleDecide = async (decision: 'validated' | 'rejected') => {
     try {
@@ -452,6 +461,12 @@ function ParticipantRow({
     }
   }
 
+  const joinLabel = joinOffsetMin == null
+    ? null
+    : joinOffsetMin === 0
+      ? 'Au démarrage'
+      : `Rejoint à T+${joinOffsetMin >= 60 ? `${Math.floor(joinOffsetMin / 60)}h${String(joinOffsetMin % 60).padStart(2, '0')}` : `${joinOffsetMin}min`}`
+
   return (
     <div className="flex items-center gap-3 py-2.5">
       <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
@@ -459,6 +474,13 @@ function ParticipantRow({
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
           <GenderIcon gender={p.user?.gender} />
+          {joinLabel && (
+            <span className={joinOffsetMin && joinOffsetMin > 0
+              ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
+              : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
+              {joinLabel}
+            </span>
+          )}
         </div>
         {p.character_name && (
           <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
@@ -884,6 +906,7 @@ export default function AnimationDetail() {
                       canRemove={canRemove}
                       isSelf={isSelf}
                       animationId={animation.id}
+                      animationStartedAt={animation.started_at}
                     />
                   )
                 })}
@@ -907,6 +930,7 @@ export default function AnimationDetail() {
                     canRemove={isResponsable}
                     isSelf={p.user_id === user.id}
                     animationId={animation.id}
+                    animationStartedAt={animation.started_at}
                   />
                 ))}
               </div>

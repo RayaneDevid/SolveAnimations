@@ -125,6 +125,7 @@ export interface AnimationParticipant {
   applied_at: string
   decided_at: string | null
   decided_by: string | null
+  joined_at: string | null
   user?: Profile
 }
 
@@ -401,6 +402,7 @@ export interface ParticipationConflictAnimation {
   pole: 'animation' | 'mj' | 'les_deux'
   bdmMission: boolean
   role: 'creator' | 'participant'
+  participantId: string | null
   participantStatus: 'pending' | 'validated' | null
 }
 

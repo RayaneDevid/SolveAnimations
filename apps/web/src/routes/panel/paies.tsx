@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { AnimatePresence } from 'framer-motion'
-import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown } from 'lucide-react'
+import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown, UserMinus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { toast } from 'sonner'
 import { useFormerMembers, useMembers, useParticipationConflicts, usePaies } from '@/hooks/queries/useAnimations'
+import { useRemoveParticipant } from '@/hooks/mutations/useAnimationMutations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { FormerMemberDetail, MemberDetail } from '@/routes/panel/casiers'
@@ -598,7 +600,22 @@ function ConflictsBanner({
   open: boolean
   onToggle: () => void
 }) {
+  const removeParticipant = useRemoveParticipant()
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
   if (conflicts.length === 0) return null
+
+  const handleResolve = async (participantId: string, animationId: string, title: string, username: string) => {
+    setPendingId(participantId)
+    try {
+      await removeParticipant.mutateAsync({ participantId, animationId })
+      toast.success(`${username} retiré·e de "${title}"`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la désinscription')
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   const grouped = new Map<
     string,
@@ -671,34 +688,67 @@ function ConflictsBanner({
                       const start = new Date(anim.slotStart)
                       const end = new Date(anim.slotEnd)
                       const isReal = anim.startedAt != null || anim.endedAt != null
+                      const canResolve = anim.role === 'participant' && anim.participantId != null
+                      const isPending = pendingId === anim.participantId
                       return (
-                        <Link
+                        <div
                           key={anim.animationId}
-                          to={`/panel/animations/${anim.animationId}`}
-                          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white"
+                          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70"
                         >
-                          <Clock className="h-3 w-3 shrink-0 text-amber-300/70" />
-                          <span className="truncate font-medium text-white/85">{anim.title}</span>
-                          {anim.bdmMission && (
-                            <span className="rounded-full border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300">
-                              BDM
+                          <Link
+                            to={`/panel/animations/${anim.animationId}`}
+                            className="flex min-w-0 flex-1 items-center gap-2 transition-colors hover:text-white"
+                          >
+                            <Clock className="h-3 w-3 shrink-0 text-amber-300/70" />
+                            <span className="truncate font-medium text-white/85">{anim.title}</span>
+                            {anim.bdmMission && (
+                              <span className="rounded-full border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300">
+                                BDM
+                              </span>
+                            )}
+                            <span className="ml-auto whitespace-nowrap text-white/40">
+                              {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
+                              <span className={cn('ml-1.5 text-[10px]', isReal ? 'text-emerald-300/60' : 'text-white/30')}>
+                                {isReal ? '(réel)' : '(prévu)'}
+                              </span>
                             </span>
+                            <span className={cn(
+                              'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                              anim.role === 'creator'
+                                ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+                                : 'border-violet-500/20 bg-violet-500/10 text-violet-300',
+                            )}>
+                              {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
+                            </span>
+                          </Link>
+                          {canResolve ? (
+                            <button
+                              type="button"
+                              onClick={() => handleResolve(anim.participantId!, anim.animationId, anim.title, group.user.username)}
+                              disabled={isPending || removeParticipant.isPending}
+                              className="flex shrink-0 items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Désinscrire le membre de cette animation"
+                            >
+                              {isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <UserMinus className="h-3 w-3" />
+                              )}
+                              Résoudre
+                            </button>
+                          ) : (
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <span className="shrink-0 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-1 text-[11px] text-white/30">
+                                  —
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-[220px] text-xs">
+                                Le créateur ne peut pas être désinscrit. Annule ou reporte l'animation depuis sa fiche.
+                              </TooltipContent>
+                            </Tooltip>
                           )}
-                          <span className="ml-auto whitespace-nowrap text-white/40">
-                            {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
-                            <span className={cn('ml-1.5 text-[10px]', isReal ? 'text-emerald-300/60' : 'text-white/30')}>
-                              {isReal ? '(réel)' : '(prévu)'}
-                            </span>
-                          </span>
-                          <span className={cn(
-                            'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
-                            anim.role === 'creator'
-                              ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
-                              : 'border-violet-500/20 bg-violet-500/10 text-violet-300',
-                          )}>
-                            {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
-                          </span>
-                        </Link>
+                        </div>
                       )
                     })}
                   </div>

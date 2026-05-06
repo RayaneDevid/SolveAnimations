@@ -41,6 +41,7 @@ type Slot = {
   pole: string
   bdmMission: boolean
   role: 'creator' | 'participant'
+  participantId?: string
   participantStatus?: 'pending' | 'validated'
 }
 
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
 
   const { data: parts, error: partsError } = await db
     .from('animation_participants')
-    .select('user_id, animation_id, status, profile:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role)')
+    .select('id, user_id, animation_id, status, profile:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role)')
     .in('animation_id', animIds)
     .in('status', ['pending', 'validated'])
 
@@ -107,7 +108,12 @@ Deno.serve(async (req) => {
     return startMs < winEnd && endMs > winStart
   }
 
-  const animSlot = (a: AnimRow, role: 'creator' | 'participant', participantStatus?: 'pending' | 'validated'): Slot => {
+  const animSlot = (
+    a: AnimRow,
+    role: 'creator' | 'participant',
+    participantId?: string,
+    participantStatus?: 'pending' | 'validated',
+  ): Slot => {
     const { startMs, endMs } = animationSlotBounds(a)
     return {
       animationId: a.id,
@@ -125,6 +131,7 @@ Deno.serve(async (req) => {
       pole: a.pole ?? 'animation',
       bdmMission: !!a.bdm_mission,
       role,
+      participantId,
       participantStatus,
     }
   }
@@ -149,6 +156,7 @@ Deno.serve(async (req) => {
 
   // Validated and pending participants
   for (const p of (parts ?? []) as Array<{
+    id: string
     user_id: string
     animation_id: string
     status: 'pending' | 'validated'
@@ -156,7 +164,7 @@ Deno.serve(async (req) => {
   }>) {
     const a = animById.get(p.animation_id)
     if (!a || !p.profile) continue
-    const slot = animSlot(a, 'participant', p.status)
+    const slot = animSlot(a, 'participant', p.id, p.status)
     if (!intersects(slot.startMs, slot.endMs)) continue
     const list = slotsByUser.get(p.user_id) ?? []
     list.push(slot)
@@ -235,6 +243,7 @@ Deno.serve(async (req) => {
         pole: s.pole,
         bdmMission: s.bdmMission,
         role: s.role,
+        participantId: s.participantId ?? null,
         participantStatus: s.participantStatus ?? null,
       })),
     })),

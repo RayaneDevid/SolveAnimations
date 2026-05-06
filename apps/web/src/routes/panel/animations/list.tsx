@@ -35,24 +35,24 @@ const BDM_RANK_STYLES = {
     badge: 'border-zinc-300/30 bg-zinc-300/10 text-zinc-100',
   },
   C: {
-    card: 'border border-emerald-300/30 bg-emerald-400/[0.06] shadow-[0_0_22px_rgba(52,211,153,0.10)]',
+    card: 'border border-blue-300/35 bg-blue-400/[0.06] shadow-[0_0_22px_rgba(96,165,250,0.10)]',
+    title: 'text-blue-50 hover:text-blue-200',
+    badge: 'border-blue-300/35 bg-blue-300/10 text-blue-100',
+  },
+  B: {
+    card: 'border border-emerald-300/35 bg-emerald-400/[0.06] shadow-[0_0_24px_rgba(52,211,153,0.10)]',
     title: 'text-emerald-50 hover:text-emerald-200',
     badge: 'border-emerald-300/35 bg-emerald-300/10 text-emerald-100',
   },
-  B: {
-    card: 'border border-teal-300/35 bg-teal-500/[0.06] shadow-[0_0_24px_rgba(45,212,191,0.10)]',
-    title: 'text-teal-50 hover:text-teal-200',
-    badge: 'border-teal-300/35 bg-teal-300/10 text-teal-200',
-  },
   A: {
-    card: 'border border-amber-300/40 bg-amber-400/[0.07] shadow-[0_0_24px_rgba(251,191,36,0.12)]',
-    title: 'text-amber-50 hover:text-amber-200',
-    badge: 'border-amber-300/40 bg-amber-300/10 text-amber-100',
+    card: 'border border-violet-300/40 bg-violet-400/[0.07] shadow-[0_0_24px_rgba(167,139,250,0.12)]',
+    title: 'text-violet-50 hover:text-violet-200',
+    badge: 'border-violet-300/40 bg-violet-300/10 text-violet-100',
   },
   S: {
-    card: 'border border-rose-300/45 bg-rose-400/[0.08] shadow-[0_0_26px_rgba(251,113,133,0.14)]',
-    title: 'text-rose-50 hover:text-rose-200',
-    badge: 'border-rose-300/45 bg-rose-300/10 text-rose-100',
+    card: 'border border-red-300/45 bg-red-400/[0.08] shadow-[0_0_26px_rgba(248,113,113,0.14)]',
+    title: 'text-red-50 hover:text-red-200',
+    badge: 'border-red-300/45 bg-red-300/10 text-red-100',
   },
 } as const
 

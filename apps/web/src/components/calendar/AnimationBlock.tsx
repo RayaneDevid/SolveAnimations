@@ -45,10 +45,10 @@ const VILLAGE_COLORS: Record<string, string> = {
 
 const BDM_RANK_COLORS = {
   D: 'bg-zinc-500/25 border-zinc-300/60 text-zinc-50 ring-1 ring-zinc-300/25 shadow-[0_0_16px_rgba(212,212,216,0.14)]',
-  C: 'bg-emerald-500/25 border-emerald-300/65 text-emerald-50 ring-1 ring-emerald-300/25 shadow-[0_0_16px_rgba(52,211,153,0.16)]',
-  B: 'bg-teal-500/25 border-teal-300/70 text-teal-50 ring-1 ring-teal-300/30 shadow-[0_0_18px_rgba(45,212,191,0.18)]',
-  A: 'bg-amber-500/25 border-amber-300/75 text-amber-50 ring-1 ring-amber-300/30 shadow-[0_0_18px_rgba(251,191,36,0.20)]',
-  S: 'bg-rose-500/25 border-rose-300/80 text-rose-50 ring-1 ring-rose-300/35 shadow-[0_0_20px_rgba(251,113,133,0.22)]',
+  C: 'bg-blue-500/25 border-blue-300/65 text-blue-50 ring-1 ring-blue-300/25 shadow-[0_0_16px_rgba(96,165,250,0.16)]',
+  B: 'bg-emerald-500/25 border-emerald-300/70 text-emerald-50 ring-1 ring-emerald-300/30 shadow-[0_0_18px_rgba(52,211,153,0.18)]',
+  A: 'bg-violet-500/25 border-violet-300/75 text-violet-50 ring-1 ring-violet-300/30 shadow-[0_0_18px_rgba(167,139,250,0.20)]',
+  S: 'bg-red-500/25 border-red-300/80 text-red-50 ring-1 ring-red-300/35 shadow-[0_0_20px_rgba(248,113,113,0.22)]',
 } as const
 
 function timeToMinFromMidnight(date: Date): number {

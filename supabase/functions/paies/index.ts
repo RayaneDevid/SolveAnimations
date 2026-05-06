@@ -17,15 +17,26 @@ const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
-const BDM_BASE_PAY = 4_000
+const BDM_BASE_PAY = 2_000
 const BDM_QUOTA_COUNT = 3
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
-const BDM_HOURLY_RATE = 650
 const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
+const BDM_RANK_BASE: Record<string, number> = {
+  D: 400,
+  C: 500,
+  B: 600,
+  A: 700,
+  S: 800,
+}
+const BDM_TYPE_COEFFICIENT: Record<string, number> = {
+  jetable: 1,
+  elaboree: 1.4,
+  grande_ampleur: 1.65,
+}
 
 const QUOTA_MAX: Record<string, number | null> = {
   direction:      null,
@@ -88,6 +99,10 @@ function computeAnimationTimePay(totalMin: number, base = 0): { pay: number; cap
 
 function computeHourlyPay(totalMin: number, hourlyRate: number): number {
   return Math.round(totalMin * (hourlyRate / 60))
+}
+
+function computeBdmMissionPay(rank: string | null | undefined, type: string | null | undefined): number {
+  return Math.round((BDM_RANK_BASE[rank ?? 'B'] ?? BDM_RANK_BASE.B) * (BDM_TYPE_COEFFICIENT[type ?? 'jetable'] ?? 1))
 }
 
 function topThreeIds<T extends { id: string; username: string }>(
@@ -192,7 +207,7 @@ Deno.serve(async (req) => {
   // Finished animations this week with type + durations
   const { data: anims } = await db
     .from('animations')
-    .select('id, creator_id, type, bdm_mission, actual_duration_min, prep_time_min, actual_prep_time_min')
+    .select('id, creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
     .gte('started_at', weekStart.toISOString())
     .lt('started_at', weekEnd.toISOString())
@@ -202,7 +217,7 @@ Deno.serve(async (req) => {
   const { data: participationRows } = participationProfileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animations!inner(creator_id, type, bdm_mission, started_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .select('user_id, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
         .gte('animations.started_at' as never, weekStart.toISOString())
@@ -219,6 +234,7 @@ Deno.serve(async (req) => {
     prepMin: number
     moyenne: number
     grande: number
+    bdmMissionPay: number
   }>()
   const bdmMap = new Map<string, {
     animationsCount: number
@@ -228,6 +244,7 @@ Deno.serve(async (req) => {
     prepMin: number
     moyenne: number
     grande: number
+    bdmMissionPay: number
   }>()
 
   const getEntry = (userId: string) =>
@@ -239,6 +256,7 @@ Deno.serve(async (req) => {
       prepMin: 0,
       moyenne: 0,
       grande: 0,
+      bdmMissionPay: 0,
     }
   const getBdmEntry = (userId: string) =>
     bdmMap.get(userId) ?? {
@@ -249,6 +267,7 @@ Deno.serve(async (req) => {
       prepMin: 0,
       moyenne: 0,
       grande: 0,
+      bdmMissionPay: 0,
     }
 
   // Created animations
@@ -260,6 +279,7 @@ Deno.serve(async (req) => {
       entry.createdAnimationsCount++
       entry.animationMin += a.actual_duration_min ?? 0
       entry.prepMin += a.actual_prep_time_min ?? a.prep_time_min ?? 0
+      entry.bdmMissionPay += computeBdmMissionPay(a.bdm_mission_rank, a.bdm_mission_type)
       if (a.type === 'moyenne' || a.type === 'petite') entry.moyenne++
       else if (a.type === 'grande') entry.grande++
       bdmMap.set(a.creator_id, entry)
@@ -278,7 +298,16 @@ Deno.serve(async (req) => {
   }
 
   // Participated animations (validated, not the creator)
-  type AnimJoin = { creator_id: string; type: string; bdm_mission: boolean | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null }
+  type AnimJoin = {
+    creator_id: string
+    type: string
+    bdm_mission: boolean | null
+    bdm_mission_rank?: string | null
+    bdm_mission_type?: string | null
+    actual_duration_min: number | null
+    prep_time_min: number | null
+    actual_prep_time_min: number | null
+  }
   for (const p of (participationRows ?? []) as Array<{ user_id: string; animations: AnimJoin }>) {
     const anim = p.animations
     if (!anim || anim.creator_id === p.user_id) continue
@@ -289,6 +318,7 @@ Deno.serve(async (req) => {
       entry.participationsCount++
       entry.animationMin += anim.actual_duration_min ?? 0
       entry.prepMin += anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
+      entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
       if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
       else if (anim.type === 'grande') entry.grande++
       bdmMap.set(p.user_id, entry)
@@ -328,6 +358,7 @@ Deno.serve(async (req) => {
       animationsCount: 0, createdAnimationsCount: 0, participationsCount: 0,
       animationMin: 0, prepMin: 0,
       moyenne: 0, grande: 0,
+      bdmMissionPay: 0,
     }
     const formationsCount = formationCountMap.get(p.id) ?? 0
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
@@ -368,6 +399,7 @@ Deno.serve(async (req) => {
       quotaFilled,
       seniorBase,
       timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
+      bdmMissionPay: 0,
       podiumBonus: 0,
       hoursPodiumBonus: 0,
       createdPodiumBonus: 0,
@@ -387,11 +419,11 @@ Deno.serve(async (req) => {
         animationsCount: 0, createdAnimationsCount: 0, participationsCount: 0,
         animationMin: 0, prepMin: 0,
         moyenne: 0, grande: 0,
+        bdmMissionPay: 0,
       }
       const totalMin = s.animationMin + s.prepMin
       const quotaFilled = s.animationsCount >= BDM_QUOTA_COUNT
-      const timePay = computeHourlyPay(totalMin, BDM_HOURLY_RATE)
-      const rawBeforePodiumPay = BDM_BASE_PAY + timePay
+      const rawBeforePodiumPay = BDM_BASE_PAY + s.bdmMissionPay
       const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
       return {
         id: p.id,
@@ -415,7 +447,8 @@ Deno.serve(async (req) => {
         quotaMin: null,
         quotaFilled,
         seniorBase: 0,
-        timePay: quotaFilled ? timePay : 0,
+        timePay: 0,
+        bdmMissionPay: quotaFilled ? s.bdmMissionPay : 0,
         podiumBonus: 0,
         hoursPodiumBonus: 0,
         createdPodiumBonus: 0,
@@ -480,7 +513,7 @@ Deno.serve(async (req) => {
     const createdPodiumBonus = bdmCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
     const participationPodiumBonus = bdmParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
     const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
-    const rawBeforePodiumPay = BDM_BASE_PAY + entry.timePay
+    const rawBeforePodiumPay = BDM_BASE_PAY + entry.bdmMissionPay
     const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
     const rawTotalPay = beforePodiumPay + podiumBonus
     return {

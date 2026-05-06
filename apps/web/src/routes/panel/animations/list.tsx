@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -69,6 +69,19 @@ const TABS: Array<{ value: TabValue; label: string }> = [
   { value: 'rejected', label: 'Refusées' },
   { value: 'all',      label: 'Toutes' },
 ]
+
+function isTabValue(value: string | null): value is TabValue {
+  return TABS.some((tab) => tab.value === value)
+}
+
+function parsePositivePage(value: string | null): number {
+  const page = Number.parseInt(value ?? '1', 10)
+  return Number.isFinite(page) && page > 0 ? page : 1
+}
+
+function parseFilterValue<T extends readonly string[]>(value: string | null, allowed: T): T[number] | typeof ALL_FILTER {
+  return value && (allowed as readonly string[]).includes(value) ? value : ALL_FILTER
+}
 
 function AnimationCard({ anim }: { anim: Animation }) {
   const isBdmMission = anim.bdm_mission
@@ -144,19 +157,27 @@ function AnimationCard({ anim }: { anim: Animation }) {
 }
 
 export default function AnimationsList() {
-  const [searchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState<TabValue>('active')
-  const [page, setPage] = useState(1)
-  const [finishedTitle, setFinishedTitle] = useState('')
-  const [finishedVillage, setFinishedVillage] = useState(ALL_FILTER)
-  const [finishedServer, setFinishedServer] = useState(ALL_FILTER)
-  const [finishedMemberId, setFinishedMemberId] = useState(ALL_FILTER)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const didMountRef = useRef(false)
+  const [activeTab, setActiveTab] = useState<TabValue>(() => {
+    const tab = searchParams.get('tab')
+    return isTabValue(tab) ? tab : 'active'
+  })
+  const [page, setPage] = useState(() => parsePositivePage(searchParams.get('page')))
+  const [finishedTitle, setFinishedTitle] = useState(() => searchParams.get('title') ?? '')
+  const [finishedVillage, setFinishedVillage] = useState<string>(() => parseFilterValue(searchParams.get('village'), VILLAGES))
+  const [finishedServer, setFinishedServer] = useState<string>(() => parseFilterValue(searchParams.get('server'), SERVERS))
+  const [finishedMemberId, setFinishedMemberId] = useState(() => searchParams.get('member_id') ?? ALL_FILTER)
   const [bdmOnly, setBdmOnly] = useState(() => searchParams.get('bdm') === '1')
   const asParticipant = searchParams.get('as_participant') === '1'
   const creatorId = searchParams.get('creator_id') ?? undefined
   const { data: members = [] } = useMemberDirectory(activeTab === 'finished')
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
     setPage(1)
   }, [asParticipant, bdmOnly, creatorId, finishedTitle, finishedVillage, finishedServer, finishedMemberId])
 
@@ -205,6 +226,31 @@ export default function AnimationsList() {
     setActiveTab(value as TabValue)
     setPage(1)
   }
+
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (activeTab !== 'active') next.set('tab', activeTab)
+    if (page > 1) next.set('page', String(page))
+    if (bdmOnly) next.set('bdm', '1')
+    if (asParticipant) next.set('as_participant', '1')
+    if (creatorId) next.set('creator_id', creatorId)
+    if (finishedTitle.trim()) next.set('title', finishedTitle.trim())
+    if (finishedVillage !== ALL_FILTER) next.set('village', finishedVillage)
+    if (finishedServer !== ALL_FILTER) next.set('server', finishedServer)
+    if (finishedMemberId !== ALL_FILTER) next.set('member_id', finishedMemberId)
+    setSearchParams(next, { replace: true })
+  }, [
+    activeTab,
+    asParticipant,
+    bdmOnly,
+    creatorId,
+    finishedMemberId,
+    finishedServer,
+    finishedTitle,
+    finishedVillage,
+    page,
+    setSearchParams,
+  ])
 
   const resetFinishedFilters = () => {
     setFinishedTitle('')

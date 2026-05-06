@@ -400,6 +400,8 @@ export function useCorrectFinishedAnimation() {
       server?: string
       type?: string
       scheduled_at?: string
+      bdm_mission_rank?: string
+      bdm_mission_type?: string
     }) => invokeEdge<{ animation: Animation }>('animations-update', body),
     onSuccess: (data, { id }) => {
       updateDetailCache(qc, id, data.animation)

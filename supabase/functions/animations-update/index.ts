@@ -77,12 +77,30 @@ Deno.serve(async (req) => {
 
   if (!anim) return errorResponse('NOT_FOUND', 'Animation introuvable')
 
+  const isCreator = anim.creator_id === profile.id
+  const isResponsable = isResponsableRole(profile)
+
   // ── Senior/responsable correcting a finished animation ───────────────────
   if (anim.status === 'finished') {
-    const guard = requireRole(profile, 'senior')
-    if (guard) return guard
+    const timingFields = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type', 'scheduled_at']
+    const bdmFields = ['bdm_mission_rank', 'bdm_mission_type']
+    const touchesTimingFields = timingFields.some((key) => key in updates)
+    const touchesBdmFields = bdmFields.some((key) => key in updates)
+    if (touchesTimingFields) {
+      const guard = requireRole(profile, 'senior')
+      if (guard) return guard
+    }
+    if (touchesBdmFields && (!anim.bdm_mission || !isResponsable))
+      return errorResponse('FORBIDDEN', 'Seul un responsable peut modifier les paramètres BDM')
 
-    const allowed = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type', 'scheduled_at']
+    const nextBdmRank = typeof updates.bdm_mission_rank === 'string' ? updates.bdm_mission_rank : anim.bdm_mission_rank ?? 'B'
+    const nextBdmType = typeof updates.bdm_mission_type === 'string' ? updates.bdm_mission_type : anim.bdm_mission_type ?? 'jetable'
+    if (touchesBdmFields && !BDM_MISSION_RANKS.includes(nextBdmRank as BdmMissionRank))
+      return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+    if (touchesBdmFields && !BDM_MISSION_TYPES.includes(nextBdmType as BdmMissionType))
+      return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
+
+    const allowed = [...timingFields, ...bdmFields]
     const patch: Record<string, unknown> = {}
     for (const key of allowed) {
       if (key in updates) patch[key] = updates[key]
@@ -112,8 +130,6 @@ Deno.serve(async (req) => {
   }
 
   // ── Responsable editing the schedule of an open animation ────────────────
-  const isCreator = anim.creator_id === profile.id
-  const isResponsable = isResponsableRole(profile)
   const onlyRegistrationsLockUpdate = Object.keys(updates).every((key) => key === 'registrations_locked')
 
   if ('registrations_locked' in updates && onlyRegistrationsLockUpdate) {

@@ -34,7 +34,7 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
-import { VILLAGES, SERVERS, TYPES } from '@/lib/schemas/animation'
+import { BDM_MISSION_RANKS, BDM_MISSION_TYPES, VILLAGES, SERVERS, TYPES, type BdmMissionRank, type BdmMissionType } from '@/lib/schemas/animation'
 import type { AnimationParticipant, Animation, TimeCorrectionRequest } from '@/types/database'
 
 const BDM_TYPE_LABELS = {
@@ -43,7 +43,15 @@ const BDM_TYPE_LABELS = {
   grande_ampleur: 'Grande ampleur',
 } as const
 
-function FinishedEditForm({ animation }: { animation: Animation }) {
+function FinishedEditForm({
+  animation,
+  canEditTiming,
+  canEditBdm,
+}: {
+  animation: Animation
+  canEditTiming: boolean
+  canEditBdm: boolean
+}) {
   const { mutateAsync: correct, isPending } = useCorrectFinishedAnimation()
   const [editing, setEditing] = useState(false)
   const [animMin, setAnimMin] = useState(animation.actual_duration_min ?? 0)
@@ -51,6 +59,8 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
   const [village, setVillage] = useState(animation.village)
   const [server, setServer] = useState(animation.server)
   const [type, setType] = useState((animation.type as string) === 'petite' ? 'moyenne' : animation.type)
+  const [bdmRank, setBdmRank] = useState(animation.bdm_mission_rank)
+  const [bdmType, setBdmType] = useState(animation.bdm_mission_type)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
     animation.scheduled_at ? new Date(animation.scheduled_at) : undefined,
   )
@@ -59,12 +69,18 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
     try {
       await correct({
         id: animation.id,
-        actual_duration_min: animMin,
-        actual_prep_time_min: animation.prep_time_min > 0 ? prepMin : undefined,
-        village,
-        server,
-        type,
-        scheduled_at: scheduledAt?.toISOString(),
+        ...(canEditTiming ? {
+          actual_duration_min: animMin,
+          actual_prep_time_min: animation.prep_time_min > 0 ? prepMin : undefined,
+          village,
+          server,
+          type,
+          scheduled_at: scheduledAt?.toISOString(),
+        } : {}),
+        ...(animation.bdm_mission && canEditBdm ? {
+          bdm_mission_rank: bdmRank,
+          bdm_mission_type: bdmType,
+        } : {}),
       })
       toast.success('Animation corrigée')
       setEditing(false)
@@ -109,53 +125,84 @@ function FinishedEditForm({ animation }: { animation: Animation }) {
               </p>
             </div>
           )}
+          {animation.bdm_mission && (
+            <div>
+              <p className="text-xs text-white/40 mb-0.5">Mission BDM</p>
+              <p className="text-sm font-semibold text-white/70">
+                Rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
+              </p>
+            </div>
+          )}
         </>
       ) : (
         <div className="space-y-3">
-          <div>
-            <label className={labelCls}>Date et heure de session</label>
-            <RpDateTimePicker value={scheduledAt} onChange={setScheduledAt} />
-          </div>
-          <div>
-            <label className={labelCls}>Durée animation (min)</label>
-            <input
-              type="number"
-              min={0}
-              value={animMin}
-              onChange={(e) => setAnimMin(Number(e.target.value))}
-              className={inputCls}
-            />
-          </div>
-          {animation.prep_time_min > 0 && (
+          {canEditTiming && (
+            <>
+              <div>
+                <label className={labelCls}>Date et heure de session</label>
+                <RpDateTimePicker value={scheduledAt} onChange={setScheduledAt} />
+              </div>
+              <div>
+                <label className={labelCls}>Durée animation (min)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={animMin}
+                  onChange={(e) => setAnimMin(Number(e.target.value))}
+                  className={inputCls}
+                />
+              </div>
+              {animation.prep_time_min > 0 && (
+                <div>
+                  <label className={labelCls}>Durée débrief (min)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={prepMin}
+                    onChange={(e) => setPrepMin(Number(e.target.value))}
+                    className={inputCls}
+                  />
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Village</label>
+                <select value={village} onChange={(e) => setVillage(e.target.value as typeof VILLAGES[number])} className={inputCls}>
+                  {VILLAGES.map((v) => <option key={v} value={v}>{VILLAGE_LABELS[v]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Serveur</label>
+                <select value={server} onChange={(e) => setServer(e.target.value as typeof SERVERS[number])} className={inputCls}>
+                  {SERVERS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Type</label>
+                <select value={type} onChange={(e) => setType(e.target.value as typeof TYPES[number])} className={inputCls}>
+                  {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </>
+          )}
+
+          {animation.bdm_mission && canEditBdm && (
             <div>
-              <label className={labelCls}>Durée débrief (min)</label>
-              <input
-                type="number"
-                min={0}
-                value={prepMin}
-                onChange={(e) => setPrepMin(Number(e.target.value))}
-                className={inputCls}
-              />
+              <label className={labelCls}>Rang BDM</label>
+              <select value={bdmRank} onChange={(e) => setBdmRank(e.target.value as BdmMissionRank)} className={inputCls}>
+                {BDM_MISSION_RANKS.map((rank) => <option key={rank} value={rank}>{rank}</option>)}
+              </select>
             </div>
           )}
-          <div>
-            <label className={labelCls}>Village</label>
-            <select value={village} onChange={(e) => setVillage(e.target.value as typeof VILLAGES[number])} className={inputCls}>
-              {VILLAGES.map((v) => <option key={v} value={v}>{VILLAGE_LABELS[v]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Serveur</label>
-            <select value={server} onChange={(e) => setServer(e.target.value as typeof SERVERS[number])} className={inputCls}>
-              {SERVERS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Type</label>
-            <select value={type} onChange={(e) => setType(e.target.value as typeof TYPES[number])} className={inputCls}>
-              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
+          {animation.bdm_mission && canEditBdm && (
+            <div>
+              <label className={labelCls}>Type BDM</label>
+              <select value={bdmType} onChange={(e) => setBdmType(e.target.value as BdmMissionType)} className={inputCls}>
+                {BDM_MISSION_TYPES.map((missionType) => (
+                  <option key={missionType} value={missionType}>{BDM_TYPE_LABELS[missionType]}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-2 pt-1">
             <Button size="sm" onClick={handleSave} disabled={isPending} className="flex-1 gap-1.5">
               <Save className="h-3.5 w-3.5" />
@@ -577,6 +624,7 @@ export default function AnimationDetail() {
   const canManageAnimation = isResponsable || isBdmResponsable
   const canControlTimers = isCreator || hasPermissionRole(permissionRoles, 'senior')
   const canCorrectFinished = hasPermissionRole(permissionRoles, 'senior')
+  const canCorrectFinishedBdm = animation.bdm_mission && (canCorrectFinished || isBdmResponsable)
   const scheduledAtHasPassed = new Date(animation.scheduled_at).getTime() <= Date.now()
   const canManageRegistrations =
     (isCreator || isResponsable) &&
@@ -1055,8 +1103,12 @@ export default function AnimationDetail() {
           )}
 
           {animation.status === 'finished' && (
-            canCorrectFinished ? (
-              <FinishedEditForm animation={animation} />
+            canCorrectFinished || canCorrectFinishedBdm ? (
+              <FinishedEditForm
+                animation={animation}
+                canEditTiming={canCorrectFinished}
+                canEditBdm={canCorrectFinishedBdm}
+              />
             ) : animation.actual_duration_min ? (
               <GlassCard className="p-5 space-y-3">
                 <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">

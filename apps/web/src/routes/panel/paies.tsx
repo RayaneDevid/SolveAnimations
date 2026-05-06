@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { AnimatePresence } from 'framer-motion'
-import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown, UserMinus, Loader2 } from 'lucide-react'
+import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown, EyeOff } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useFormerMembers, useMembers, useParticipationConflicts, usePaies } from '@/hooks/queries/useAnimations'
-import { useRemoveParticipant } from '@/hooks/mutations/useAnimationMutations'
 import { useCurrentWeek } from '@/hooks/useCurrentWeek'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { FormerMemberDetail, MemberDetail } from '@/routes/panel/casiers'
@@ -44,6 +43,10 @@ const BDM_TYPE_COEFFICIENT = {
 } as const
 
 type PayTab = 'animation' | 'mj' | 'bdm'
+
+function conflictSlotKey(userId: string, anim: ParticipationConflictEntry['animations'][number]): string {
+  return `${userId}:${anim.animationId}:${anim.role}:${anim.participantId ?? 'creator'}`
+}
 
 function sortEntries(entries: PaiesEntry[], roleOrder: string[]): PaiesEntry[] {
   return [...entries].sort((a, b) => {
@@ -595,41 +598,34 @@ function ConflictsBanner({
   conflicts,
   open,
   onToggle,
+  dismissedKeys,
+  onDismiss,
 }: {
   conflicts: ParticipationConflictEntry[]
   open: boolean
   onToggle: () => void
+  dismissedKeys: Set<string>
+  onDismiss: (key: string, title: string, username: string) => void
 }) {
-  const removeParticipant = useRemoveParticipant()
-  const [pendingId, setPendingId] = useState<string | null>(null)
-
   if (conflicts.length === 0) return null
-
-  const handleResolve = async (participantId: string, animationId: string, title: string, username: string) => {
-    setPendingId(participantId)
-    try {
-      await removeParticipant.mutateAsync({ participantId, animationId })
-      toast.success(`${username} retiré·e de "${title}"`)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la désinscription')
-    } finally {
-      setPendingId(null)
-    }
-  }
 
   const grouped = new Map<
     string,
     { user: ParticipationConflictEntry['user']; clusters: ParticipationConflictEntry['animations'][] }
   >()
   for (const conflict of conflicts) {
+    const visibleAnimations = conflict.animations.filter((anim) => !dismissedKeys.has(conflictSlotKey(conflict.user.id, anim)))
+    if (visibleAnimations.length < 2) continue
     const existing = grouped.get(conflict.user.id)
     if (existing) {
-      existing.clusters.push(conflict.animations)
+      existing.clusters.push(visibleAnimations)
     } else {
-      grouped.set(conflict.user.id, { user: conflict.user, clusters: [conflict.animations] })
+      grouped.set(conflict.user.id, { user: conflict.user, clusters: [visibleAnimations] })
     }
   }
   const groups = Array.from(grouped.values()).sort((a, b) => a.user.username.localeCompare(b.user.username))
+  if (groups.length === 0) return null
+
   const totalClusters = conflicts.length
   const totalAnimations = conflicts.reduce((sum, c) => sum + c.animations.length, 0)
 
@@ -648,7 +644,7 @@ function ConflictsBanner({
             {groups.length} membre{groups.length > 1 ? 's' : ''} en double inscription cette semaine
           </p>
           <p className="text-xs text-amber-300/70">
-            {totalClusters} chevauchement{totalClusters > 1 ? 's' : ''} · {totalAnimations} animations · les responsables doivent désinscrire les membres concernés
+            {totalClusters} chevauchement{totalClusters > 1 ? 's' : ''} · {totalAnimations} animations · masquer un conflit ne modifie pas les inscriptions
           </p>
         </div>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-amber-300/70 transition-transform', open && 'rotate-180')} />
@@ -688,8 +684,8 @@ function ConflictsBanner({
                       const start = new Date(anim.slotStart)
                       const end = new Date(anim.slotEnd)
                       const isReal = anim.startedAt != null || anim.endedAt != null
-                      const canResolve = anim.role === 'participant' && anim.participantId != null
-                      const isPending = pendingId === anim.participantId
+                      const canDismiss = anim.role === 'participant' && anim.participantId != null
+                      const key = conflictSlotKey(group.user.id, anim)
                       return (
                         <div
                           key={anim.animationId}
@@ -721,20 +717,15 @@ function ConflictsBanner({
                               {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
                             </span>
                           </Link>
-                          {canResolve ? (
+                          {canDismiss ? (
                             <button
                               type="button"
-                              onClick={() => handleResolve(anim.participantId!, anim.animationId, anim.title, group.user.username)}
-                              disabled={isPending || removeParticipant.isPending}
-                              className="flex shrink-0 items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-40"
-                              title="Désinscrire le membre de cette animation"
+                              onClick={() => onDismiss(key, anim.title, group.user.username)}
+                              className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200 transition-colors hover:bg-amber-400/20 hover:text-amber-100"
+                              title="Masquer ce conflit dans les paies"
                             >
-                              {isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <UserMinus className="h-3 w-3" />
-                              )}
-                              Résoudre
+                              <EyeOff className="h-3 w-3" />
+                              Masquer
                             </button>
                           ) : (
                             <Tooltip delayDuration={150}>
@@ -773,6 +764,17 @@ export default function Paies() {
   const { data: conflictsData } = useParticipationConflicts(bounds.start)
   const [selectedCasierId, setSelectedCasierId] = useState<string | null>(null)
   const [conflictsOpen, setConflictsOpen] = useState<Record<PayTab, boolean>>({ animation: true, mj: true, bdm: true })
+  const dismissedStorageKey = `paies-dismissed-conflicts:${bounds.start.toISOString()}`
+  const [dismissedConflictKeys, setDismissedConflictKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(dismissedStorageKey)
+      setDismissedConflictKeys(new Set(raw ? JSON.parse(raw) as string[] : []))
+    } catch {
+      setDismissedConflictKeys(new Set())
+    }
+  }, [dismissedStorageKey])
 
   const canSeeAll = hasOwnedRole(permissionRoles, ['direction', 'gerance'])
   const showAnim = canSeeAll || hasOwnedRole(permissionRoles, ['responsable'])
@@ -824,6 +826,20 @@ export default function Paies() {
     }
     return { animation: animConflicts, mj: mjConflicts, bdm: bdmConflicts }
   }, [conflictsData, userPoles])
+
+  const handleDismissConflict = (key: string, title: string, username: string) => {
+    setDismissedConflictKeys((prev) => {
+      const next = new Set(prev)
+      next.add(key)
+      try {
+        localStorage.setItem(dismissedStorageKey, JSON.stringify(Array.from(next)))
+      } catch {
+        // Non bloquant : le masquage reste actif pour la session courante.
+      }
+      return next
+    })
+    toast.success(`Conflit masqué pour ${username} sur "${title}"`)
+  }
 
   const selectedActiveMember = useMemo(
     () => members.find((member) => member.id === selectedCasierId) ?? null,
@@ -1037,6 +1053,8 @@ export default function Paies() {
                       conflicts={tabConflicts}
                       open={conflictsOpen[key]}
                       onToggle={() => setConflictsOpen((prev) => ({ ...prev, [key]: !prev[key] }))}
+                      dismissedKeys={dismissedConflictKeys}
+                      onDismiss={handleDismissConflict}
                     />
                   </div>
                 )}

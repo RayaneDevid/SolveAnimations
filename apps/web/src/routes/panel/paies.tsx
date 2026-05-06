@@ -599,7 +599,23 @@ function ConflictsBanner({
   onToggle: () => void
 }) {
   if (conflicts.length === 0) return null
+
+  const grouped = new Map<
+    string,
+    { user: ParticipationConflictEntry['user']; clusters: ParticipationConflictEntry['animations'][] }
+  >()
+  for (const conflict of conflicts) {
+    const existing = grouped.get(conflict.user.id)
+    if (existing) {
+      existing.clusters.push(conflict.animations)
+    } else {
+      grouped.set(conflict.user.id, { user: conflict.user, clusters: [conflict.animations] })
+    }
+  }
+  const groups = Array.from(grouped.values()).sort((a, b) => a.user.username.localeCompare(b.user.username))
+  const totalClusters = conflicts.length
   const totalAnimations = conflicts.reduce((sum, c) => sum + c.animations.length, 0)
+
   return (
     <GlassCard className="border border-amber-400/30 bg-amber-400/[0.04] p-0">
       <button
@@ -612,61 +628,81 @@ function ConflictsBanner({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-amber-200">
-            {conflicts.length} double{conflicts.length > 1 ? 's' : ''} inscription{conflicts.length > 1 ? 's' : ''} cette semaine
+            {groups.length} membre{groups.length > 1 ? 's' : ''} en double inscription cette semaine
           </p>
           <p className="text-xs text-amber-300/70">
-            {totalAnimations} animations en chevauchement · les responsables doivent désinscrire les membres concernés
+            {totalClusters} chevauchement{totalClusters > 1 ? 's' : ''} · {totalAnimations} animations · les responsables doivent désinscrire les membres concernés
           </p>
         </div>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-amber-300/70 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="border-t border-amber-400/15 px-5 py-3 space-y-3">
-          {conflicts.map((conflict, idx) => (
+          {groups.map((group) => (
             <div
-              key={`${conflict.user.id}-${idx}`}
+              key={group.user.id}
               className="rounded-xl border border-white/[0.06] bg-black/20 p-3"
             >
               <div className="flex items-center gap-2 mb-2">
-                <UserAvatar avatarUrl={conflict.user.avatarUrl} username={conflict.user.username} size="xs" />
-                <span className="text-sm font-medium text-white/85">{conflict.user.username}</span>
-                <RoleBadge role={conflict.user.role} />
+                <UserAvatar avatarUrl={group.user.avatarUrl} username={group.user.username} size="xs" />
+                <span className="text-sm font-medium text-white/85">{group.user.username}</span>
+                <RoleBadge role={group.user.role} />
+                {group.clusters.length > 1 && (
+                  <span className="ml-auto rounded-full border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                    {group.clusters.length} chevauchements
+                  </span>
+                )}
               </div>
-              <div className="space-y-1.5">
-                {conflict.animations.map((anim) => {
-                  const start = new Date(anim.slotStart)
-                  const end = new Date(anim.slotEnd)
-                  const isReal = anim.startedAt != null || anim.endedAt != null
-                  return (
-                    <Link
-                      key={anim.animationId}
-                      to={`/panel/animations/${anim.animationId}`}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white"
-                    >
-                      <Clock className="h-3 w-3 shrink-0 text-amber-300/70" />
-                      <span className="truncate font-medium text-white/85">{anim.title}</span>
-                      {anim.bdmMission && (
-                        <span className="rounded-full border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300">
-                          BDM
-                        </span>
-                      )}
-                      <span className="ml-auto whitespace-nowrap text-white/40">
-                        {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
-                        <span className={cn('ml-1.5 text-[10px]', isReal ? 'text-emerald-300/60' : 'text-white/30')}>
-                          {isReal ? '(réel)' : '(prévu)'}
-                        </span>
-                      </span>
-                      <span className={cn(
-                        'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
-                        anim.role === 'creator'
-                          ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
-                          : 'border-violet-500/20 bg-violet-500/10 text-violet-300',
-                      )}>
-                        {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
-                      </span>
-                    </Link>
-                  )
-                })}
+              <div className="space-y-2">
+                {group.clusters.map((cluster, clusterIdx) => (
+                  <div
+                    key={clusterIdx}
+                    className={cn(
+                      'space-y-1.5',
+                      clusterIdx > 0 && 'border-t border-white/[0.05] pt-2',
+                    )}
+                  >
+                    {group.clusters.length > 1 && (
+                      <p className="px-2 text-[10px] font-medium uppercase tracking-wider text-amber-300/60">
+                        Conflit {clusterIdx + 1}
+                      </p>
+                    )}
+                    {cluster.map((anim) => {
+                      const start = new Date(anim.slotStart)
+                      const end = new Date(anim.slotEnd)
+                      const isReal = anim.startedAt != null || anim.endedAt != null
+                      return (
+                        <Link
+                          key={anim.animationId}
+                          to={`/panel/animations/${anim.animationId}`}
+                          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white"
+                        >
+                          <Clock className="h-3 w-3 shrink-0 text-amber-300/70" />
+                          <span className="truncate font-medium text-white/85">{anim.title}</span>
+                          {anim.bdmMission && (
+                            <span className="rounded-full border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300">
+                              BDM
+                            </span>
+                          )}
+                          <span className="ml-auto whitespace-nowrap text-white/40">
+                            {format(start, 'EEE dd/MM HH:mm', { locale: fr })} → {format(end, 'HH:mm', { locale: fr })}
+                            <span className={cn('ml-1.5 text-[10px]', isReal ? 'text-emerald-300/60' : 'text-white/30')}>
+                              {isReal ? '(réel)' : '(prévu)'}
+                            </span>
+                          </span>
+                          <span className={cn(
+                            'whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                            anim.role === 'creator'
+                              ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+                              : 'border-violet-500/20 bg-violet-500/10 text-violet-300',
+                          )}>
+                            {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
+                          </span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
           ))}

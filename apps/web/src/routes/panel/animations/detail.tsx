@@ -534,16 +534,6 @@ function ParticipantRow({
           {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
         </button>
       )}
-      {canFinishSelf && (
-        <button
-          onClick={handleFinishSelf}
-          disabled={finishingSelf}
-          title="Marquer ma participation comme terminée"
-          className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
-        >
-          J'ai terminé !
-        </button>
-      )}
       {canRemove && p.status === 'pending' && (
         <button
           onClick={handleRemove}
@@ -552,6 +542,16 @@ function ParticipantRow({
           className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
         >
           <UserMinus className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {canFinishSelf && (
+        <button
+          onClick={handleFinishSelf}
+          disabled={finishingSelf}
+          title="Marquer ma participation comme terminée"
+          className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
+        >
+          J'ai terminé !
         </button>
       )}
     </div>

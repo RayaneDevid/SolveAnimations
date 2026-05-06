@@ -684,7 +684,6 @@ function ConflictsBanner({
                       const start = new Date(anim.slotStart)
                       const end = new Date(anim.slotEnd)
                       const isReal = anim.startedAt != null || anim.endedAt != null
-                      const canDismiss = anim.role === 'participant' && anim.participantId != null
                       const key = conflictSlotKey(group.user.id, anim)
                       return (
                         <div
@@ -717,28 +716,15 @@ function ConflictsBanner({
                               {anim.role === 'creator' ? 'Créateur' : anim.participantStatus === 'pending' ? 'Inscrit (en attente)' : 'Inscrit'}
                             </span>
                           </Link>
-                          {canDismiss ? (
-                            <button
-                              type="button"
-                              onClick={() => onDismiss(key, anim.title, group.user.username)}
-                              className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200 transition-colors hover:bg-amber-400/20 hover:text-amber-100"
-                              title="Masquer ce conflit dans les paies"
-                            >
-                              <EyeOff className="h-3 w-3" />
-                              Masquer
-                            </button>
-                          ) : (
-                            <Tooltip delayDuration={150}>
-                              <TooltipTrigger asChild>
-                                <span className="shrink-0 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-1 text-[11px] text-white/30">
-                                  —
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="max-w-[220px] text-xs">
-                                Le créateur ne peut pas être désinscrit. Annule ou reporte l'animation depuis sa fiche.
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => onDismiss(key, anim.title, group.user.username)}
+                            className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200 transition-colors hover:bg-amber-400/20 hover:text-amber-100"
+                            title="Masquer ce conflit dans les paies"
+                          >
+                            <EyeOff className="h-3 w-3" />
+                            Masquer
+                          </button>
                         </div>
                       )
                     })}

@@ -132,11 +132,13 @@ function AnimationCard({ anim }: { anim: Animation }) {
             )}
             <ServerBadge server={anim.server} />
             <VillageBadge village={anim.village} />
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${TYPE_STYLES[anim.type]}`}
-            >
-              {TYPE_LABELS[anim.type]}
-            </span>
+            {!isBdmMission && (
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${TYPE_STYLES[anim.type]}`}
+              >
+                {TYPE_LABELS[anim.type]}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs text-white/40">

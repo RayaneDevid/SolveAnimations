@@ -67,6 +67,12 @@ verify_jwt = false
 [functions.animations-start]
 verify_jwt = false
 
+[functions.animations-pause]
+verify_jwt = false
+
+[functions.animations-resume]
+verify_jwt = false
+
 [functions.animations-stop]
 verify_jwt = false
 

@@ -65,6 +65,8 @@ export interface Animation {
   prep_started_at: string | null
   prep_ended_at: string | null
   actual_prep_time_min: number | null
+  pause_started_at: string | null
+  paused_duration_min: number
   reminder_15min_sent_at: string | null
   created_at: string
   updated_at: string

@@ -37,9 +37,16 @@ Deno.serve(async (req) => {
 
   const endedAt = new Date().toISOString()
   const startedAt = new Date(anim.started_at!)
+  let pausedDurationMin = Math.max(0, Number(anim.paused_duration_min ?? 0))
+  if (anim.pause_started_at) {
+    pausedDurationMin += Math.max(
+      0,
+      Math.floor((new Date(endedAt).getTime() - new Date(anim.pause_started_at).getTime()) / 60000),
+    )
+  }
   const actualDurationMin = Math.max(
     1,
-    Math.floor((new Date(endedAt).getTime() - startedAt.getTime()) / 60000),
+    Math.floor((new Date(endedAt).getTime() - startedAt.getTime()) / 60000) - pausedDurationMin,
   )
 
   const { data: updated, error } = await db
@@ -48,6 +55,8 @@ Deno.serve(async (req) => {
       status: 'finished',
       ended_at: endedAt,
       actual_duration_min: actualDurationMin,
+      pause_started_at: null,
+      paused_duration_min: pausedDurationMin,
     })
     .eq('id', id)
     .select()

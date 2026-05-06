@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import {
-  ArrowLeft, Play, Square, Clock, Users, Calendar,
+  ArrowLeft, Play, Square, Clock, Users, Calendar, Pause,
   Check, X, UserPlus, Pencil, Ban, Timer, LogOut, UserMinus, Hourglass, Save, Trash2, Send,
   Lock, Unlock,
 } from 'lucide-react'
@@ -13,7 +13,7 @@ import {
   useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation, useAddParticipantToFinished, useRequestTimeCorrection,
-  useSetRegistrationsLocked, useFinishOwnParticipation,
+  useSetRegistrationsLocked, useFinishOwnParticipation, usePauseAnimation, useResumeAnimation,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -390,15 +390,31 @@ function TimeCorrectionRequestPanel({
   )
 }
 
-function ElapsedTimer({ since, label }: { since: string; label: string }) {
+function ElapsedTimer({
+  since,
+  label,
+  pausedDurationMin = 0,
+  pauseStartedAt,
+}: {
+  since: string
+  label: string
+  pausedDurationMin?: number
+  pauseStartedAt?: string | null
+}) {
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
-    const update = () => setElapsed(Math.floor((Date.now() - new Date(since).getTime()) / 1000))
+    const update = () => {
+      const startedMs = new Date(since).getTime()
+      const currentPauseSec = pauseStartedAt
+        ? Math.max(0, Math.floor((Date.now() - new Date(pauseStartedAt).getTime()) / 1000))
+        : 0
+      setElapsed(Math.max(0, Math.floor((Date.now() - startedMs) / 1000) - pausedDurationMin * 60 - currentPauseSec))
+    }
     update()
     const id = setInterval(update, 1000)
     return () => clearInterval(id)
-  }, [since])
+  }, [pauseStartedAt, pausedDurationMin, since])
 
   const h = Math.floor(elapsed / 3600)
   const m = Math.floor((elapsed % 3600) / 60)
@@ -409,7 +425,7 @@ function ElapsedTimer({ since, label }: { since: string; label: string }) {
 
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-xs text-white/40">{pauseStartedAt ? `${label} en pause` : label}</span>
       <span className="text-sm font-mono font-semibold text-cyan-400">{formatted}</span>
     </div>
   )
@@ -662,6 +678,8 @@ export default function AnimationDetail() {
 
   const { data, isLoading } = useAnimation(id!)
   const { mutateAsync: start, isPending: starting } = useStartAnimation()
+  const { mutateAsync: pauseAnimation, isPending: pausing } = usePauseAnimation()
+  const { mutateAsync: resumeAnimation, isPending: resuming } = useResumeAnimation()
   const { mutateAsync: startPrep, isPending: startingPrep } = useStartPrepAnimation()
   const { mutateAsync: stopPrep, isPending: stoppingPrep } = useStopPrepAnimation()
   const { mutateAsync: stop, isPending: stopping } = useStopAnimation()
@@ -746,6 +764,24 @@ export default function AnimationDetail() {
     try {
       await stop(animation.id)
       toast.success('Animation terminée ! Les rapports ont été générés.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const handlePause = async () => {
+    try {
+      await pauseAnimation(animation.id)
+      toast.success('Chrono mis en pause.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const handleResume = async () => {
+    try {
+      await resumeAnimation(animation.id)
+      toast.success('Chrono repris.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur')
     }
@@ -1091,7 +1127,23 @@ export default function AnimationDetail() {
                     )}
                     {animation.status === 'running' && (
                       <>
-                        <ElapsedTimer since={animation.started_at!} label="Animation en cours" />
+                        <ElapsedTimer
+                          since={animation.started_at!}
+                          label="Animation en cours"
+                          pausedDurationMin={animation.paused_duration_min ?? 0}
+                          pauseStartedAt={animation.pause_started_at}
+                        />
+                        {animation.pause_started_at ? (
+                          <Button onClick={handleResume} disabled={resuming} className="w-full gap-2">
+                            <Play className="h-4 w-4" />
+                            {resuming ? 'Reprise...' : 'Reprendre le chrono'}
+                          </Button>
+                        ) : (
+                          <Button onClick={handlePause} disabled={pausing} variant="outline" className="w-full gap-2">
+                            <Pause className="h-4 w-4" />
+                            {pausing ? 'Pause...' : 'Mettre en pause'}
+                          </Button>
+                        )}
                         <Button onClick={handleStop} disabled={stopping} variant="secondary" className="w-full gap-2">
                           <Square className="h-4 w-4" />
                           Terminer l'animation

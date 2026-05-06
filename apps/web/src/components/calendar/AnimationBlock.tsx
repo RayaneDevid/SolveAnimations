@@ -67,8 +67,11 @@ function debriefStartTime(scheduledAt: Date, prepMin: number): string {
   return formatTime(new Date(ms).toISOString())
 }
 
-function elapsedMinutes(startedAt: string): number {
-  return Math.floor((Date.now() - new Date(startedAt).getTime()) / 60_000)
+function elapsedMinutes(startedAt: string, pausedDurationMin = 0, pauseStartedAt?: string | null): number {
+  const currentPauseMin = pauseStartedAt
+    ? Math.floor((Date.now() - new Date(pauseStartedAt).getTime()) / 60_000)
+    : 0
+  return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 60_000) - pausedDurationMin - currentPauseMin)
 }
 
 function formatDurationShort(min: number): string {
@@ -92,14 +95,14 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
   const isBdmMission = animation.bdm_mission
 
   const [elapsed, setElapsed] = useState(() =>
-    isRunning ? elapsedMinutes(animation.started_at!) : 0,
+    isRunning ? elapsedMinutes(animation.started_at!, animation.paused_duration_min ?? 0, animation.pause_started_at) : 0,
   )
 
   useEffect(() => {
     if (!isRunning) return
-    const id = setInterval(() => setElapsed(elapsedMinutes(animation.started_at!)), 30_000)
+    const id = setInterval(() => setElapsed(elapsedMinutes(animation.started_at!, animation.paused_duration_min ?? 0, animation.pause_started_at)), 30_000)
     return () => clearInterval(id)
-  }, [isRunning, animation.started_at])
+  }, [isRunning, animation.pause_started_at, animation.paused_duration_min, animation.started_at])
 
   const effectiveDuration = isFinished
     ? (animation.actual_duration_min ?? animation.planned_duration_min)
@@ -144,7 +147,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
   const durationLabel = isFinished
     ? formatDurationShort(animation.actual_duration_min ?? animation.planned_duration_min)
     : isRunning
-      ? `${formatDurationShort(elapsed)} en cours`
+      ? `${formatDurationShort(elapsed)} ${animation.pause_started_at ? 'en pause' : 'en cours'}`
       : formatDurationShort(animation.planned_duration_min)
 
   return (

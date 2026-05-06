@@ -29,29 +29,22 @@ Deno.serve(async (req) => {
     const guard = requireRole(profile, 'senior')
     if (guard) return guard
   }
-  if (!['open', 'preparing'].includes(anim.status))
-    return errorResponse('CONFLICT', "L'animation doit être ouverte pour être démarrée")
+  if (anim.status !== 'running')
+    return errorResponse('CONFLICT', "L'animation doit être en cours pour reprendre le chrono")
+  if (!anim.pause_started_at)
+    return errorResponse('CONFLICT', "Le chrono n'est pas en pause")
 
   const now = new Date()
-  const startedAt = now.toISOString()
-  const updateData: Record<string, unknown> = {
-    status: 'running',
-    scheduled_at: startedAt,
-    started_at: startedAt,
-    pause_started_at: null,
-    paused_duration_min: 0,
-  }
-
-  // Auto-close debrief if still running when animation starts
-  if (anim.prep_started_at && !anim.prep_ended_at) {
-    const prepStart = new Date(anim.prep_started_at)
-    updateData.prep_ended_at = startedAt
-    updateData.actual_prep_time_min = Math.max(1, Math.floor((now.getTime() - prepStart.getTime()) / 60_000))
-  }
+  const pauseStartedAt = new Date(anim.pause_started_at)
+  const pauseMin = Math.max(0, Math.floor((now.getTime() - pauseStartedAt.getTime()) / 60_000))
+  const pausedDurationMin = Math.max(0, Number(anim.paused_duration_min ?? 0)) + pauseMin
 
   const { data: updated, error } = await db
     .from('animations')
-    .update(updateData)
+    .update({
+      pause_started_at: null,
+      paused_duration_min: pausedDurationMin,
+    })
     .eq('id', id)
     .select()
     .single()
@@ -62,3 +55,4 @@ Deno.serve(async (req) => {
 
   return jsonResponse({ animation: updated })
 })
+

@@ -98,6 +98,28 @@ export function useStartAnimation() {
   })
 }
 
+export function usePauseAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-pause', { id }),
+    onSuccess: (data, id) => {
+      updateDetailCache(qc, id, data.animation)
+      invalidateAnimationCaches(qc, id)
+    },
+  })
+}
+
+export function useResumeAnimation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => invokeEdge<{ animation: Animation }>('animations-resume', { id }),
+    onSuccess: (data, id) => {
+      updateDetailCache(qc, id, data.animation)
+      invalidateAnimationCaches(qc, id)
+    },
+  })
+}
+
 export function useStartPrepAnimation() {
   const qc = useQueryClient()
   return useMutation({

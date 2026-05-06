@@ -12,6 +12,8 @@ export type EdgeFunctionName =
   | 'animations-validate'
   | 'animations-reject'
   | 'animations-start'
+  | 'animations-pause'
+  | 'animations-resume'
   | 'animations-start-prep'
   | 'animations-stop-prep'
   | 'animations-stop'

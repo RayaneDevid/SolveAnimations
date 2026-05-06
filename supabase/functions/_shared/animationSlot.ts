@@ -37,3 +37,18 @@ export function animationSlotBounds(anim: AnimationSlotInput): { startMs: number
 
   return { startMs: slotStartMs, endMs: slotEndMs }
 }
+
+export function participantSlotBounds(
+  anim: AnimationSlotInput,
+  joinedAt?: string | null,
+  participationEndedAt?: string | null,
+): { startMs: number; endMs: number } {
+  const bounds = animationSlotBounds(anim)
+  const animStartMs = anim.started_at ? new Date(anim.started_at).getTime() : new Date(anim.scheduled_at).getTime()
+  const joinedMs = joinedAt ? new Date(joinedAt).getTime() : null
+  const endedMs = participationEndedAt ? new Date(participationEndedAt).getTime() : null
+  return {
+    startMs: joinedMs && joinedMs > animStartMs ? joinedMs : bounds.startMs,
+    endMs: endedMs && endedMs < bounds.endMs ? endedMs : bounds.endMs,
+  }
+}

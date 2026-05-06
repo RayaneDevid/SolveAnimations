@@ -167,6 +167,8 @@ Deno.serve(async (req) => {
         applied_at: now,
         decided_at: now,
         decided_by: profile.id,
+        joined_at: animation.started_at ?? now,
+        participation_ended_at: null,
       })),
     )
 

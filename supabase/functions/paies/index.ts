@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
   const { data: participationRows } = participationProfileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animation_id, joined_at, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .select('user_id, animation_id, joined_at, participation_ended_at, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
         .gte('animations.started_at' as never, weekStart.toISOString())
@@ -239,9 +239,12 @@ Deno.serve(async (req) => {
     : { data: [] }
 
   // Look up joined_at for BDM participants by (animation_id, user_id)
-  const joinedAtByPair = new Map<string, string | null>()
-  for (const row of (participationRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null }>) {
-    joinedAtByPair.set(`${row.animation_id}:${row.user_id}`, row.joined_at)
+  const participationTimeByPair = new Map<string, { joinedAt: string | null; endedAt: string | null }>()
+  for (const row of (participationRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null; participation_ended_at: string | null }>) {
+    participationTimeByPair.set(`${row.animation_id}:${row.user_id}`, {
+      joinedAt: row.joined_at,
+      endedAt: row.participation_ended_at,
+    })
   }
 
   // Aggregate per user
@@ -319,7 +322,7 @@ Deno.serve(async (req) => {
     prep_time_min: number | null
     actual_prep_time_min: number | null
   }
-  for (const p of (participationRows ?? []) as Array<{ user_id: string; joined_at: string | null; animations: AnimJoin }>) {
+  for (const p of (participationRows ?? []) as Array<{ user_id: string; joined_at: string | null; participation_ended_at: string | null; animations: AnimJoin }>) {
     const anim = p.animations
     if (!anim || anim.creator_id === p.user_id) continue
     if (anim.bdm_mission) {
@@ -328,7 +331,7 @@ Deno.serve(async (req) => {
 
     if (!profileIdSet.has(p.user_id)) continue
     const entry = getEntry(p.user_id)
-    const dur = computeParticipantDuration(p.joined_at, anim)
+    const dur = computeParticipantDuration(p.joined_at, anim, p.participation_ended_at)
     entry.animationsCount++
     entry.participationsCount++
     entry.animationMin += dur.animMinutes
@@ -342,8 +345,8 @@ Deno.serve(async (req) => {
     const anim = report.animations
     if (!anim) continue
     const isCreator = anim.creator_id === report.user_id
-    const joinedAt = isCreator ? null : joinedAtByPair.get(`${report.animation_id}:${report.user_id}`) ?? null
-    const dur = computeParticipantDuration(joinedAt, anim)
+    const times = isCreator ? null : participationTimeByPair.get(`${report.animation_id}:${report.user_id}`) ?? null
+    const dur = computeParticipantDuration(times?.joinedAt ?? null, anim, times?.endedAt ?? null)
 
     if (report.pole === 'bdm') {
       if (!bdmProfileIdSet.has(report.user_id)) continue

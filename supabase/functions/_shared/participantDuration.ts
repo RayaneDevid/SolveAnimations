@@ -29,11 +29,12 @@ export type ParticipantDurationResult = {
 export function computeParticipantDuration(
   joinedAt: string | null,
   anim: ParticipantDurationAnimation,
+  participationEndedAt?: string | null,
 ): ParticipantDurationResult {
   const animDuration = anim.actual_duration_min ?? 0
   const prepDuration = anim.actual_prep_time_min ?? anim.prep_time_min ?? 0
 
-  if (!joinedAt || !anim.started_at) {
+  if (!anim.started_at) {
     return {
       animMinutes: animDuration,
       prepMinutes: prepDuration,
@@ -44,20 +45,26 @@ export function computeParticipantDuration(
   }
 
   const startedMs = new Date(anim.started_at).getTime()
-  const joinedMs = new Date(joinedAt).getTime()
+  const joinedMs = joinedAt ? new Date(joinedAt).getTime() : startedMs
+  const endedMs = participationEndedAt ? new Date(participationEndedAt).getTime() : null
+  const participantEndOffsetMin = endedMs && endedMs > startedMs
+    ? Math.floor((endedMs - startedMs) / 60_000)
+    : animDuration
+  const effectiveEndMin = Math.min(animDuration, participantEndOffsetMin)
 
   if (joinedMs <= startedMs) {
+    const animMinutes = Math.max(0, effectiveEndMin)
     return {
-      animMinutes: animDuration,
+      animMinutes,
       prepMinutes: prepDuration,
-      totalMinutes: animDuration + prepDuration,
+      totalMinutes: animMinutes + prepDuration,
       offsetAtJoinMin: 0,
       lateJoin: false,
     }
   }
 
   const offsetMin = Math.floor((joinedMs - startedMs) / 60_000)
-  const animMinutes = Math.max(0, animDuration - offsetMin)
+  const animMinutes = Math.max(0, effectiveEndMin - offsetMin)
   return {
     animMinutes,
     prepMinutes: prepDuration,

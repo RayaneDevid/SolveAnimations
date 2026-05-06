@@ -3,7 +3,7 @@ import { jsonResponse } from '../_shared/jsonResponse.ts'
 import { errorResponse } from '../_shared/errorResponse.ts'
 import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
-import { animationSlotBounds } from '../_shared/animationSlot.ts'
+import { animationSlotBounds, participantSlotBounds } from '../_shared/animationSlot.ts'
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .lt('scheduled_at', windowToIso),
     db
       .from('animation_participants')
-      .select(`animations!inner(${SLOT_COLUMNS}, status)`)
+      .select(`joined_at, participation_ended_at, animations!inner(${SLOT_COLUMNS}, status)`)
       .eq('user_id', profile.id)
       .in('status', ['pending', 'validated'])
       .neq('animation_id', animation_id)
@@ -85,19 +85,26 @@ Deno.serve(async (req) => {
     ended_at: string | null
     prep_started_at: string | null
   }
-  const candidates = new Map<string, CandidateAnim>()
-  for (const row of (createdRows ?? []) as CandidateAnim[]) candidates.set(row.id, row)
-  for (const row of (participantRows ?? []) as Array<{ animations: CandidateAnim }>) {
-    if (row.animations) candidates.set(row.animations.id, row.animations)
-  }
+  const candidates: Array<{ animation: CandidateAnim; joinedAt?: string | null; participationEndedAt?: string | null }> = [
+    ...((createdRows ?? []) as CandidateAnim[]).map((animation) => ({ animation })),
+    ...((participantRows ?? []) as Array<{ joined_at: string | null; participation_ended_at: string | null; animations: CandidateAnim }>)
+      .filter((row) => !!row.animations)
+      .map((row) => ({
+        animation: row.animations,
+        joinedAt: row.joined_at,
+        participationEndedAt: row.participation_ended_at,
+      })),
+  ]
 
-  const overlap = Array.from(candidates.values()).find((c) => {
-    const { startMs: cStart, endMs: cEnd } = animationSlotBounds(c)
+  const overlap = candidates.find((candidate) => {
+    const { startMs: cStart, endMs: cEnd } = candidate.joinedAt || candidate.participationEndedAt
+      ? participantSlotBounds(candidate.animation, candidate.joinedAt, candidate.participationEndedAt)
+      : animationSlotBounds(candidate.animation)
     return cStart < animEndMs && cEnd > animStartMs
   })
 
   if (overlap)
-    return errorResponse('CONFLICT', `Créneau déjà occupé par "${overlap.title}". Désinscris-toi avant de t'inscrire ailleurs.`)
+    return errorResponse('CONFLICT', `Créneau déjà occupé par "${overlap.animation.title}". Termine ta participation avant de t'inscrire ailleurs.`)
 
   // Reactivate an existing row if already present (e.g. after self-withdraw or creator-kick)
   const { data: existing } = await db
@@ -122,6 +129,7 @@ Deno.serve(async (req) => {
         decided_at: now,
         decided_by: profile.id,
         joined_at: now,
+        participation_ended_at: null,
       })
       .eq('id', existing.id)
       .select()
@@ -141,6 +149,7 @@ Deno.serve(async (req) => {
       decided_at: now,
       decided_by: profile.id,
       joined_at: now,
+      participation_ended_at: null,
     })
     .select()
     .single()

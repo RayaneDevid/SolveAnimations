@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
         decided_at: now,
         decided_by: profile.id,
         joined_at: joinedAt,
+        participation_ended_at: null,
       })),
     )
     if (error) {
@@ -85,7 +86,7 @@ Deno.serve(async (req) => {
   if (toUpdate.length > 0) {
     await db
       .from('animation_participants')
-      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null, joined_at: joinedAt })
+      .update({ status: 'validated', decided_at: now, decided_by: profile.id, character_name: null, joined_at: joinedAt, participation_ended_at: null })
       .in('id', toUpdate)
   }
 

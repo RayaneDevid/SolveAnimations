@@ -126,6 +126,7 @@ export interface AnimationParticipant {
   decided_at: string | null
   decided_by: string | null
   joined_at: string | null
+  participation_ended_at: string | null
   user?: Profile
 }
 
@@ -404,6 +405,7 @@ export interface ParticipationConflictAnimation {
   role: 'creator' | 'participant'
   participantId: string | null
   participantStatus: 'pending' | 'validated' | null
+  participationEndedAt: string | null
 }
 
 export interface ParticipationConflictEntry {

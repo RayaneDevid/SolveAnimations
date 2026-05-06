@@ -91,6 +91,9 @@ verify_jwt = false
 [functions.participants-remove-validated]
 verify_jwt = false
 
+[functions.participants-finish-self]
+verify_jwt = false
+
 [functions.participants-promote-pending]
 verify_jwt = false
 

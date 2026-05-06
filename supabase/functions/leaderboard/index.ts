@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   // Fetch all validated participations on finished animations in the period
   let partQuery = db
     .from('animation_participants')
-    .select('user_id, joined_at, animations!inner(creator_id, bdm_mission, started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, joined_at, participation_ended_at, animations!inner(creator_id, bdm_mission, started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
 
@@ -163,10 +163,10 @@ Deno.serve(async (req) => {
   }
 
   for (const p of participations ?? []) {
-    const row = p as unknown as { joined_at: string | null; animations: { creator_id: string; bdm_mission: boolean | null; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const row = p as unknown as { joined_at: string | null; participation_ended_at: string | null; animations: { creator_id: string; bdm_mission: boolean | null; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
     const anim = row.animations
     if (!anim || anim.creator_id === p.user_id) continue
-    const dur = computeParticipantDuration(row.joined_at, anim)
+    const dur = computeParticipantDuration(row.joined_at, anim, row.participation_ended_at)
 
     if (anim.bdm_mission) {
       const existing = bdmMap.get(p.user_id)

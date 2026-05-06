@@ -12,36 +12,34 @@ Deno.serve(async (req) => {
   const profile = await requireAuth(req)
   if (profile instanceof Response) return profile
 
-  const { participant_id, decision } = await req.json()
+  const { participant_id } = await req.json()
   if (!participant_id) return errorResponse('VALIDATION_ERROR', 'participant_id requis')
-  if (!['validated', 'rejected'].includes(decision))
-    return errorResponse('VALIDATION_ERROR', 'decision doit être validated ou rejected')
 
   const db = getServiceClient()
 
   const { data: participant } = await db
     .from('animation_participants')
-    .select('*, animation:animations!animation_participants_animation_id_fkey(creator_id, status)')
+    .select('*, animation:animations!animation_participants_animation_id_fkey(id, status, started_at, ended_at)')
     .eq('id', participant_id)
     .single()
 
   if (!participant) return errorResponse('NOT_FOUND', 'Participant introuvable')
-  if (participant.animation?.creator_id !== profile.id)
-    return errorResponse('FORBIDDEN', 'Seul le créateur peut décider')
-  if (participant.animation?.status !== 'open')
-    return errorResponse('CONFLICT', "L'animation n'est pas ouverte")
-  if (participant.status !== 'pending')
-    return errorResponse('CONFLICT', 'Ce participant a déjà été traité')
+  if (participant.user_id !== profile.id)
+    return errorResponse('FORBIDDEN', 'Tu ne peux terminer que ta propre participation')
+  if (participant.status !== 'validated')
+    return errorResponse('CONFLICT', 'Seule une participation validée peut être terminée')
+  if (participant.participation_ended_at)
+    return errorResponse('CONFLICT', 'Participation déjà terminée')
+  if (participant.animation?.status !== 'running' || !participant.animation?.started_at)
+    return errorResponse('CONFLICT', "L'animation doit être en cours")
 
   const now = new Date().toISOString()
+  const startedAt = new Date(participant.animation.started_at).getTime()
+  const finishedAt = Math.max(startedAt, new Date(now).getTime())
+
   const { data: updated, error } = await db
     .from('animation_participants')
-    .update({
-      status: decision,
-      decided_at: now,
-      decided_by: profile.id,
-      ...(decision === 'validated' ? { joined_at: now, participation_ended_at: null } : {}),
-    })
+    .update({ participation_ended_at: new Date(finishedAt).toISOString() })
     .eq('id', participant_id)
     .select()
     .single()
@@ -52,3 +50,4 @@ Deno.serve(async (req) => {
 
   return jsonResponse({ participant: updated })
 })
+

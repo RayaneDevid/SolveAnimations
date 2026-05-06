@@ -30,6 +30,7 @@ export type EdgeFunctionName =
   | 'participants-decide'
   | 'participants-update-character'
   | 'participants-remove-validated'
+  | 'participants-finish-self'
   | 'participants-promote-pending'
   | 'reports-list-mine'
   | 'reports-list-user'

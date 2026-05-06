@@ -13,7 +13,7 @@ import {
   useRequestDeletion,
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation, useAddParticipantToFinished, useRequestTimeCorrection,
-  useSetRegistrationsLocked,
+  useSetRegistrationsLocked, useFinishOwnParticipation,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -419,6 +419,7 @@ function ParticipantRow({
   p,
   canDecide,
   canRemove,
+  canFinishSelf,
   isSelf,
   animationId,
   animationStartedAt,
@@ -426,12 +427,14 @@ function ParticipantRow({
   p: AnimationParticipant
   canDecide: boolean
   canRemove: boolean
+  canFinishSelf: boolean
   isSelf: boolean
   animationId: string
   animationStartedAt: string | null
 }) {
   const { mutateAsync: decide, isPending: deciding } = useDecideParticipant()
   const { mutateAsync: remove, isPending: removing } = useRemoveParticipant()
+  const { mutateAsync: finishSelf, isPending: finishingSelf } = useFinishOwnParticipation()
 
   const joinOffsetMin = (() => {
     if (!animationStartedAt || !p.joined_at) return null
@@ -461,11 +464,22 @@ function ParticipantRow({
     }
   }
 
+  const handleFinishSelf = async () => {
+    if (!confirm('Marquer ta participation comme terminée ? Ton temps personnel sera arrêté.')) return
+    try {
+      await finishSelf({ participantId: p.id, animationId })
+      toast.success('Ta participation est terminée.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
   const joinLabel = joinOffsetMin == null
     ? null
     : joinOffsetMin === 0
       ? 'Au démarrage'
       : `Rejoint à T+${joinOffsetMin >= 60 ? `${Math.floor(joinOffsetMin / 60)}h${String(joinOffsetMin % 60).padStart(2, '0')}` : `${joinOffsetMin}min`}`
+  const finishedLabel = p.participation_ended_at ? `Terminé à ${formatTime(p.participation_ended_at)}` : null
 
   return (
     <div className="flex items-center gap-3 py-2.5">
@@ -479,6 +493,11 @@ function ParticipantRow({
               ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
               : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
               {joinLabel}
+            </span>
+          )}
+          {finishedLabel && (
+            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
+              {finishedLabel}
             </span>
           )}
         </div>
@@ -513,6 +532,16 @@ function ParticipantRow({
           className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
         >
           {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
+        </button>
+      )}
+      {canFinishSelf && (
+        <button
+          onClick={handleFinishSelf}
+          disabled={finishingSelf}
+          title="Marquer ma participation comme terminée"
+          className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
+        >
+          Animation terminée
         </button>
       )}
       {canRemove && p.status === 'pending' && (
@@ -897,13 +926,17 @@ export default function AnimationDetail() {
                 {validated.map((p) => {
                   const isSelf = p.user_id === user.id
                   const canRemove =
-                    isResponsable || (['open', 'preparing', 'running'].includes(animation.status) && (isCreator || isSelf))
+                    isResponsable || (['open', 'preparing', 'running'].includes(animation.status) && isCreator) ||
+                    (['open', 'preparing'].includes(animation.status) && isSelf)
+                  const canFinishSelf =
+                    isSelf && animation.status === 'running' && p.status === 'validated' && !p.participation_ended_at
                   return (
                     <ParticipantRow
                       key={p.id}
                       p={p}
                       canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
                       canRemove={canRemove}
+                      canFinishSelf={canFinishSelf}
                       isSelf={isSelf}
                       animationId={animation.id}
                       animationStartedAt={animation.started_at}
@@ -928,6 +961,7 @@ export default function AnimationDetail() {
                     p={p}
                     canDecide={isCreator && ['open', 'preparing'].includes(animation.status)}
                     canRemove={isResponsable}
+                    canFinishSelf={false}
                     isSelf={p.user_id === user.id}
                     animationId={animation.id}
                     animationStartedAt={animation.started_at}

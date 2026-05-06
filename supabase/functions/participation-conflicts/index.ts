@@ -5,7 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { weekStartFor } from '../_shared/week.ts'
-import { animationSlotBounds } from '../_shared/animationSlot.ts'
+import { animationSlotBounds, participantSlotBounds } from '../_shared/animationSlot.ts'
 
 type AnimRow = {
   id: string
@@ -43,6 +43,7 @@ type Slot = {
   role: 'creator' | 'participant'
   participantId?: string
   participantStatus?: 'pending' | 'validated'
+  participationEndedAt?: string | null
 }
 
 const ACTIVE_STATUSES = ['pending_validation', 'open', 'preparing', 'running', 'finished']
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
 
   const { data: parts, error: partsError } = await db
     .from('animation_participants')
-    .select('id, user_id, animation_id, status, profile:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role)')
+    .select('id, user_id, animation_id, status, joined_at, participation_ended_at, profile:profiles!animation_participants_user_id_fkey(id, username, avatar_url, role)')
     .in('animation_id', animIds)
     .in('status', ['pending', 'validated'])
 
@@ -113,8 +114,12 @@ Deno.serve(async (req) => {
     role: 'creator' | 'participant',
     participantId?: string,
     participantStatus?: 'pending' | 'validated',
+    joinedAt?: string | null,
+    participationEndedAt?: string | null,
   ): Slot => {
-    const { startMs, endMs } = animationSlotBounds(a)
+    const { startMs, endMs } = role === 'participant'
+      ? participantSlotBounds(a, joinedAt, participationEndedAt)
+      : animationSlotBounds(a)
     return {
       animationId: a.id,
       title: a.title,
@@ -133,6 +138,7 @@ Deno.serve(async (req) => {
       role,
       participantId,
       participantStatus,
+      participationEndedAt,
     }
   }
 
@@ -160,11 +166,13 @@ Deno.serve(async (req) => {
     user_id: string
     animation_id: string
     status: 'pending' | 'validated'
+    joined_at: string | null
+    participation_ended_at: string | null
     profile: { id: string; username: string; avatar_url: string | null; role: string } | null
   }>) {
     const a = animById.get(p.animation_id)
     if (!a || !p.profile) continue
-    const slot = animSlot(a, 'participant', p.id, p.status)
+    const slot = animSlot(a, 'participant', p.id, p.status, p.joined_at, p.participation_ended_at)
     if (!intersects(slot.startMs, slot.endMs)) continue
     const list = slotsByUser.get(p.user_id) ?? []
     list.push(slot)
@@ -245,6 +253,7 @@ Deno.serve(async (req) => {
         role: s.role,
         participantId: s.participantId ?? null,
         participantStatus: s.participantStatus ?? null,
+        participationEndedAt: s.participationEndedAt ?? null,
       })),
     })),
     weekStart: weekStart.toISOString(),

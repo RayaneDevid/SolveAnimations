@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   // Weekly validated participations
   const { data: weeklyParts } = await db
     .from('animation_participants')
-    .select('user_id, animation_id, joined_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('user_id, animation_id, joined_at, participation_ended_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
     .eq('animations.bdm_mission' as never, false)
@@ -89,16 +89,19 @@ Deno.serve(async (req) => {
   // joined_at lookup for BDM mission participants this week
   const { data: bdmPartRows } = await db
     .from('animation_participants')
-    .select('animation_id, user_id, joined_at, animations!inner(bdm_mission, status, started_at)')
+    .select('animation_id, user_id, joined_at, participation_ended_at, animations!inner(bdm_mission, status, started_at)')
     .eq('status', 'validated')
     .eq('animations.bdm_mission' as never, true)
     .eq('animations.status' as never, 'finished')
     .gte('animations.started_at' as never, weekStart.toISOString())
     .lt('animations.started_at' as never, weekEnd.toISOString())
     .in('user_id', profileIds)
-  const bdmJoinedAtByPair = new Map<string, string | null>()
-  for (const row of (bdmPartRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null }>) {
-    bdmJoinedAtByPair.set(`${row.animation_id}:${row.user_id}`, row.joined_at)
+  const bdmParticipationTimeByPair = new Map<string, { joinedAt: string | null; endedAt: string | null }>()
+  for (const row of (bdmPartRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null; participation_ended_at: string | null }>) {
+    bdmParticipationTimeByPair.set(`${row.animation_id}:${row.user_id}`, {
+      joinedAt: row.joined_at,
+      endedAt: row.participation_ended_at,
+    })
   }
 
   // Current absences: to_date is the return date, so it no longer blocks that day.
@@ -175,8 +178,8 @@ Deno.serve(async (req) => {
   const weeklyPartMap = new Map<string, { count: number; minutes: number }>()
   for (const p of weeklyParts ?? []) {
     const existing = weeklyPartMap.get(p.user_id) ?? { count: 0, minutes: 0 }
-    const row = p as unknown as { joined_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
-    const dur = computeParticipantDuration(row.joined_at, row.animations)
+    const row = p as unknown as { joined_at: string | null; participation_ended_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+    const dur = computeParticipantDuration(row.joined_at, row.animations, row.participation_ended_at)
     existing.count++
     existing.minutes += dur.totalMinutes
     weeklyPartMap.set(p.user_id, existing)
@@ -186,8 +189,8 @@ Deno.serve(async (req) => {
     if (report.pole !== quotaPoleById.get(report.user_id)) continue
     const row = report as unknown as { animation_id: string; animations: { creator_id: string; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
     const isCreator = row.animations?.creator_id === report.user_id
-    const joinedAt = isCreator ? null : bdmJoinedAtByPair.get(`${row.animation_id}:${report.user_id}`) ?? null
-    const dur = computeParticipantDuration(joinedAt, row.animations)
+    const times = isCreator ? null : bdmParticipationTimeByPair.get(`${row.animation_id}:${report.user_id}`) ?? null
+    const dur = computeParticipantDuration(times?.joinedAt ?? null, row.animations, times?.endedAt ?? null)
     if (isCreator) {
       const existing = weeklyAnimMap.get(report.user_id) ?? { count: 0, minutes: 0 }
       existing.count++

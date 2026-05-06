@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
   // Participations validated on finished animations this week
   const { data: participationRows } = includeNonBdm ? await db
     .from('animation_participants')
-    .select('animation_id, joined_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .select('animation_id, joined_at, participation_ended_at, animations!inner(started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.status' as never, 'finished')
@@ -164,23 +164,26 @@ Deno.serve(async (req) => {
   // joined_at lookup for the user's BDM participations
   const { data: bdmParticipationRowsRaw } = await db
     .from('animation_participants')
-    .select('animation_id, joined_at, animations!inner(bdm_mission, status, started_at)')
+    .select('animation_id, joined_at, participation_ended_at, animations!inner(bdm_mission, status, started_at)')
     .eq('user_id', targetId)
     .eq('status', 'validated')
     .eq('animations.bdm_mission' as never, true)
     .eq('animations.status' as never, 'finished')
     .gte('animations.started_at' as never, weekStart)
     .lt('animations.started_at' as never, weekEnd)
-  const bdmJoinedAtByAnim = new Map<string, string | null>()
-  for (const row of (bdmParticipationRowsRaw ?? []) as Array<{ animation_id: string; joined_at: string | null }>) {
-    bdmJoinedAtByAnim.set(row.animation_id, row.joined_at)
+  const bdmParticipationTimeByAnim = new Map<string, { joinedAt: string | null; endedAt: string | null }>()
+  for (const row of (bdmParticipationRowsRaw ?? []) as Array<{ animation_id: string; joined_at: string | null; participation_ended_at: string | null }>) {
+    bdmParticipationTimeByAnim.set(row.animation_id, {
+      joinedAt: row.joined_at,
+      endedAt: row.participation_ended_at,
+    })
   }
 
   const participationsValidated = participationRows?.length ?? 0
   const hoursFromParticipations = (participationRows ?? []).reduce(
     (sum, p) => {
-      const row = p as unknown as { joined_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
-      const dur = computeParticipantDuration(row.joined_at, row.animations)
+      const row = p as unknown as { joined_at: string | null; participation_ended_at: string | null; animations: { started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
+      const dur = computeParticipantDuration(row.joined_at, row.animations, row.participation_ended_at)
       return sum + dur.totalMinutes
     },
     0,
@@ -197,8 +200,8 @@ Deno.serve(async (req) => {
   const minutesFromBdmReports = (bdmReportRows ?? []).reduce((sum, report) => {
     const row = report as unknown as { animation_id: string; animations: { creator_id: string; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
     const isCreator = row.animations?.creator_id === targetId
-    const joinedAt = isCreator ? null : bdmJoinedAtByAnim.get(row.animation_id) ?? null
-    const dur = computeParticipantDuration(joinedAt, row.animations)
+    const times = isCreator ? null : bdmParticipationTimeByAnim.get(row.animation_id) ?? null
+    const dur = computeParticipantDuration(times?.joinedAt ?? null, row.animations, times?.endedAt ?? null)
     return sum + dur.totalMinutes
   }, 0)
 

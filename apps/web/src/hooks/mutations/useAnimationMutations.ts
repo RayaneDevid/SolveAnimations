@@ -302,6 +302,20 @@ export function useRemoveParticipant() {
   })
 }
 
+export function useFinishOwnParticipation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ participantId }: { participantId: string; animationId: string }) =>
+      invokeEdge<object>('participants-finish-self', { participant_id: participantId }),
+    onSuccess: (_, { animationId }) => {
+      invalidateAnimationCaches(qc, animationId)
+      invalidateStatsCaches(qc)
+      invalidateMemberCaches(qc)
+      qc.invalidateQueries({ queryKey: ['participation-conflicts'] })
+    },
+  })
+}
+
 export function useDecideParticipant() {
   const qc = useQueryClient()
   return useMutation({

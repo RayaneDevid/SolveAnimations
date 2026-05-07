@@ -64,6 +64,15 @@ Deno.serve(async (req) => {
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
 
+    await db
+      .from('animation_participants')
+      .update({
+        joined_at: scheduledAt.toISOString(),
+        participation_ended_at: null,
+      })
+      .eq('animation_id', id)
+      .eq('status', 'validated')
+
     const { data: validatedParticipants } = await db
       .from('animation_participants')
       .select('user_id')

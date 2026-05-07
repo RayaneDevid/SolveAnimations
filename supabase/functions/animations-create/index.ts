@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
   }
 
   if (selectedPastParticipantIds.length > 0) {
+    const joinedAt = isPastMission ? scheduledDate.toISOString() : animation.started_at ?? now
     const { error: participantsError } = await db.from('animation_participants').insert(
       selectedPastParticipantIds.map((userId) => ({
         animation_id: animation.id,
@@ -202,7 +203,7 @@ Deno.serve(async (req) => {
         applied_at: now,
         decided_at: now,
         decided_by: profile.id,
-        joined_at: animation.started_at ?? now,
+        joined_at: joinedAt,
         participation_ended_at: null,
       })),
     )

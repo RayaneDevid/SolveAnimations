@@ -6,6 +6,7 @@ import { hasAnyRole, hasEffectiveRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { notifyBot } from '../_shared/bot.ts'
 import { defaultReportPole } from '../_shared/reportPole.ts'
+import { animationSlotBounds } from '../_shared/animationSlot.ts'
 
 const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
 const TYPES    = ['moyenne','grande'] as const
@@ -102,6 +103,40 @@ Deno.serve(async (req) => {
   const autoFinishPastMission = isPastMission && canSelfValidatePastMission
   const actualDurationMin = Math.max(1, Number(resolvedPlannedDurationMin))
   const actualPrepTimeMin = Math.max(0, Number(resolvedPrepTimeMin ?? 0))
+  const currentSlot = animationSlotBounds({
+    scheduled_at: resolvedScheduledAt,
+    planned_duration_min: actualDurationMin,
+    prep_time_min: actualPrepTimeMin,
+  })
+  const currentTime = Date.now()
+
+  if (currentSlot.startMs <= currentTime && currentSlot.endMs > currentTime) {
+    const [{ data: runningCreated }, { data: runningParticipation }] = await Promise.all([
+      db
+        .from('animations')
+        .select('id, title')
+        .eq('creator_id', profile.id)
+        .eq('status', 'running')
+        .limit(1)
+        .maybeSingle(),
+      db
+        .from('animation_participants')
+        .select('id, participation_ended_at, animation:animations!inner(id, title, status)')
+        .eq('user_id', profile.id)
+        .eq('status', 'validated')
+        .is('participation_ended_at', null)
+        .eq('animation.status' as never, 'running')
+        .limit(1)
+        .maybeSingle(),
+    ])
+
+    if (runningCreated) {
+      return errorResponse('CONFLICT', `Tu dois d'abord terminer "${runningCreated.title}" avant de créer une animation sur l'horaire actuel.`)
+    }
+    if (runningParticipation?.animation) {
+      return errorResponse('CONFLICT', `Clique sur "J'ai terminé !" sur "${runningParticipation.animation.title}" avant de créer une animation sur l'horaire actuel.`)
+    }
+  }
 
   if (selectedPastParticipantIds.length > 0) {
     const { data: selectedProfiles, error: selectedProfilesError } = await db

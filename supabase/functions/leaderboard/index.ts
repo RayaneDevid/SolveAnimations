@@ -85,6 +85,37 @@ Deno.serve(async (req) => {
 
   const { data: participations } = await partQuery
 
+  let bdmReportQuery = db
+    .from('animation_reports')
+    .select('user_id, pole, animation_id, animations!inner(creator_id, bdm_mission, started_at, ended_at, status, actual_duration_min, prep_time_min, actual_prep_time_min)')
+    .eq('animations.status' as never, 'finished')
+    .eq('animations.bdm_mission' as never, true)
+
+  if (fromDate) {
+    bdmReportQuery = bdmReportQuery.gte('animations.started_at' as never, fromDate)
+  }
+  if (toDate) {
+    bdmReportQuery = bdmReportQuery.lt('animations.started_at' as never, toDate)
+  }
+
+  const { data: bdmReportRows } = await bdmReportQuery
+
+  let bdmParticipationQuery = db
+    .from('animation_participants')
+    .select('animation_id, user_id, joined_at, participation_ended_at, animations!inner(bdm_mission, status, started_at)')
+    .eq('status', 'validated')
+    .eq('animations.bdm_mission' as never, true)
+    .eq('animations.status' as never, 'finished')
+
+  if (fromDate) {
+    bdmParticipationQuery = bdmParticipationQuery.gte('animations.started_at' as never, fromDate)
+  }
+  if (toDate) {
+    bdmParticipationQuery = bdmParticipationQuery.lt('animations.started_at' as never, toDate)
+  }
+
+  const { data: bdmParticipationRows } = await bdmParticipationQuery
+
   // Aggregate by user — seed with all profiles first so participations
   // are never lost for users who haven't created any animation
   const { data: allProfiles } = await db
@@ -142,14 +173,17 @@ Deno.serve(async (req) => {
     }
   }
 
+  const bdmParticipationTimeByPair = new Map<string, { joinedAt: string | null; endedAt: string | null }>()
+  for (const row of (bdmParticipationRows ?? []) as Array<{ animation_id: string; user_id: string; joined_at: string | null; participation_ended_at: string | null }>) {
+    bdmParticipationTimeByPair.set(`${row.animation_id}:${row.user_id}`, {
+      joinedAt: row.joined_at,
+      endedAt: row.participation_ended_at,
+    })
+  }
+
   for (const anim of animations ?? []) {
     const duration = (anim.actual_duration_min ?? 0) + (anim.actual_prep_time_min ?? anim.prep_time_min ?? 0)
     if (anim.bdm_mission) {
-      const existing = bdmMap.get(anim.creator_id)
-      if (existing) {
-        existing.hoursAnimated += duration
-        existing.animationsCreated++
-      }
       continue
     }
 
@@ -166,22 +200,29 @@ Deno.serve(async (req) => {
     const row = p as unknown as { joined_at: string | null; participation_ended_at: string | null; animations: { creator_id: string; bdm_mission: boolean | null; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }
     const anim = row.animations
     if (!anim || anim.creator_id === p.user_id) continue
+    if (anim.bdm_mission) continue
     const dur = computeParticipantDuration(row.joined_at, anim, row.participation_ended_at)
-
-    if (anim.bdm_mission) {
-      const existing = bdmMap.get(p.user_id)
-      if (existing) {
-        existing.participationsValidated++
-        existing.hoursAnimated += dur.totalMinutes
-      }
-      continue
-    }
 
     const existing = userMap.get(p.user_id)
     if (existing) {
       existing.participationsValidated++
       existing.hoursAnimated += dur.totalMinutes
     }
+  }
+
+  for (const report of (bdmReportRows ?? []) as Array<{ user_id: string; pole: string; animation_id: string; animations: { creator_id: string; started_at: string | null; ended_at: string | null; actual_duration_min: number | null; prep_time_min: number | null; actual_prep_time_min: number | null } }>) {
+    const anim = report.animations
+    if (!anim) continue
+    const isCreator = anim.creator_id === report.user_id
+    const times = isCreator ? null : bdmParticipationTimeByPair.get(`${report.animation_id}:${report.user_id}`) ?? null
+    const dur = computeParticipantDuration(times?.joinedAt ?? null, anim, times?.endedAt ?? null)
+    const targetMap = report.pole === 'bdm' ? bdmMap : userMap
+    const existing = targetMap.get(report.user_id)
+    if (!existing) continue
+
+    existing.hoursAnimated += dur.totalMinutes
+    if (isCreator) existing.animationsCreated++
+    else existing.participationsValidated++
   }
 
   const entries = Array.from(userMap.values())

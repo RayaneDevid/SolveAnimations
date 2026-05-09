@@ -116,12 +116,15 @@ Deno.serve(async (req) => {
   const quotaProfiles = ((profiles ?? []) as ProfileRow[])
     .map((p) => {
       const payRole = resolvePayRole(p.role, p.pay_pole)
-      return { ...p, quotaMax: QUOTA_MAX[payRole] ?? null }
+      const quotaPole = reportPoleForRole(payRole)
+      return { ...p, quotaMax: QUOTA_MAX[payRole] ?? null, quotaPole }
     })
-    .filter((p): p is ProfileRow & { quotaMax: number } => typeof p.quotaMax === 'number')
+    .filter((p): p is ProfileRow & { quotaMax: number; quotaPole: 'animateur' | 'mj' } =>
+      typeof p.quotaMax === 'number' && p.quotaPole !== 'bdm'
+    )
   const quotaPoleById = new Map(quotaProfiles.map((p) => [
     p.id,
-    reportPoleForRole(resolvePayRole(p.role, p.pay_pole)),
+    p.quotaPole,
   ]))
 
   const currentQuota = await buildMissionCounts(db, currentStart, currentEnd, quotaPoleById)

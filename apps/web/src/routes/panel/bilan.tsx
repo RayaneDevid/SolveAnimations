@@ -30,6 +30,7 @@ function formatWeekRange(startDate: string, endDate: string): string {
 }
 
 const MJ_ROLES = ['mj', 'mj_senior', 'responsable_mj']
+const BDM_ROLES = ['bdm', 'responsable_bdm']
 const QUOTA_COLORS = {
   filled: '#22c55e',
   missing: '#f97316',
@@ -42,10 +43,18 @@ function isMjRole(role: string): boolean {
   return MJ_ROLES.includes(role)
 }
 
+function isBdmRole(role: string): boolean {
+  return BDM_ROLES.includes(role)
+}
+
 function isEffectivelyMj(m: WeeklyReviewMember): boolean {
   if (m.pay_pole === 'mj') return true
   if (m.pay_pole === 'animation') return false
   return ['mj', 'mj_senior'].includes(m.role)
+}
+
+function isEffectivelyBdm(m: WeeklyReviewMember): boolean {
+  return isBdmRole(m.role)
 }
 
 function isAbsenceEffectivelyMj(absence: WeeklyReviewAbsence): boolean {
@@ -54,6 +63,10 @@ function isAbsenceEffectivelyMj(absence: WeeklyReviewAbsence): boolean {
   if (user.pay_pole === 'mj') return true
   if (user.pay_pole === 'animation') return false
   return isMjRole(user.role)
+}
+
+function isAbsenceEffectivelyBdm(absence: WeeklyReviewAbsence): boolean {
+  return isBdmRole(absence.user?.role ?? '')
 }
 
 function EmptyState() {
@@ -525,21 +538,21 @@ export default function Bilan() {
     )
   }
 
-  const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? ''))
+  const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? '') && !isBdmRole(w.user?.role ?? ''))
   const mjWarnings = data.warnings.filter((w) => isMjRole(w.user?.role ?? ''))
-  const animDepartures = data.departures.filter((d) => !isMjRole(d.role))
+  const animDepartures = data.departures.filter((d) => !isMjRole(d.role) && !isBdmRole(d.role))
   const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
   const justifiedAbsencesThisWeek = data.justifiedAbsencesThisWeek ?? []
-  const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence))
+  const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence) && !isAbsenceEffectivelyBdm(absence))
   const mjJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyMj)
 
-  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m))
+  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyMj)
-  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m))
+  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyMj)
-  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m))
+  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyMj)
-  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m))
+  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyMj)
 
   return (

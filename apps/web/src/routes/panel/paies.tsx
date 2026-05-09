@@ -30,11 +30,11 @@ const BDM_BASE_PAY = 2_000
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
 const BDM_RANK_BASE = {
-  D: 400,
-  C: 500,
-  B: 600,
-  A: 700,
-  S: 800,
+  D: 200,
+  C: 300,
+  B: 400,
+  A: 500,
+  S: 600,
 } as const
 const BDM_TYPE_COEFFICIENT = {
   jetable: 1,

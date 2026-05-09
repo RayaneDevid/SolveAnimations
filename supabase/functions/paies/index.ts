@@ -28,11 +28,11 @@ const MJ_HOURLY_RATE = 800
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
 const BDM_RANK_BASE: Record<string, number> = {
-  D: 400,
-  C: 500,
-  B: 600,
-  A: 700,
-  S: 800,
+  D: 200,
+  C: 300,
+  B: 400,
+  A: 500,
+  S: 600,
 }
 const BDM_TYPE_COEFFICIENT: Record<string, number> = {
   jetable: 1,

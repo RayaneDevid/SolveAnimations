@@ -26,7 +26,6 @@ const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
 const MJ_HOURLY_RATE = 800
-const BDM_BASE_PAY = 2_000
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
 const BDM_RANK_BASE = {
@@ -36,6 +35,7 @@ const BDM_RANK_BASE = {
   A: 500,
   S: 600,
 } as const
+const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
 const BDM_TYPE_COEFFICIENT = {
   jetable: 1,
   elaboree: 1.4,
@@ -119,13 +119,16 @@ function buildMjCommentaire(entry: PaiesEntry): string {
 function buildBdmCommentaire(entry: PaiesEntry): string {
   if (!entry.quotaFilled) return 'Quota non atteint'
   const rawMissionPay = entry.bdmMissionPay ?? 0
-  const rawBeforePodiumPay = BDM_BASE_PAY + rawMissionPay
+  const rawBeforePodiumPay = rawMissionPay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const parts: string[] = [
-    `Base quota: ${BDM_BASE_PAY}`,
     `Crédits missions: ${rawMissionPay}`,
   ]
+  const rankParts = BDM_RANKS
+    .map((rank) => `Rang ${rank}: ${entry.bdmRankCounts?.[rank] ?? 0}`)
+    .filter((part) => !part.endsWith(': 0'))
+  if (rankParts.length > 0) parts.push(rankParts.join(', '))
   if (rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP) parts.push(`Base + missions plafonné à ${BDM_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
@@ -339,11 +342,14 @@ function MjPayDetails({ entry }: { entry: PaiesEntry }) {
 
 function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
   const rawMissionPay = entry.bdmMissionPay ?? 0
-  const rawBeforePodiumPay = BDM_BASE_PAY + rawMissionPay
+  const rawBeforePodiumPay = rawMissionPay
   const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const beforePodiumCapped = rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP
   const totalCapped = rawTotalPay > BDM_TOTAL_CAP
+  const rankDetails = BDM_RANKS
+    .map((rank) => ({ rank, count: entry.bdmRankCounts?.[rank] ?? 0 }))
+    .filter((item) => item.count > 0)
 
   return (
     <>
@@ -353,15 +359,18 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
         muted={!entry.quotaFilled}
       />
       <PayDetailLine
-        label="Base quota"
-        value={entry.quotaFilled ? formatMoney(BDM_BASE_PAY) : formatMoney(0)}
-        muted={!entry.quotaFilled}
-      />
-      <PayDetailLine
         label="Crédits missions"
         value={entry.quotaFilled ? formatMoney(rawMissionPay) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
+      {rankDetails.map(({ rank, count }) => (
+        <PayDetailLine
+          key={rank}
+          label={`Rang ${rank}`}
+          value={`${count} mission${count > 1 ? 's' : ''}`}
+          muted={!entry.quotaFilled}
+        />
+      ))}
       {beforePodiumCapped && (
         <>
           <PayDetailLine label="Sous-total hors podium" value={formatMoney(rawBeforePodiumPay)} muted />
@@ -997,7 +1006,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Quota 3 missions BDM · base 2 000 + rang × type
+              Quota 3 missions BDM · rang × type
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-400" />

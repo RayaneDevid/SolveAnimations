@@ -341,6 +341,7 @@ export interface PaiesEntry {
   seniorBase: number
   timePay: number
   bdmMissionPay: number
+  bdmRankCounts: Record<'D' | 'C' | 'B' | 'A' | 'S', number>
   podiumBonus: number
   hoursPodiumBonus: number
   createdPodiumBonus: number

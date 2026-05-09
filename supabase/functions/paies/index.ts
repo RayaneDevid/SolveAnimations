@@ -19,7 +19,6 @@ const ANIMATION_QUOTA_MIN = 4 * 60
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
-const BDM_BASE_PAY = 2_000
 const BDM_QUOTA_COUNT = 3
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
@@ -38,6 +37,12 @@ const BDM_TYPE_COEFFICIENT: Record<string, number> = {
   jetable: 1,
   elaboree: 1.4,
   grande_ampleur: 1.65,
+}
+const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+type BdmRank = typeof BDM_RANKS[number]
+
+function emptyBdmRankCounts(): Record<BdmRank, number> {
+  return { D: 0, C: 0, B: 0, A: 0, S: 0 }
 }
 
 const QUOTA_MAX: Record<string, number | null> = {
@@ -258,6 +263,7 @@ Deno.serve(async (req) => {
     moyenne: number
     grande: number
     bdmMissionPay: number
+    bdmRankCounts: Record<BdmRank, number>
   }>()
   const bdmMap = new Map<string, {
     animationsCount: number
@@ -268,6 +274,7 @@ Deno.serve(async (req) => {
     moyenne: number
     grande: number
     bdmMissionPay: number
+    bdmRankCounts: Record<BdmRank, number>
   }>()
 
   const getEntry = (userId: string) =>
@@ -280,6 +287,7 @@ Deno.serve(async (req) => {
       moyenne: 0,
       grande: 0,
       bdmMissionPay: 0,
+      bdmRankCounts: emptyBdmRankCounts(),
     }
   const getBdmEntry = (userId: string) =>
     bdmMap.get(userId) ?? {
@@ -291,6 +299,7 @@ Deno.serve(async (req) => {
       moyenne: 0,
       grande: 0,
       bdmMissionPay: 0,
+      bdmRankCounts: emptyBdmRankCounts(),
     }
 
   // Created animations
@@ -358,6 +367,8 @@ Deno.serve(async (req) => {
       entry.animationMin += dur.animMinutes
       entry.prepMin += dur.prepMinutes
       entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
+      const rank = BDM_RANKS.includes(anim.bdm_mission_rank as BdmRank) ? anim.bdm_mission_rank as BdmRank : 'B'
+      entry.bdmRankCounts[rank]++
       if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
       else if (anim.type === 'grande') entry.grande++
       bdmMap.set(report.user_id, entry)
@@ -400,6 +411,7 @@ Deno.serve(async (req) => {
       animationMin: 0, prepMin: 0,
       moyenne: 0, grande: 0,
       bdmMissionPay: 0,
+      bdmRankCounts: emptyBdmRankCounts(),
     }
     const formationsCount = formationCountMap.get(p.id) ?? 0
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
@@ -441,6 +453,7 @@ Deno.serve(async (req) => {
       seniorBase,
       timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
       bdmMissionPay: 0,
+      bdmRankCounts: emptyBdmRankCounts(),
       podiumBonus: 0,
       hoursPodiumBonus: 0,
       createdPodiumBonus: 0,
@@ -461,10 +474,11 @@ Deno.serve(async (req) => {
         animationMin: 0, prepMin: 0,
         moyenne: 0, grande: 0,
         bdmMissionPay: 0,
+        bdmRankCounts: emptyBdmRankCounts(),
       }
       const totalMin = s.animationMin + s.prepMin
       const quotaFilled = s.animationsCount >= BDM_QUOTA_COUNT
-      const rawBeforePodiumPay = BDM_BASE_PAY + s.bdmMissionPay
+      const rawBeforePodiumPay = s.bdmMissionPay
       const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
       return {
         id: p.id,
@@ -490,6 +504,7 @@ Deno.serve(async (req) => {
         seniorBase: 0,
         timePay: 0,
         bdmMissionPay: quotaFilled ? s.bdmMissionPay : 0,
+        bdmRankCounts: s.bdmRankCounts,
         podiumBonus: 0,
         hoursPodiumBonus: 0,
         createdPodiumBonus: 0,
@@ -554,7 +569,7 @@ Deno.serve(async (req) => {
     const createdPodiumBonus = bdmCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
     const participationPodiumBonus = bdmParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
     const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
-    const rawBeforePodiumPay = BDM_BASE_PAY + entry.bdmMissionPay
+    const rawBeforePodiumPay = entry.bdmMissionPay
     const beforePodiumPay = Math.min(rawBeforePodiumPay, BDM_BEFORE_PODIUM_CAP)
     const rawTotalPay = beforePodiumPay + podiumBonus
     return {

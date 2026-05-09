@@ -15,6 +15,7 @@ const BASE_PAY: Record<string, number> = {
 
 
 const ANIMATION_QUOTA_COUNT = 5
+const ANIMATION_QUOTA_MIN = 4 * 60
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
@@ -406,7 +407,7 @@ Deno.serve(async (req) => {
     const isAnimationPay = p.payPole === 'animation'
     const missionCount = s.animationsCount + formationsCount
     const quotaFilled = isAnimationPay
-      ? missionCount >= ANIMATION_QUOTA_COUNT
+      ? s.animationsCount >= ANIMATION_QUOTA_COUNT && s.animationMin >= ANIMATION_QUOTA_MIN
       : quotaMax === null || missionCount >= quotaMax
 
     const basePay = BASE_PAY[p.payRole] ?? 0
@@ -435,7 +436,7 @@ Deno.serve(async (req) => {
       moyenne: s.moyenne,
       grande: s.grande,
       quotaMax: isAnimationPay ? ANIMATION_QUOTA_COUNT : quotaMax,
-      quotaMin: null,
+      quotaMin: isAnimationPay ? ANIMATION_QUOTA_MIN : null,
       quotaFilled,
       seniorBase,
       timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,

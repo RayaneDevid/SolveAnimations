@@ -78,7 +78,7 @@ function csvCell(value: string | number | boolean | null | undefined): string {
 }
 
 function buildAnimCommentaire(entry: PaiesEntry): string {
-  if (!entry.quotaFilled) return 'Quota non atteint'
+  if (!entry.quotaFilled) return `Quota non atteint (${formatAnimationQuota(entry)})`
   const tiers = [
     { label: `0-4h à 1 000/h`, min: Math.min(entry.totalMin, 4 * 60), rate: 1_000 },
     { label: `4-14h à 800/h`, min: Math.min(Math.max(entry.totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
@@ -201,6 +201,14 @@ function computeAnimationTierDetails(totalMin: number, base = 0) {
   }
 }
 
+function formatAnimationQuota(entry: PaiesEntry): string {
+  const countMax = entry.quotaMax ?? 5
+  const timeMin = entry.quotaMin ?? 4 * 60
+  const countLabel = `${entry.animationsCount}/${countMax} anims`
+  const formationLabel = entry.formationsCount > 0 ? ` + ${entry.formationsCount} form.` : ''
+  return `${countLabel}${formationLabel} · ${formatMin(entry.animationMin)}/${formatMin(timeMin)} anim`
+}
+
 function PayDetailLine({
   label,
   value,
@@ -233,10 +241,11 @@ function AnimationPayDetails({ entry }: { entry: PaiesEntry }) {
     <>
       <PayDetailLine
         label="Quota"
-        value={`${entry.animationsCount + entry.formationsCount}/${entry.quotaMax ?? 5}${entry.formationsCount > 0 ? ` (${entry.animationsCount} anims · ${entry.formationsCount} form.)` : ' anims'}`}
+        value={formatAnimationQuota(entry)}
         muted={!entry.quotaFilled}
       />
-      <PayDetailLine label="Temps compté" value={formatMin(entry.totalMin)} muted={entry.totalMin === 0} />
+      <PayDetailLine label="Temps animation" value={formatMin(entry.animationMin)} muted={entry.animationMin === 0} />
+      <PayDetailLine label="Temps payé" value={formatMin(entry.totalMin)} muted={entry.totalMin === 0} />
       {entry.quotaFilled ? (
         <>
           {entry.seniorBase > 0 && (
@@ -556,7 +565,7 @@ function EntryRow({ entry, rank, onOpenCasier }: { entry: PaiesEntry; rank: numb
           </div>
           {!entry.quotaFilled && entry.quotaMax !== null && (
             <span className="text-[10px] text-red-400/60">
-              quota {entry.animationsCount + entry.formationsCount}/{entry.quotaMax}
+              {isAnimationPay ? formatAnimationQuota(entry) : `quota ${entry.animationsCount + entry.formationsCount}/${entry.quotaMax}`}
             </span>
           )}
           {isAnimationPay && entry.quotaFilled && entry.timePay > 0 && (
@@ -954,7 +963,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Quota 5 anims, heures = animation + prépa
+              Quota 5 anims + 4h d'animation, paie temps = animation + prépa
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400" />

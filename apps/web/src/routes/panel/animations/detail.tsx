@@ -549,97 +549,101 @@ function ParticipantRow({
 
   return (
     <>
-      <div className="flex items-center gap-3 py-2.5">
-        <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
-            <GenderIcon gender={p.user?.gender} />
-            {joinLabel && (
-              <span className={joinOffsetMin && joinOffsetMin > 0
-                ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
-                : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
-                {joinLabel}
-              </span>
-            )}
-            {finishedLabel && (
-              <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
-                {finishedLabel}
-              </span>
-            )}
-            {pendingTimeCorrectionRequest && (
-              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
-                Correction demandée
-              </span>
+      <div className="flex flex-col gap-2 py-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="min-w-0 max-w-full truncate text-sm font-medium text-white/90">{p.user?.username}</p>
+              <GenderIcon gender={p.user?.gender} />
+              {p.user?.role && <RoleBadge role={p.user.role} size="sm" />}
+              {joinLabel && (
+                <span className={joinOffsetMin && joinOffsetMin > 0
+                  ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
+                  : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
+                  {joinLabel}
+                </span>
+              )}
+              {finishedLabel && (
+                <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
+                  {finishedLabel}
+                </span>
+              )}
+              {pendingTimeCorrectionRequest && (
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                  Correction demandée
+                </span>
+              )}
+            </div>
+            {p.character_name && (
+              <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
             )}
           </div>
-          {p.character_name && (
-            <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 pl-11">
+          {canDecide && p.status === 'pending' && (
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => handleDecide('validated')}
+                disabled={deciding}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/20 text-emerald-400 transition-colors hover:bg-emerald-500/30"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => handleDecide('rejected')}
+                disabled={deciding}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/20 text-red-400 transition-colors hover:bg-red-500/30"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          {canRemove && p.status === 'validated' && (
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              title={isSelf ? 'Me retirer' : 'Retirer ce participant'}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+            >
+              {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
+            </button>
+          )}
+          {canRemove && p.status === 'pending' && (
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              title="Retirer cette demande"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+            >
+              <UserMinus className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {canRequestJoinCorrection && (
+            pendingTimeCorrectionRequest ? (
+              <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-300">
+                En attente
+              </span>
+            ) : (
+              <button
+                onClick={() => setCorrectionOpen(true)}
+                className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200"
+              >
+                Corriger mon temps d'inscription
+              </button>
+            )
+          )}
+          {canFinishSelf && (
+            <button
+              onClick={handleFinishSelf}
+              disabled={finishingSelf}
+              title="Marquer ma participation comme terminée"
+              className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
+            >
+              J'ai terminé !
+            </button>
           )}
         </div>
-        {p.user?.role && <RoleBadge role={p.user.role} size="sm" />}
-        {canDecide && p.status === 'pending' && (
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => handleDecide('validated')}
-              disabled={deciding}
-              className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex items-center justify-center"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => handleDecide('rejected')}
-              disabled={deciding}
-              className="h-7 w-7 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors flex items-center justify-center"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-        {canRemove && p.status === 'validated' && (
-          <button
-            onClick={handleRemove}
-            disabled={removing}
-            title={isSelf ? 'Me retirer' : 'Retirer ce participant'}
-            className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
-          >
-            {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
-          </button>
-        )}
-        {canRemove && p.status === 'pending' && (
-          <button
-            onClick={handleRemove}
-            disabled={removing}
-            title="Retirer cette demande"
-            className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
-          >
-            <UserMinus className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {canRequestJoinCorrection && (
-          pendingTimeCorrectionRequest ? (
-            <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-300">
-              En attente
-            </span>
-          ) : (
-            <button
-              onClick={() => setCorrectionOpen(true)}
-              className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200"
-            >
-              Corriger mon temps d'inscription
-            </button>
-          )
-        )}
-        {canFinishSelf && (
-          <button
-            onClick={handleFinishSelf}
-            disabled={finishingSelf}
-            title="Marquer ma participation comme terminée"
-            className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
-          >
-            J'ai terminé !
-          </button>
-        )}
       </div>
       <Dialog open={correctionOpen} onOpenChange={(value) => !value && setCorrectionOpen(false)}>
         <DialogContent className="bg-[#0F1014] border-white/[0.08] text-white max-w-md">

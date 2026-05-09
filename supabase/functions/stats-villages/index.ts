@@ -12,15 +12,20 @@ const MJ_QUOTA: Record<string, number> = {
   mj_senior: 3,
   mj: 3,
 }
+const BDM_QUOTA: Record<string, number> = {
+  bdm: 3,
+  responsable_bdm: 3,
+}
 
 function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string | null {
   if (payPole === 'animation') return role === 'senior' ? 'senior' : 'animateur'
   if (payPole === 'mj') return role === 'mj_senior' ? 'mj_senior' : 'mj'
-  if (role in ANIM_QUOTA || role in MJ_QUOTA) return role
+  if (role in ANIM_QUOTA || role in MJ_QUOTA || role in BDM_QUOTA) return role
   return null
 }
 
-function reportPoleForRole(role: string): 'animateur' | 'mj' {
+function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+  if (role in BDM_QUOTA) return 'bdm'
   return role in MJ_QUOTA ? 'mj' : 'animateur'
 }
 
@@ -123,6 +128,7 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     return {
       animation: buildQuotaSummary(0, 0),
       mj: buildQuotaSummary(0, 0),
+      bdm: buildQuotaSummary(0, 0),
     }
   }
 
@@ -181,9 +187,11 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   const missionCount = new Map<string, number>()
   for (const anim of finishedAnims ?? []) {
     if (!profileIdSet.has(anim.creator_id)) continue
+    if (quotaPoleById.get(anim.creator_id) === 'bdm') continue
     missionCount.set(anim.creator_id, (missionCount.get(anim.creator_id) ?? 0) + 1)
   }
   for (const participation of participations ?? []) {
+    if (quotaPoleById.get(participation.user_id) === 'bdm') continue
     missionCount.set(participation.user_id, (missionCount.get(participation.user_id) ?? 0) + 1)
   }
   for (const report of bdmReports ?? []) {
@@ -191,6 +199,7 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     missionCount.set(report.user_id, (missionCount.get(report.user_id) ?? 0) + 1)
   }
   for (const training of trainingRows ?? []) {
+    if (quotaPoleById.get(training.user_id) === 'bdm') continue
     missionCount.set(training.user_id, (missionCount.get(training.user_id) ?? 0) + 1)
   }
 
@@ -198,6 +207,8 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   let animFilled = 0
   let mjTotal = 0
   let mjFilled = 0
+  let bdmTotal = 0
+  let bdmFilled = 0
 
   for (const profile of quotaProfiles) {
     const role = profile.quotaRole as string
@@ -216,12 +227,19 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
       if (!isAbsent && count === 0) continue  // pas d'activité → non comptabilisé
       mjTotal++
       if (filled) mjFilled++
+    } else if (role in BDM_QUOTA) {
+      const filled = count >= BDM_QUOTA[role]
+      if (isAbsent && !filled) continue
+      if (!isAbsent && count === 0) continue
+      bdmTotal++
+      if (filled) bdmFilled++
     }
   }
 
   return {
     animation: buildQuotaSummary(animFilled, animTotal),
     mj: buildQuotaSummary(mjFilled, mjTotal),
+    bdm: buildQuotaSummary(bdmFilled, bdmTotal),
   }
 }
 

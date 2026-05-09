@@ -366,9 +366,10 @@ export default function Villages() {
         <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
           Quotas animation de la semaine
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <QuotaPieCard title="Pôle Animation" data={quotaCompletion.animation} />
           <QuotaPieCard title="Pôle MJ" data={quotaCompletion.mj} />
+          <QuotaPieCard title="Pôle BDM" data={quotaCompletion.bdm} />
         </div>
       </div>
 

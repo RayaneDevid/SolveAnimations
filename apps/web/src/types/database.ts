@@ -232,6 +232,7 @@ export interface VillageStats {
   quotaCompletion: {
     animation: QuotaCompletion
     mj: QuotaCompletion
+    bdm: QuotaCompletion
   }
   lastFourWeeks: Array<{
     weekStart: string

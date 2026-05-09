@@ -119,8 +119,8 @@ Deno.serve(async (req) => {
       const quotaPole = reportPoleForRole(payRole)
       return { ...p, quotaMax: QUOTA_MAX[payRole] ?? null, quotaPole }
     })
-    .filter((p): p is ProfileRow & { quotaMax: number; quotaPole: 'animateur' | 'mj' } =>
-      typeof p.quotaMax === 'number' && p.quotaPole !== 'bdm'
+    .filter((p): p is ProfileRow & { quotaMax: number; quotaPole: 'animateur' | 'mj' | 'bdm' } =>
+      typeof p.quotaMax === 'number'
     )
   const quotaPoleById = new Map(quotaProfiles.map((p) => [
     p.id,
@@ -240,6 +240,7 @@ async function buildMissionCounts(db: any, start: Date, end: Date, quotaPoleById
     .lt('started_at', end.toISOString())
 
   for (const animation of animations ?? []) {
+    if (quotaPoleById.get(animation.creator_id) === 'bdm') continue
     counts.set(animation.creator_id, (counts.get(animation.creator_id) ?? 0) + 1)
   }
 
@@ -253,6 +254,7 @@ async function buildMissionCounts(db: any, start: Date, end: Date, quotaPoleById
     .lt('animations.started_at' as never, end.toISOString())
 
   for (const participation of participations ?? []) {
+    if (quotaPoleById.get(participation.user_id) === 'bdm') continue
     counts.set(participation.user_id, (counts.get(participation.user_id) ?? 0) + 1)
   }
 

@@ -459,7 +459,11 @@ export default function Bilan() {
   const { data: villageStats } = useVillageStats(bounds.start)
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<'animation' | 'mj'>(() => user.pay_pole === 'mj' || isMjRole(user.role) ? 'mj' : 'animation')
+  const bdmExportRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj' | 'bdm'>(() => {
+    if (isBdmRole(user.role)) return 'bdm'
+    return user.pay_pole === 'mj' || isMjRole(user.role) ? 'mj' : 'animation'
+  })
   const [exporting, setExporting] = useState(false)
 
   const exportFileName = data
@@ -467,7 +471,7 @@ export default function Bilan() {
     : 'bilan'
 
   const handleExportImage = async () => {
-    const ref = activeTab === 'animation' ? animExportRef : mjExportRef
+    const ref = activeTab === 'animation' ? animExportRef : activeTab === 'mj' ? mjExportRef : bdmExportRef
     if (!ref.current || !data) return
 
     setExporting(true)
@@ -540,20 +544,27 @@ export default function Bilan() {
 
   const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? '') && !isBdmRole(w.user?.role ?? ''))
   const mjWarnings = data.warnings.filter((w) => isMjRole(w.user?.role ?? ''))
+  const bdmWarnings = data.warnings.filter((w) => isBdmRole(w.user?.role ?? ''))
   const animDepartures = data.departures.filter((d) => !isMjRole(d.role) && !isBdmRole(d.role))
   const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
+  const bdmDepartures = data.departures.filter((d) => isBdmRole(d.role))
   const justifiedAbsencesThisWeek = data.justifiedAbsencesThisWeek ?? []
   const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence) && !isAbsenceEffectivelyBdm(absence))
   const mjJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyMj)
+  const bdmJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyBdm)
 
   const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyMj)
+  const bdmUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyBdm)
   const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyMj)
+  const bdmUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyBdm)
   const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyMj)
+  const bdmQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyBdm)
   const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyMj)
+  const bdmQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyBdm)
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
@@ -640,10 +651,11 @@ export default function Bilan() {
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj' | 'bdm')}>
           <TabsList className="mb-4">
             <TabsTrigger value="animation">Pôle Animation</TabsTrigger>
             <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+            <TabsTrigger value="bdm">Pôle BDM</TabsTrigger>
           </TabsList>
 
           <TabsContent value="animation">
@@ -682,6 +694,26 @@ export default function Bilan() {
                 quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
                 hasTwoWeekHistory={data.hasTwoWeekHistory}
                 quotaCompletion={villageStats?.quotaCompletion.mj}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bdm">
+            <div ref={bdmExportRef} className="rounded-xl bg-[#0A0B0F] p-4">
+              <div className="mb-4 flex items-baseline justify-between border-b border-white/[0.06] pb-3">
+                <span className="text-sm font-semibold text-white/70">Pôle BDM</span>
+                <span className="text-xs text-white/30">{formatWeekRange(data.week.startDate, data.week.endDate)}</span>
+              </div>
+              <PoleCards
+                warnings={bdmWarnings}
+                justifiedAbsences={bdmJustifiedAbsences}
+                departures={bdmDepartures}
+                unjustifiedThisWeek={bdmUnjustifiedThisWeek}
+                unjustifiedTwoWeeks={bdmUnjustifiedTwoWeeks}
+                quotaMissingThisWeek={bdmQuotaMissingThisWeek}
+                quotaMissingTwoWeeks={bdmQuotaMissingTwoWeeks}
+                hasTwoWeekHistory={data.hasTwoWeekHistory}
+                quotaCompletion={villageStats?.quotaCompletion.bdm}
               />
             </div>
           </TabsContent>

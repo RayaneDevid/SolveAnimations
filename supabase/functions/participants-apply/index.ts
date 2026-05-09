@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
 
   // Time-slot conflict: block if user is already creator or pending/validated participant
   // on another active animation whose real (chrono-based) slot overlaps.
-  const { startMs: animStartMs, endMs: animEndMs } = animationSlotBounds(anim)
+  const now = new Date().toISOString()
+  const { startMs: animStartMs, endMs: animEndMs } = participantSlotBounds(anim, now, null)
   const windowFromIso = new Date(animStartMs - 24 * 3_600_000).toISOString()
   const windowToIso = new Date(animEndMs + 24 * 3_600_000).toISOString()
   const ACTIVE_STATUSES = ['pending_validation', 'open', 'preparing', 'running'] as const
@@ -133,8 +134,12 @@ Deno.serve(async (req) => {
     return cStart < animEndMs && cEnd > animStartMs
   })
 
-  if (overlap)
-    return errorResponse('CONFLICT', `Créneau déjà occupé par "${overlap.animation.title}". Termine ta participation avant de t'inscrire ailleurs.`)
+  if (overlap) {
+    const message = overlap.participationEndedAt
+      ? `Créneau déjà occupé par "${overlap.animation.title}". Ton temps de participation chevauche cette animation.`
+      : `Créneau déjà occupé par "${overlap.animation.title}". Termine ta participation avant de t'inscrire ailleurs.`
+    return errorResponse('CONFLICT', message)
+  }
 
   // Reactivate an existing row if already present (e.g. after self-withdraw or creator-kick)
   const { data: existing } = await db
@@ -146,8 +151,6 @@ Deno.serve(async (req) => {
 
   if (existing && ['pending', 'validated'].includes(existing.status))
     return errorResponse('CONFLICT', 'Tu es déjà inscrit à cette animation')
-
-  const now = new Date().toISOString()
 
   if (existing) {
     const { data: participant, error } = await db

@@ -45,10 +45,15 @@ export function participantSlotBounds(
 ): { startMs: number; endMs: number } {
   const bounds = animationSlotBounds(anim)
   const animStartMs = anim.started_at ? new Date(anim.started_at).getTime() : new Date(anim.scheduled_at).getTime()
-  const joinedMs = joinedAt ? new Date(joinedAt).getTime() : null
-  const endedMs = participationEndedAt ? new Date(participationEndedAt).getTime() : null
+  const parsedJoinedMs = joinedAt ? new Date(joinedAt).getTime() : null
+  const parsedEndedMs = participationEndedAt ? new Date(participationEndedAt).getTime() : null
+  const joinedMs = parsedJoinedMs != null && Number.isFinite(parsedJoinedMs) ? parsedJoinedMs : null
+  const endedMs = parsedEndedMs != null && Number.isFinite(parsedEndedMs) ? parsedEndedMs : null
+  const startMs = joinedMs && joinedMs > animStartMs ? joinedMs : bounds.startMs
+  const endMs = endedMs ?? bounds.endMs
+
   return {
-    startMs: joinedMs && joinedMs > animStartMs ? joinedMs : bounds.startMs,
-    endMs: endedMs && endedMs < bounds.endMs ? endedMs : bounds.endMs,
+    startMs,
+    endMs: Math.max(startMs, endMs),
   }
 }

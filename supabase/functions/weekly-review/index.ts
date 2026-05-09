@@ -15,7 +15,7 @@ const QUOTA_MAX: Record<string, number | null> = {
   animateur: 5,
   mj: 3,
   bdm: 3,
-  responsable_bdm: 3,
+  responsable_bdm: null,
 }
 
 const PANEL_FIRST_WEEK_START_DATE = '2026-04-25'

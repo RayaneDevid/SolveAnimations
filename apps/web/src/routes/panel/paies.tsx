@@ -206,7 +206,7 @@ function formatAnimationQuota(entry: PaiesEntry): string {
   const timeMin = entry.quotaMin ?? 4 * 60
   const countLabel = `${entry.animationsCount}/${countMax} anims`
   const formationLabel = entry.formationsCount > 0 ? ` + ${entry.formationsCount} form.` : ''
-  return `${countLabel}${formationLabel} · ${formatMin(entry.animationMin)}/${formatMin(timeMin)} anim`
+  return `${countLabel}${formationLabel} · ${formatMin(entry.totalMin)}/${formatMin(timeMin)} temps`
 }
 
 function PayDetailLine({
@@ -963,7 +963,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Quota 5 anims + 4h d'animation, paie temps = animation + prépa
+              Quota 5 anims + 4h animation/prépa, paie temps = animation + prépa
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400" />

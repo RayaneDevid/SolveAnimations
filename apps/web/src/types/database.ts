@@ -118,6 +118,38 @@ export interface TimeCorrectionRequest {
   requester?: Profile
 }
 
+export interface ParticipantTimeCorrectionRequest {
+  id: string
+  animation_id: string
+  participant_id: string
+  requested_by: string
+  requested_at: string
+  current_joined_at: string | null
+  requested_joined_at: string
+  reason: string | null
+  status: 'pending' | 'approved' | 'denied'
+  decided_by: string | null
+  decided_at: string | null
+  animation?: Pick<
+    Animation,
+    | 'id'
+    | 'title'
+    | 'status'
+    | 'scheduled_at'
+    | 'started_at'
+    | 'ended_at'
+    | 'planned_duration_min'
+    | 'actual_duration_min'
+    | 'server'
+    | 'village'
+    | 'type'
+  >
+  requester?: Profile
+  participant?: Pick<AnimationParticipant, 'id' | 'user_id' | 'joined_at' | 'participation_ended_at'> & {
+    user?: Profile
+  }
+}
+
 export interface AnimationParticipant {
   id: string
   animation_id: string

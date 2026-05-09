@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { invokeEdge } from '@/lib/supabase/edge'
 import { queryKeys } from '@/lib/query/keys'
-import type { Animation, AnimationParticipant, DeletionRequest, TimeCorrectionRequest } from '@/types/database'
+import type { Animation, AnimationParticipant, DeletionRequest, ParticipantTimeCorrectionRequest, TimeCorrectionRequest } from '@/types/database'
 import type { AnimationStatus } from '@/types/database'
 import type { AnimationServer, Village, AnimationType } from '@/lib/schemas/animation'
 
@@ -66,6 +66,7 @@ export function useAnimation(id: string) {
       participants: AnimationParticipant[]
       deletionRequest: DeletionRequest | null
       timeCorrectionRequest: TimeCorrectionRequest | null
+      participantTimeCorrectionRequests: ParticipantTimeCorrectionRequest[]
     }>('animations-get', { id }),
     enabled: !!id,
   })
@@ -83,6 +84,14 @@ export function useTimeCorrectionRequests(enabled = true) {
   return useQuery({
     queryKey: ['time-correction-requests'],
     queryFn: () => invokeEdge<{ requests: TimeCorrectionRequest[] }>('time-correction-requests-list'),
+    enabled,
+  })
+}
+
+export function useParticipantTimeCorrectionRequests(enabled = true) {
+  return useQuery({
+    queryKey: ['participant-time-correction-requests'],
+    queryFn: () => invokeEdge<{ requests: ParticipantTimeCorrectionRequest[] }>('participant-time-correction-requests-list'),
     enabled,
   })
 }

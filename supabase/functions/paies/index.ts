@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
     const isAnimationPay = p.payPole === 'animation'
     const missionCount = s.animationsCount + formationsCount
     const quotaFilled = isAnimationPay
-      ? s.animationsCount >= ANIMATION_QUOTA_COUNT && s.animationMin >= ANIMATION_QUOTA_MIN
+      ? s.animationsCount >= ANIMATION_QUOTA_COUNT && totalMin >= ANIMATION_QUOTA_MIN
       : quotaMax === null || missionCount >= quotaMax
 
     const basePay = BASE_PAY[p.payRole] ?? 0

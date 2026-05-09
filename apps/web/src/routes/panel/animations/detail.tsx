@@ -14,6 +14,7 @@ import {
   useApplyParticipant, useDecideParticipant, useRemoveParticipant,
   useCorrectFinishedAnimation, useAddParticipantToFinished, useRequestTimeCorrection,
   useSetRegistrationsLocked, useFinishOwnParticipation, usePauseAnimation, useResumeAnimation,
+  useRequestParticipantTimeCorrection,
 } from '@/hooks/mutations/useAnimationMutations'
 import { useRequiredAuth } from '@/hooks/useAuth'
 import { AnimationChat } from '@/components/animations/AnimationChat'
@@ -35,7 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 import { BDM_MISSION_RANKS, BDM_MISSION_TYPES, VILLAGES, SERVERS, TYPES, type BdmMissionRank, type BdmMissionType } from '@/lib/schemas/animation'
-import type { AnimationParticipant, Animation, TimeCorrectionRequest } from '@/types/database'
+import type { AnimationParticipant, Animation, ParticipantTimeCorrectionRequest, TimeCorrectionRequest } from '@/types/database'
 
 const BDM_TYPE_LABELS = {
   jetable: 'Jetable',
@@ -438,7 +439,10 @@ function ParticipantRow({
   canFinishSelf,
   isSelf,
   animationId,
+  animationStatus,
   animationStartedAt,
+  animationEndedAt,
+  pendingTimeCorrectionRequest,
 }: {
   p: AnimationParticipant
   canDecide: boolean
@@ -446,11 +450,26 @@ function ParticipantRow({
   canFinishSelf: boolean
   isSelf: boolean
   animationId: string
+  animationStatus: Animation['status']
   animationStartedAt: string | null
+  animationEndedAt: string | null
+  pendingTimeCorrectionRequest: ParticipantTimeCorrectionRequest | null
 }) {
   const { mutateAsync: decide, isPending: deciding } = useDecideParticipant()
   const { mutateAsync: remove, isPending: removing } = useRemoveParticipant()
   const { mutateAsync: finishSelf, isPending: finishingSelf } = useFinishOwnParticipation()
+  const { mutateAsync: requestTimeCorrection, isPending: requestingTimeCorrection } = useRequestParticipantTimeCorrection()
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [requestedJoinedAt, setRequestedJoinedAt] = useState<Date | undefined>(() =>
+    p.joined_at ? new Date(p.joined_at) : animationStartedAt ? new Date(animationStartedAt) : undefined,
+  )
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (!correctionOpen) return
+    setRequestedJoinedAt(p.joined_at ? new Date(p.joined_at) : animationStartedAt ? new Date(animationStartedAt) : undefined)
+    setReason('')
+  }, [animationStartedAt, correctionOpen, p.joined_at])
 
   const joinOffsetMin = (() => {
     if (!animationStartedAt || !p.joined_at) return null
@@ -490,87 +509,175 @@ function ParticipantRow({
     }
   }
 
+  const handleRequestTimeCorrection = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!requestedJoinedAt || Number.isNaN(requestedJoinedAt.getTime())) {
+      toast.error("Heure d'inscription invalide")
+      return
+    }
+    if (animationStartedAt && requestedJoinedAt.getTime() < new Date(animationStartedAt).getTime()) {
+      toast.error("L'heure doit être après le début de l'animation")
+      return
+    }
+    const maxTime = p.participation_ended_at ?? animationEndedAt
+    if (maxTime && requestedJoinedAt.getTime() > new Date(maxTime).getTime()) {
+      toast.error("L'heure doit être avant la fin de ta présence")
+      return
+    }
+    try {
+      await requestTimeCorrection({
+        participantId: p.id,
+        animationId,
+        requestedJoinedAt: requestedJoinedAt.toISOString(),
+        reason: reason.trim() || undefined,
+      })
+      toast.success('Demande de correction envoyée aux responsables.')
+      setCorrectionOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
   const joinLabel = joinOffsetMin == null
     ? null
     : joinOffsetMin === 0
       ? 'Au démarrage'
       : `Rejoint à T+${joinOffsetMin >= 60 ? `${Math.floor(joinOffsetMin / 60)}h${String(joinOffsetMin % 60).padStart(2, '0')}` : `${joinOffsetMin}min`}`
   const finishedLabel = p.participation_ended_at ? `Terminé à ${formatTime(p.participation_ended_at)}` : null
+  const canRequestJoinCorrection =
+    isSelf && p.status === 'validated' && animationStatus === 'finished' && animationStartedAt != null && animationEndedAt != null
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
-          <GenderIcon gender={p.user?.gender} />
-          {joinLabel && (
-            <span className={joinOffsetMin && joinOffsetMin > 0
-              ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
-              : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
-              {joinLabel}
-            </span>
-          )}
-          {finishedLabel && (
-            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
-              {finishedLabel}
-            </span>
+    <>
+      <div className="flex items-center gap-3 py-2.5">
+        <UserAvatar avatarUrl={p.user?.avatar_url} username={p.user?.username ?? '?'} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-white/90 truncate">{p.user?.username}</p>
+            <GenderIcon gender={p.user?.gender} />
+            {joinLabel && (
+              <span className={joinOffsetMin && joinOffsetMin > 0
+                ? 'rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300'
+                : 'rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300'}>
+                {joinLabel}
+              </span>
+            )}
+            {finishedLabel && (
+              <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300">
+                {finishedLabel}
+              </span>
+            )}
+            {pendingTimeCorrectionRequest && (
+              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                Correction demandée
+              </span>
+            )}
+          </div>
+          {p.character_name && (
+            <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
           )}
         </div>
-        {p.character_name && (
-          <p className="text-xs text-white/40 truncate">Perso: {p.character_name}</p>
+        {p.user?.role && <RoleBadge role={p.user.role} size="sm" />}
+        {canDecide && p.status === 'pending' && (
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => handleDecide('validated')}
+              disabled={deciding}
+              className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex items-center justify-center"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => handleDecide('rejected')}
+              disabled={deciding}
+              className="h-7 w-7 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors flex items-center justify-center"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {canRemove && p.status === 'validated' && (
+          <button
+            onClick={handleRemove}
+            disabled={removing}
+            title={isSelf ? 'Me retirer' : 'Retirer ce participant'}
+            className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
+          >
+            {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
+          </button>
+        )}
+        {canRemove && p.status === 'pending' && (
+          <button
+            onClick={handleRemove}
+            disabled={removing}
+            title="Retirer cette demande"
+            className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
+          >
+            <UserMinus className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {canRequestJoinCorrection && (
+          pendingTimeCorrectionRequest ? (
+            <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-300">
+              En attente
+            </span>
+          ) : (
+            <button
+              onClick={() => setCorrectionOpen(true)}
+              className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200"
+            >
+              Corriger mon temps d'inscription
+            </button>
+          )
+        )}
+        {canFinishSelf && (
+          <button
+            onClick={handleFinishSelf}
+            disabled={finishingSelf}
+            title="Marquer ma participation comme terminée"
+            className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
+          >
+            J'ai terminé !
+          </button>
         )}
       </div>
-      {p.user?.role && <RoleBadge role={p.user.role} size="sm" />}
-      {canDecide && p.status === 'pending' && (
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => handleDecide('validated')}
-            disabled={deciding}
-            className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex items-center justify-center"
-          >
-            <Check className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => handleDecide('rejected')}
-            disabled={deciding}
-            className="h-7 w-7 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors flex items-center justify-center"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-      {canRemove && p.status === 'validated' && (
-        <button
-          onClick={handleRemove}
-          disabled={removing}
-          title={isSelf ? 'Me retirer' : 'Retirer ce participant'}
-          className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
-        >
-          {isSelf ? <LogOut className="h-3.5 w-3.5" /> : <UserMinus className="h-3.5 w-3.5" />}
-        </button>
-      )}
-      {canRemove && p.status === 'pending' && (
-        <button
-          onClick={handleRemove}
-          disabled={removing}
-          title="Retirer cette demande"
-          className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
-        >
-          <UserMinus className="h-3.5 w-3.5" />
-        </button>
-      )}
-      {canFinishSelf && (
-        <button
-          onClick={handleFinishSelf}
-          disabled={finishingSelf}
-          title="Marquer ma participation comme terminée"
-          className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200 disabled:opacity-50"
-        >
-          J'ai terminé !
-        </button>
-      )}
-    </div>
+      <Dialog open={correctionOpen} onOpenChange={(value) => !value && setCorrectionOpen(false)}>
+        <DialogContent className="bg-[#0F1014] border-white/[0.08] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Corriger mon temps d'inscription</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleRequestTimeCorrection} className="space-y-4 mt-2">
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-xs text-white/50">
+              Temps actuel : {p.joined_at ? formatDateTime(p.joined_at) : 'non renseigné'}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Heure réelle d'inscription</Label>
+              <RpDateTimePicker value={requestedJoinedAt} onChange={setRequestedJoinedAt} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motif</Label>
+              <Textarea
+                rows={3}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Ex: j'étais présent dès le début mais j'ai oublié de m'inscrire."
+              />
+              <p className="text-xs text-white/30 text-right">{reason.length}/500</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setCorrectionOpen(false)} disabled={requestingTimeCorrection}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={requestingTimeCorrection} className="gap-2">
+                <Send className="h-3.5 w-3.5" />
+                {requestingTimeCorrection ? 'Envoi...' : 'Envoyer'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -700,7 +807,7 @@ export default function AnimationDetail() {
 
   if (!data) return null
 
-  const { animation, participants, deletionRequest, timeCorrectionRequest } = data
+  const { animation, participants, deletionRequest, timeCorrectionRequest, participantTimeCorrectionRequests } = data
   const isCreator = animation.creator_id === user.id
   const isResponsable = hasPermissionRole(permissionRoles, 'responsable')
   const isBdmResponsable = hasOwnedRole(permissionRoles, ['responsable_bdm'])
@@ -727,6 +834,9 @@ export default function AnimationDetail() {
 
   const validated = participants.filter((p) => p.status === 'validated')
   const pending = participants.filter((p) => p.status === 'pending')
+  const participantTimeCorrectionByParticipantId = new Map(
+    participantTimeCorrectionRequests.map((request) => [request.participant_id, request]),
+  )
   const hasParticipantLimit = animation.required_participants > 0
   const participantProgress = hasParticipantLimit
     ? Math.min(100, (validated.length / animation.required_participants) * 100)
@@ -975,7 +1085,10 @@ export default function AnimationDetail() {
                       canFinishSelf={canFinishSelf}
                       isSelf={isSelf}
                       animationId={animation.id}
+                      animationStatus={animation.status}
                       animationStartedAt={animation.started_at}
+                      animationEndedAt={animation.ended_at}
+                      pendingTimeCorrectionRequest={participantTimeCorrectionByParticipantId.get(p.id) ?? null}
                     />
                   )
                 })}
@@ -1000,7 +1113,10 @@ export default function AnimationDetail() {
                     canFinishSelf={false}
                     isSelf={p.user_id === user.id}
                     animationId={animation.id}
+                    animationStatus={animation.status}
                     animationStartedAt={animation.started_at}
+                    animationEndedAt={animation.ended_at}
+                    pendingTimeCorrectionRequest={participantTimeCorrectionByParticipantId.get(p.id) ?? null}
                   />
                 ))}
               </div>

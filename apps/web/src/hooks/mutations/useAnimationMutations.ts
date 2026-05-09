@@ -269,6 +269,55 @@ export function useDenyTimeCorrection() {
   })
 }
 
+export function useRequestParticipantTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      participantId: string
+      animationId: string
+      requestedJoinedAt: string
+      reason?: string
+    }) =>
+      invokeEdge<{ request: { id: string } }>('participants-request-time-correction', {
+        participant_id: body.participantId,
+        requested_joined_at: body.requestedJoinedAt,
+        reason: body.reason,
+      }),
+    onSuccess: (_, { animationId }) => {
+      invalidateAnimationCaches(qc, animationId)
+      qc.invalidateQueries({ queryKey: ['participant-time-correction-requests'] })
+    },
+  })
+}
+
+export function useApproveParticipantTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ participant: unknown }>('participants-approve-time-correction', { request_id: requestId }),
+    onSuccess: () => {
+      invalidateAnimationCaches(qc)
+      invalidateStatsCaches(qc)
+      invalidateReportCaches(qc)
+      invalidateMemberCaches(qc)
+      qc.invalidateQueries({ queryKey: ['participant-time-correction-requests'] })
+      qc.invalidateQueries({ queryKey: ['participation-conflicts'] })
+    },
+  })
+}
+
+export function useDenyParticipantTimeCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      invokeEdge<{ success: boolean }>('participants-deny-time-correction', { request_id: requestId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['participant-time-correction-requests'] })
+      invalidateAnimationCaches(qc)
+    },
+  })
+}
+
 export function usePostponeAnimation() {
   const qc = useQueryClient()
   return useMutation({

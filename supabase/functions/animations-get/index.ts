@@ -55,10 +55,20 @@ Deno.serve(async (req) => {
     .eq('status', 'pending')
     .maybeSingle()
 
+  const { data: participantTimeCorrectionRequests } = await db
+    .from('participant_time_correction_requests')
+    .select(`
+      id, animation_id, participant_id, requested_by, requested_at,
+      current_joined_at, requested_joined_at, reason, status
+    `)
+    .eq('animation_id', id)
+    .eq('status', 'pending')
+
   return jsonResponse({
     animation,
     participants: participants ?? [],
     deletionRequest: deletionRequest ?? null,
     timeCorrectionRequest: timeCorrectionRequest ?? null,
+    participantTimeCorrectionRequests: participantTimeCorrectionRequests ?? [],
   })
 })

@@ -656,7 +656,13 @@ function ParticipantRow({
             </div>
             <div className="space-y-1.5">
               <Label>Heure réelle d'inscription</Label>
-              <RpDateTimePicker value={requestedJoinedAt} onChange={setRequestedJoinedAt} />
+              <RpDateTimePicker
+                value={requestedJoinedAt}
+                onChange={setRequestedJoinedAt}
+                minuteStep={1}
+                minDate={animationStartedAt ? new Date(animationStartedAt) : undefined}
+                maxDate={p.participation_ended_at ? new Date(p.participation_ended_at) : animationEndedAt ? new Date(animationEndedAt) : undefined}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Motif</Label>

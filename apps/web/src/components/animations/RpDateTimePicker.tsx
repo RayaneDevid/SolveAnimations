@@ -8,6 +8,9 @@ interface RpDateTimePickerProps {
   value?: Date
   onChange: (date: Date | undefined) => void
   error?: string
+  minuteStep?: number
+  minDate?: Date
+  maxDate?: Date
 }
 
 // Fri (5), Sat (6), Sun (0) → session ends at 04:00 the next morning
@@ -19,15 +22,15 @@ function maxHourForDate(date: Date): number {
   return EXTENDED_NIGHTS.has(date.getDay()) ? 4 : 3
 }
 
-function generateTimeSlots(maxH: number): string[] {
+function generateTimeSlots(maxH: number, minuteStep: number): string[] {
   const slots: string[] = []
   for (let h = 18; h <= 23; h++) {
-    for (let m = 0; m < 60; m += 10) {
+    for (let m = 0; m < 60; m += minuteStep) {
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
     }
   }
   for (let h = 0; h <= maxH; h++) {
-    for (let m = 0; m < 60; m += 10) {
+    for (let m = 0; m < 60; m += minuteStep) {
       if (h === maxH && m > 0) break
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
     }
@@ -39,10 +42,10 @@ function toTimeString(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-function roundUpToTenMinutes(date: Date): Date {
+function roundUpToStep(date: Date, minuteStep: number): Date {
   const result = new Date(date)
   result.setSeconds(0, 0)
-  const nextMinute = Math.ceil(result.getMinutes() / 10) * 10
+  const nextMinute = Math.ceil(result.getMinutes() / minuteStep) * minuteStep
   if (nextMinute >= 60) {
     result.setHours(result.getHours() + 1, 0, 0, 0)
   } else {
@@ -57,11 +60,11 @@ function sessionDateFromDate(date: Date): Date {
   return sessionDate
 }
 
-function defaultSelection(): { sessionDate: Date; time: string } {
-  const candidate = roundUpToTenMinutes(toZonedTime(new Date(Date.now() + 10 * 60_000), TZ))
+function defaultSelection(minuteStep: number): { sessionDate: Date; time: string } {
+  const candidate = roundUpToStep(toZonedTime(new Date(Date.now() + 10 * 60_000), TZ), minuteStep)
   const candidateTime = toTimeString(candidate)
   const sessionDate = sessionDateFromDate(candidate)
-  const slots = generateTimeSlots(maxHourForDate(sessionDate))
+  const slots = generateTimeSlots(maxHourForDate(sessionDate), minuteStep)
 
   if (slots.includes(candidateTime)) {
     return { sessionDate, time: candidateTime }
@@ -81,15 +84,20 @@ function buildDate(sessionDate: Date, time: string): Date {
 }
 
 // Given a full scheduledAt, recover the session date + time string
-function decompose(value: Date): { sessionDate: Date; time: string } {
+function decompose(value: Date, minuteStep: number): { sessionDate: Date; time: string } {
   const parisValue = toZonedTime(value, TZ)
   const h = parisValue.getHours()
   const m = parisValue.getMinutes()
   const sessionDate = new Date(h < 18 ? subDays(parisValue, 1) : parisValue)
   sessionDate.setHours(0, 0, 0, 0)
-  const roundedM = Math.round(m / 10) * 10
+  const roundedM = Math.round(m / minuteStep) * minuteStep
   const time = `${String(h).padStart(2, '0')}:${String(Math.min(roundedM, 59)).padStart(2, '0')}`
   return { sessionDate, time }
+}
+
+function isWithinBounds(date: Date, minDate?: Date, maxDate?: Date): boolean {
+  const time = date.getTime()
+  return (!minDate || time >= minDate.getTime()) && (!maxDate || time <= maxDate.getTime())
 }
 
 // yyyy-MM-dd for the native date input
@@ -97,8 +105,9 @@ function toDateInputValue(d: Date): string {
   return format(d, 'yyyy-MM-dd')
 }
 
-export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerProps) {
-  const initial = value ? decompose(value) : defaultSelection()
+export function RpDateTimePicker({ value, onChange, error, minuteStep = 10, minDate, maxDate }: RpDateTimePickerProps) {
+  const safeMinuteStep = Math.max(1, Math.min(60, Math.floor(minuteStep)))
+  const initial = value ? decompose(value, safeMinuteStep) : defaultSelection(safeMinuteStep)
 
   const [dateStr, setDateStr] = useState<string>(
     toDateInputValue(initial.sessionDate),
@@ -107,10 +116,13 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
 
   const sessionDate = dateStr ? new Date(dateStr + 'T12:00:00') : undefined
   const maxH = sessionDate ? maxHourForDate(sessionDate) : 3
-  const slots = generateTimeSlots(maxH)
+  const slots = generateTimeSlots(maxH, safeMinuteStep)
+  const availableSlots = sessionDate
+    ? slots.filter((slot) => isWithinBounds(buildDate(sessionDate, slot), minDate, maxDate))
+    : slots
 
   // Clamp time if the extended-night slot is no longer available (e.g. switched to a regular day)
-  const effectiveTime = slots.includes(time) ? time : `0${maxH}:00`
+  const effectiveTime = availableSlots.includes(time) ? time : availableSlots[0] ?? slots[0] ?? `0${maxH}:00`
 
   const emit = useCallback(
     (d: Date | undefined, t: string) => {
@@ -123,7 +135,7 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
   // Emit whenever date or time changes
   useEffect(() => {
     emit(sessionDate, effectiveTime)
-    if (!slots.includes(time)) setTime(`0${maxH}:00`)
+    if (!availableSlots.includes(time)) setTime(effectiveTime)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr, effectiveTime])
 
@@ -162,12 +174,12 @@ export function RpDateTimePicker({ value, onChange, error }: RpDateTimePickerPro
             className="w-full px-3 py-2 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white/90 focus:outline-none focus:border-cyan-500/50 [color-scheme:dark] cursor-pointer"
           >
             <optgroup label="Soirée" className="bg-[#0A0B0F]">
-              {slots.filter((s) => !isAfterMidnight(s)).map((s) => (
+              {availableSlots.filter((s) => !isAfterMidnight(s)).map((s) => (
                 <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
               ))}
             </optgroup>
             <optgroup label="Nuit" className="bg-[#0A0B0F]">
-              {slots.filter((s) => isAfterMidnight(s)).map((s) => (
+              {availableSlots.filter((s) => isAfterMidnight(s)).map((s) => (
                 <option key={s} value={s} className="bg-[#1a1b1f]">{s}</option>
               ))}
             </optgroup>

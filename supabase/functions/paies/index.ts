@@ -27,11 +27,11 @@ const MJ_HOURLY_RATE = 800
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
 const BDM_RANK_BASE: Record<string, number> = {
-  D: 200,
-  C: 300,
-  B: 400,
-  A: 500,
-  S: 600,
+  D: 400,
+  C: 500,
+  B: 600,
+  A: 700,
+  S: 1_000,
 }
 const BDM_TYPE_COEFFICIENT: Record<string, number> = {
   jetable: 1,
@@ -39,10 +39,20 @@ const BDM_TYPE_COEFFICIENT: Record<string, number> = {
   grande_ampleur: 1.65,
 }
 const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
 type BdmRank = typeof BDM_RANKS[number]
+type BdmType = typeof BDM_TYPES[number]
 
 function emptyBdmRankCounts(): Record<BdmRank, number> {
   return { D: 0, C: 0, B: 0, A: 0, S: 0 }
+}
+
+function emptyBdmRankTypeCounts(): Record<BdmType, Record<BdmRank, number>> {
+  return {
+    jetable: emptyBdmRankCounts(),
+    elaboree: emptyBdmRankCounts(),
+    grande_ampleur: emptyBdmRankCounts(),
+  }
 }
 
 const QUOTA_MAX: Record<string, number | null> = {
@@ -264,6 +274,7 @@ Deno.serve(async (req) => {
     grande: number
     bdmMissionPay: number
     bdmRankCounts: Record<BdmRank, number>
+    bdmRankTypeCounts: Record<BdmType, Record<BdmRank, number>>
   }>()
   const bdmMap = new Map<string, {
     animationsCount: number
@@ -275,6 +286,7 @@ Deno.serve(async (req) => {
     grande: number
     bdmMissionPay: number
     bdmRankCounts: Record<BdmRank, number>
+    bdmRankTypeCounts: Record<BdmType, Record<BdmRank, number>>
   }>()
 
   const getEntry = (userId: string) =>
@@ -288,6 +300,7 @@ Deno.serve(async (req) => {
       grande: 0,
       bdmMissionPay: 0,
       bdmRankCounts: emptyBdmRankCounts(),
+      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
     }
   const getBdmEntry = (userId: string) =>
     bdmMap.get(userId) ?? {
@@ -300,6 +313,7 @@ Deno.serve(async (req) => {
       grande: 0,
       bdmMissionPay: 0,
       bdmRankCounts: emptyBdmRankCounts(),
+      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
     }
 
   // Created animations
@@ -368,7 +382,9 @@ Deno.serve(async (req) => {
       entry.prepMin += dur.prepMinutes
       entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
       const rank = BDM_RANKS.includes(anim.bdm_mission_rank as BdmRank) ? anim.bdm_mission_rank as BdmRank : 'B'
+      const type = BDM_TYPES.includes(anim.bdm_mission_type as BdmType) ? anim.bdm_mission_type as BdmType : 'jetable'
       entry.bdmRankCounts[rank]++
+      entry.bdmRankTypeCounts[type][rank]++
       if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
       else if (anim.type === 'grande') entry.grande++
       bdmMap.set(report.user_id, entry)
@@ -412,6 +428,7 @@ Deno.serve(async (req) => {
       moyenne: 0, grande: 0,
       bdmMissionPay: 0,
       bdmRankCounts: emptyBdmRankCounts(),
+      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
     }
     const formationsCount = formationCountMap.get(p.id) ?? 0
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
@@ -475,6 +492,7 @@ Deno.serve(async (req) => {
         moyenne: 0, grande: 0,
         bdmMissionPay: 0,
         bdmRankCounts: emptyBdmRankCounts(),
+        bdmRankTypeCounts: emptyBdmRankTypeCounts(),
       }
       const totalMin = s.animationMin + s.prepMin
       const quotaFilled = s.animationsCount >= BDM_QUOTA_COUNT
@@ -505,6 +523,7 @@ Deno.serve(async (req) => {
         timePay: 0,
         bdmMissionPay: quotaFilled ? s.bdmMissionPay : 0,
         bdmRankCounts: s.bdmRankCounts,
+        bdmRankTypeCounts: s.bdmRankTypeCounts,
         podiumBonus: 0,
         hoursPodiumBonus: 0,
         createdPodiumBonus: 0,

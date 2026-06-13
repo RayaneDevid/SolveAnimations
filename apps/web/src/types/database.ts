@@ -343,6 +343,7 @@ export interface PaiesEntry {
   timePay: number
   bdmMissionPay: number
   bdmRankCounts: Record<'D' | 'C' | 'B' | 'A' | 'S', number>
+  bdmRankTypeCounts?: Record<'jetable' | 'elaboree' | 'grande_ampleur', Record<'D' | 'C' | 'B' | 'A' | 'S', number>>
   podiumBonus: number
   hoursPodiumBonus: number
   createdPodiumBonus: number

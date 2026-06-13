@@ -21,7 +21,8 @@ import type { ParticipationConflictEntry, PaiesEntry } from '@/types/database'
 
 const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
-const BDM_PAY_ROLE_ORDER  = ['responsable_bdm', 'bdm']
+const BDM_PAY_ROLE_ORDER  = ['bdm']
+const HIDDEN_PAY_ROLES = new Set(['responsable', 'responsable_mj', 'responsable_bdm'])
 const ANIMATION_TIME_CAP = 17_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
@@ -29,20 +30,30 @@ const MJ_HOURLY_RATE = 800
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
 const BDM_RANK_BASE = {
-  D: 200,
-  C: 300,
-  B: 400,
-  A: 500,
-  S: 600,
+  D: 400,
+  C: 500,
+  B: 600,
+  A: 700,
+  S: 1_000,
 } as const
 const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
 const BDM_TYPE_COEFFICIENT = {
   jetable: 1,
   elaboree: 1.4,
   grande_ampleur: 1.65,
 } as const
+const BDM_TYPE_LABELS = {
+  jetable: 'Jetable',
+  elaboree: 'Élaborée',
+  grande_ampleur: 'Grande ampleur',
+} as const
 
 type PayTab = 'animation' | 'mj' | 'bdm'
+
+function isVisiblePayEntry(entry: PaiesEntry): boolean {
+  return !HIDDEN_PAY_ROLES.has(entry.role) && !HIDDEN_PAY_ROLES.has(entry.payRole)
+}
 
 function conflictSlotKey(userId: string, anim: ParticipationConflictEntry['animations'][number]): string {
   return `${userId}:${anim.animationId}:${anim.role}:${anim.participantId ?? 'creator'}`
@@ -125,10 +136,15 @@ function buildBdmCommentaire(entry: PaiesEntry): string {
   const parts: string[] = [
     `Crédits missions: ${rawMissionPay}`,
   ]
-  const rankParts = BDM_RANKS
-    .map((rank) => `Rang ${rank}: ${entry.bdmRankCounts?.[rank] ?? 0}`)
-    .filter((part) => !part.endsWith(': 0'))
-  if (rankParts.length > 0) parts.push(rankParts.join(', '))
+  const typeParts = BDM_TYPES.flatMap((type) =>
+    BDM_RANKS
+      .map((rank) => {
+        const count = entry.bdmRankTypeCounts?.[type]?.[rank] ?? 0
+        return count > 0 ? `${BDM_TYPE_LABELS[type]} - Rang ${rank}: ${count}` : null
+      })
+      .filter(Boolean),
+  )
+  if (typeParts.length > 0) parts.push(typeParts.join(', '))
   if (rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP) parts.push(`Base + missions plafonné à ${BDM_BEFORE_PODIUM_CAP} (brut: ${rawBeforePodiumPay})`)
   if (entry.hoursPodiumBonus > 0) parts.push(`Prime podium heures: +${entry.hoursPodiumBonus}`)
   if (entry.createdPodiumBonus > 0) parts.push(`Prime podium creations: +${entry.createdPodiumBonus}`)
@@ -347,9 +363,14 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
   const rawTotalPay = beforePodiumPay + entry.podiumBonus
   const beforePodiumCapped = rawBeforePodiumPay > BDM_BEFORE_PODIUM_CAP
   const totalCapped = rawTotalPay > BDM_TOTAL_CAP
-  const rankDetails = BDM_RANKS
-    .map((rank) => ({ rank, count: entry.bdmRankCounts?.[rank] ?? 0 }))
-    .filter((item) => item.count > 0)
+  const typeDetails = BDM_TYPES
+    .map((type) => ({
+      type,
+      ranks: BDM_RANKS
+        .map((rank) => ({ rank, count: entry.bdmRankTypeCounts?.[type]?.[rank] ?? 0 }))
+        .filter((item) => item.count > 0),
+    }))
+    .filter((item) => item.ranks.length > 0)
 
   return (
     <>
@@ -363,13 +384,18 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(rawMissionPay) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
-      {rankDetails.map(({ rank, count }) => (
-        <PayDetailLine
-          key={rank}
-          label={`Rang ${rank}`}
-          value={`${count} mission${count > 1 ? 's' : ''}`}
-          muted={!entry.quotaFilled}
-        />
+      {typeDetails.map(({ type, ranks }) => (
+        <div key={type} className="space-y-1 border-t border-white/[0.06] pt-1.5 first:border-t-0 first:pt-0">
+          <p className="text-[11px] font-semibold text-white/75">{BDM_TYPE_LABELS[type]}</p>
+          {ranks.map(({ rank, count }) => (
+            <PayDetailLine
+              key={`${type}-${rank}`}
+              label={`Rang ${rank}`}
+              value={`${count} mission${count > 1 ? 's' : ''}`}
+              muted={!entry.quotaFilled}
+            />
+          ))}
+        </div>
       ))}
       {beforePodiumCapped && (
         <>
@@ -795,20 +821,20 @@ export default function Paies() {
   })
 
   const poleAnim = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'animation'), ANIM_PAY_ROLE_ORDER)
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'animation' && isVisiblePayEntry(e)), ANIM_PAY_ROLE_ORDER)
   , [data])
 
   const poleMj = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj'), MJ_PAY_ROLE_ORDER)
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'mj' && isVisiblePayEntry(e)), MJ_PAY_ROLE_ORDER)
   , [data])
 
   const poleBdm = useMemo(() =>
-    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'bdm'), BDM_PAY_ROLE_ORDER)
+    sortEntries((data?.entries ?? []).filter((e) => e.payPole === 'bdm' && isVisiblePayEntry(e)), BDM_PAY_ROLE_ORDER)
   , [data])
 
   const userPoles = useMemo(() => {
     const map = new Map<string, Set<PayTab>>()
-    for (const entry of data?.entries ?? []) {
+    for (const entry of (data?.entries ?? []).filter(isVisiblePayEntry)) {
       const tab: PayTab = entry.payPole === 'mj' ? 'mj' : entry.payPole === 'bdm' ? 'bdm' : 'animation'
       const set = map.get(entry.id) ?? new Set<PayTab>()
       set.add(tab)

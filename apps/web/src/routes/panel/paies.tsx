@@ -29,14 +29,13 @@ const MJ_TOTAL_CAP = 20_000
 const MJ_HOURLY_RATE = 800
 const BDM_BEFORE_PODIUM_CAP = 17_000
 const BDM_TOTAL_CAP = 20_000
-const BDM_RANK_BASE = {
-  D: 400,
-  C: 500,
-  B: 600,
-  A: 700,
-  S: 1_000,
+const BDM_VILLAGES_BASE = {
+  1: 500,
+  2: 700,
+  3: 800,
+  4: 1_000,
 } as const
-const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const
 const BDM_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
 const BDM_TYPE_COEFFICIENT = {
   jetable: 1,
@@ -137,10 +136,10 @@ function buildBdmCommentaire(entry: PaiesEntry): string {
     `Crédits missions: ${rawMissionPay}`,
   ]
   const typeParts = BDM_TYPES.flatMap((type) =>
-    BDM_RANKS
-      .map((rank) => {
-        const count = entry.bdmRankTypeCounts?.[type]?.[rank] ?? 0
-        return count > 0 ? `${BDM_TYPE_LABELS[type]} - Rang ${rank}: ${count}` : null
+    BDM_VILLAGES_COUNTS
+      .map((villagesCount) => {
+        const count = entry.bdmVillagesTypeCounts?.[type]?.[villagesCount] ?? 0
+        return count > 0 ? `${BDM_TYPE_LABELS[type]} - ${villagesCount} village${villagesCount > 1 ? 's' : ''}: ${count}` : null
       })
       .filter(Boolean),
   )
@@ -366,11 +365,11 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
   const typeDetails = BDM_TYPES
     .map((type) => ({
       type,
-      ranks: BDM_RANKS
-        .map((rank) => ({ rank, count: entry.bdmRankTypeCounts?.[type]?.[rank] ?? 0 }))
+      villages: BDM_VILLAGES_COUNTS
+        .map((villagesCount) => ({ villagesCount, count: entry.bdmVillagesTypeCounts?.[type]?.[villagesCount] ?? 0 }))
         .filter((item) => item.count > 0),
     }))
-    .filter((item) => item.ranks.length > 0)
+    .filter((item) => item.villages.length > 0)
 
   return (
     <>
@@ -384,13 +383,13 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
         value={entry.quotaFilled ? formatMoney(rawMissionPay) : formatMoney(0)}
         muted={!entry.quotaFilled}
       />
-      {typeDetails.map(({ type, ranks }) => (
+      {typeDetails.map(({ type, villages }) => (
         <div key={type} className="space-y-1 border-t border-white/[0.06] pt-1.5 first:border-t-0 first:pt-0">
           <p className="text-[11px] font-semibold text-white/75">{BDM_TYPE_LABELS[type]}</p>
-          {ranks.map(({ rank, count }) => (
+          {villages.map(({ villagesCount, count }) => (
             <PayDetailLine
-              key={`${type}-${rank}`}
-              label={`Rang ${rank}`}
+              key={`${type}-${villagesCount}`}
+              label={`${villagesCount} village${villagesCount > 1 ? 's' : ''}`}
               value={`${count} mission${count > 1 ? 's' : ''}`}
               muted={!entry.quotaFilled}
             />
@@ -1032,11 +1031,11 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Quota 3 missions BDM · rang × type
+              Quota 3 missions BDM · villages impliqués × type
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-400" />
-              Rang D/C/B/A/S : {Object.values(BDM_RANK_BASE).join('/')} · Jetable ×{BDM_TYPE_COEFFICIENT.jetable} · Élaborée ×{BDM_TYPE_COEFFICIENT.elaboree} · Grande ampleur ×{BDM_TYPE_COEFFICIENT.grande_ampleur}
+              1/2/3/4 villages : {Object.values(BDM_VILLAGES_BASE).join('/')} · Jetable ×{BDM_TYPE_COEFFICIENT.jetable} · Élaborée ×{BDM_TYPE_COEFFICIENT.elaboree} · Grande ampleur ×{BDM_TYPE_COEFFICIENT.grande_ampleur}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />

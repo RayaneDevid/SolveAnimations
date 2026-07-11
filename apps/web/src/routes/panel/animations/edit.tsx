@@ -5,10 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertTriangle, ArrowLeft, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  BDM_MISSION_RANKS,
+  BDM_VILLAGES_COUNTS,
   BDM_MISSION_TYPES,
   createAnimationSchema,
-  type BdmMissionRank,
+  type BdmVillagesCount,
   type BdmMissionType,
   type CreateAnimationInput,
   SERVERS,
@@ -106,7 +106,7 @@ export default function EditAnimation() {
       spontaneous: false,
       bdmMission: a.bdm_mission,
       bdmSpontaneous: a.bdm_spontaneous,
-      bdmMissionRank: a.bdm_mission_rank,
+      bdmVillagesCount: a.bdm_villages_count ?? 2,
       bdmMissionType: a.bdm_mission_type,
       scheduledAt: a.bdm_mission && a.bdm_spontaneous ? undefined : new Date(a.scheduled_at),
       plannedDurationMin: a.planned_duration_min,
@@ -129,7 +129,7 @@ export default function EditAnimation() {
       setValue('requiredParticipants', 0, { shouldValidate: true })
       setValue('type', 'moyenne', { shouldValidate: true })
       setValue('pole', 'animation', { shouldValidate: true })
-      if (!watch('bdmMissionRank')) setValue('bdmMissionRank', 'B', { shouldValidate: true })
+      if (!watch('bdmVillagesCount')) setValue('bdmVillagesCount', 2, { shouldValidate: true })
       if (!watch('bdmMissionType')) setValue('bdmMissionType', 'jetable', { shouldValidate: true })
       return
     }
@@ -226,7 +226,7 @@ export default function EditAnimation() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {([
                   ['classique', 'Animation', 'Utilise la logique classique avec type, durée et inscriptions.'],
-                  ['mission_bdm', 'Mission BDM', 'Utilise le rang, le type BDM et la logique BDM.'],
+                  ['mission_bdm', 'Mission BDM', 'Utilise les villages impliqués, le type BDM et la logique BDM.'],
                 ] as const).map(([kind, label, description]) => (
                   <button
                     key={kind}
@@ -276,31 +276,31 @@ export default function EditAnimation() {
               </div>
 
               <div className="space-y-2">
-                <Label>Rang de la mission</Label>
+                <Label>Villages impliqués</Label>
                 <Controller
-                  name="bdmMissionRank"
+                  name="bdmVillagesCount"
                   control={control}
                   render={({ field }) => (
                     <div className="flex flex-wrap gap-2">
-                      {BDM_MISSION_RANKS.map((rank: BdmMissionRank) => (
+                      {BDM_VILLAGES_COUNTS.map((count: BdmVillagesCount) => (
                         <button
-                          key={rank}
+                          key={count}
                           type="button"
-                          onClick={() => field.onChange(rank)}
+                          onClick={() => field.onChange(count)}
                           className={cn(
-                            'h-10 min-w-10 rounded-lg border px-3 text-sm font-bold transition-all',
-                            field.value === rank
+                            'h-10 min-w-24 rounded-lg border px-3 text-sm font-bold transition-all',
+                            field.value === count
                               ? 'border-teal-300/50 bg-teal-300/15 text-teal-100'
                               : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/20 hover:text-white/80',
                           )}
                         >
-                          {rank}
+                          {count} village{count > 1 ? 's' : ''}
                         </button>
                       ))}
                     </div>
                   )}
                 />
-                {errors.bdmMissionRank && <p className="text-xs text-red-400">{errors.bdmMissionRank.message}</p>}
+                {errors.bdmVillagesCount && <p className="text-xs text-red-400">{errors.bdmVillagesCount.message}</p>}
               </div>
 
               <div className="space-y-2">

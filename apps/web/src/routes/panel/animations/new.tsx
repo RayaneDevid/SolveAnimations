@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ShieldCheck, ShieldOff, BellRing, BellOff, History, Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
-import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, BDM_MISSION_RANKS, BDM_MISSION_TYPES, type Village, type AnimationPole, type MissionKind, type BdmMissionRank, type BdmMissionType } from '@/lib/schemas/animation'
+import { createAnimationSchema, type CreateAnimationInput, SERVERS, TYPES, VILLAGES, POLES, MISSION_KINDS, BDM_VILLAGES_COUNTS, BDM_MISSION_TYPES, type Village, type AnimationPole, type MissionKind, type BdmVillagesCount, type BdmMissionType } from '@/lib/schemas/animation'
 import { useCreateAnimation } from '@/hooks/mutations/useAnimationMutations'
 import { useMemberDirectory } from '@/hooks/queries/useAnimations'
 import { useRequiredAuth } from '@/hooks/useAuth'
@@ -108,7 +108,7 @@ export default function NewAnimation() {
       spontaneous: false,
       bdmMission: false,
       bdmSpontaneous: false,
-      bdmMissionRank: 'B',
+      bdmVillagesCount: 2,
       bdmMissionType: 'jetable',
     },
   })
@@ -343,36 +343,36 @@ export default function NewAnimation() {
               <div>
                 <h2 className="text-sm font-semibold text-teal-100/90">Paramètres BDM</h2>
                 <p className="mt-0.5 text-xs text-teal-100/45">
-                  Choisis le rang, le type, puis indique si la mission est spontanée ou programmée.
+                  Indique le nombre de villages impliqués, le type, puis si la mission est spontanée ou programmée.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Rang de la mission</Label>
+                <Label>Villages impliqués</Label>
                 <Controller
-                  name="bdmMissionRank"
+                  name="bdmVillagesCount"
                   control={control}
                   render={({ field }) => (
                     <div className="flex flex-wrap gap-2">
-                      {BDM_MISSION_RANKS.map((rank: BdmMissionRank) => (
+                      {BDM_VILLAGES_COUNTS.map((count: BdmVillagesCount) => (
                         <button
-                          key={rank}
+                          key={count}
                           type="button"
-                          onClick={() => field.onChange(rank)}
+                          onClick={() => field.onChange(count)}
                           className={cn(
-                            'h-10 min-w-10 rounded-lg border px-3 text-sm font-bold transition-all',
-                            field.value === rank
+                            'h-10 min-w-24 rounded-lg border px-3 text-sm font-bold transition-all',
+                            field.value === count
                               ? 'border-teal-300/50 bg-teal-300/15 text-teal-100'
                               : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/20 hover:text-white/80',
                           )}
                         >
-                          {rank}
+                          {count} village{count > 1 ? 's' : ''}
                         </button>
                       ))}
                     </div>
                   )}
                 />
-                {errors.bdmMissionRank && <p className="text-xs text-red-400">{errors.bdmMissionRank.message}</p>}
+                {errors.bdmVillagesCount && <p className="text-xs text-red-400">{errors.bdmVillagesCount.message}</p>}
               </div>
 
               <div className="space-y-2">

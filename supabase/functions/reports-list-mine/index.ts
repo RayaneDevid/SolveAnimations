@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     .select(`
       *,
       animation:animations!animation_reports_animation_id_fkey(
-        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, ended_at, creator_id, status, server, type, bdm_mission, bdm_mission_rank, bdm_mission_type, bdm_spontaneous
+        id, title, village, scheduled_at, planned_duration_min, actual_duration_min, prep_time_min, actual_prep_time_min, started_at, ended_at, creator_id, status, server, type, bdm_mission, bdm_mission_rank, bdm_villages_count, bdm_mission_type, bdm_spontaneous
       )
     `)
     .eq('user_id', profile.id)

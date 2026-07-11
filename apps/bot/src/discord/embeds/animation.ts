@@ -31,6 +31,12 @@ export const TYPE_LABELS: Record<string, string> = {
   grande: 'Grande',
 };
 
+export const BDM_TYPE_LABELS: Record<string, string> = {
+  jetable: 'Jetable',
+  elaboree: 'Élaborée',
+  grande_ampleur: 'Grande ampleur',
+};
+
 export const POLE_LABELS: Record<string, string> = {
   animation: 'Pôle Animation',
   mj: 'Pôle MJ',
@@ -133,6 +139,9 @@ export interface AnimationEmbedData {
   requiredParticipants: number;
   registrationsLocked?: boolean;
   currentParticipants?: number;
+  bdmMission?: boolean;
+  bdmVillagesCount?: number;
+  bdmMissionType?: string;
   status: string;
   actualDurationMin?: number;
 }
@@ -153,6 +162,9 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
     requiredParticipants,
     registrationsLocked = false,
     currentParticipants = 0,
+    bdmMission = false,
+    bdmVillagesCount = 2,
+    bdmMissionType,
     status,
     actualDurationMin,
   } = data;
@@ -161,6 +173,7 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
   const statusLabel = STATUS_LABELS[status] ?? status;
   const statusEmoji = STATUS_EMOJI[status] ?? '❓';
   const typeLabel = TYPE_LABELS[type] ?? type;
+  const bdmTypeLabel = bdmMissionType ? (BDM_TYPE_LABELS[bdmMissionType] ?? bdmMissionType) : null;
   const poleLabel = pole ? (POLE_LABELS[pole] ?? pole) : null;
   const villageLabel = VILLAGE_LABELS[village] ?? village;
 
@@ -182,7 +195,9 @@ export function buildAnimationEmbed(data: AnimationEmbedData): EmbedBuilder {
         durationLine,
         `🌐  Serveur : ${server}`,
         `🏯  Village : ${villageLabel}`,
-        `🎯  Type : ${typeLabel}`,
+        bdmMission
+          ? `🎯  BDM : ${bdmVillagesCount} village${bdmVillagesCount > 1 ? 's' : ''}${bdmTypeLabel ? ` · ${bdmTypeLabel}` : ''}`
+          : `🎯  Type : ${typeLabel}`,
         ...(poleLabel ? [`🎪  Pôle : ${poleLabel}`] : []),
         participantsLine,
         ...(documentUrl ? [`📄  [Voir le document](${documentUrl})`] : []),

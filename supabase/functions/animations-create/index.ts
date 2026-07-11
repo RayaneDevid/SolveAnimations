@@ -13,9 +13,9 @@ const TYPES    = ['moyenne','grande'] as const
 const POLES    = ['animation','mj','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 const MISSION_KINDS = ['classique','spontanee','mission_bdm','passee'] as const
-const BDM_MISSION_RANKS = ['D','C','B','A','S'] as const
+const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const
 const BDM_MISSION_TYPES = ['jetable','elaboree','grande_ampleur'] as const
-type BdmMissionRank = (typeof BDM_MISSION_RANKS)[number]
+type BdmVillagesCount = (typeof BDM_VILLAGES_COUNTS)[number]
 type BdmMissionType = (typeof BDM_MISSION_TYPES)[number]
 
 Deno.serve(async (req) => {
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     registrationsLocked = false,
     pastParticipantIds = [],
     requestValidation = true, pingRoles = true, spontaneous = false, bdmMission = false, bdmSpontaneous = false,
-    bdmMissionRank = 'B', bdmMissionType = 'jetable', missionKind = 'classique',
+    bdmVillagesCount = 2, bdmMissionType = 'jetable', missionKind = 'classique',
   } = body
   const isBdmMission = bdmMission === true || missionKind === 'mission_bdm'
   const isBdmSpontaneous = isBdmMission && bdmSpontaneous === true
@@ -45,7 +45,10 @@ Deno.serve(async (req) => {
   const resolvedType = isBdmLikeMission ? 'moyenne' : type
   const resolvedPole = isBdmLikeMission ? 'animation' : pole
   const resolvedPrepTimeMin = isBdmLikeMission ? 0 : prepTimeMin
-  const resolvedBdmMissionRank = typeof bdmMissionRank === 'string' ? bdmMissionRank : 'B'
+  const rawBdmVillagesCount = typeof bdmVillagesCount === 'number' ? bdmVillagesCount : Number(bdmVillagesCount)
+  const resolvedBdmVillagesCount = BDM_VILLAGES_COUNTS.includes(rawBdmVillagesCount as BdmVillagesCount)
+    ? rawBdmVillagesCount as BdmVillagesCount
+    : 2
   const resolvedBdmMissionType = typeof bdmMissionType === 'string' ? bdmMissionType : 'jetable'
   const shouldPingRoles = isBdmLikeMission ? false : pingRoles
   const shouldLockRegistrations = registrationsLocked === true
@@ -63,8 +66,8 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'Type de mission invalide')
   if (isBdmMission && !hasAnyRole(profile, ['bdm', 'responsable_bdm']))
     return errorResponse('FORBIDDEN', 'Accès réservé au pôle BDM')
-  if (isBdmMission && !BDM_MISSION_RANKS.includes(resolvedBdmMissionRank as BdmMissionRank))
-    return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+  if (isBdmMission && 'bdmVillagesCount' in body && !BDM_VILLAGES_COUNTS.includes(rawBdmVillagesCount as BdmVillagesCount))
+    return errorResponse('VALIDATION_ERROR', 'Nombre de villages BDM invalide')
   if (isBdmMission && !BDM_MISSION_TYPES.includes(resolvedBdmMissionType as BdmMissionType))
     return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
   if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 120)
@@ -166,7 +169,8 @@ Deno.serve(async (req) => {
       registrations_locked: shouldLockRegistrations,
       bdm_mission: isBdmMission,
       bdm_spontaneous: isBdmSpontaneous,
-      bdm_mission_rank: isBdmMission ? resolvedBdmMissionRank : 'B',
+      bdm_mission_rank: 'B',
+      bdm_villages_count: isBdmMission ? resolvedBdmVillagesCount : 2,
       bdm_mission_type: isBdmMission ? resolvedBdmMissionType : 'jetable',
       creator_id: profile.id,
       status: autoFinishPastMission ? 'finished' : isPastMission ? 'pending_validation' : autoValidate ? 'open' : 'pending_validation',
@@ -256,7 +260,7 @@ Deno.serve(async (req) => {
       type: animation.type,
       pole: animation.pole,
       bdmMission: animation.bdm_mission,
-      bdmMissionRank: animation.bdm_mission_rank,
+      bdmVillagesCount: animation.bdm_villages_count,
       bdmMissionType: animation.bdm_mission_type,
       bdmSpontaneous: animation.bdm_spontaneous,
       pingRoles: shouldPingRoles,
@@ -282,7 +286,7 @@ Deno.serve(async (req) => {
       type: animation.type,
       pole: animation.pole,
       bdmMission: animation.bdm_mission,
-      bdmMissionRank: animation.bdm_mission_rank,
+      bdmVillagesCount: animation.bdm_villages_count,
       bdmMissionType: animation.bdm_mission_type,
       bdmSpontaneous: animation.bdm_spontaneous,
       creatorUsername: profile.username,

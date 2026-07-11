@@ -20,6 +20,9 @@ const bodySchema = z.object({
   requiredParticipants: z.number().int(),
   registrationsLocked: z.boolean().optional().default(false),
   currentParticipants: z.number().int().default(0),
+  bdmMission: z.boolean().optional().default(false),
+  bdmVillagesCount: z.number().int().min(1).max(4).optional().default(2),
+  bdmMissionType: z.string().optional(),
   status: z.string(),
   actualDurationMin: z.number().int().optional(),
 });

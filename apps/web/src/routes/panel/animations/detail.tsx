@@ -35,7 +35,7 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, formatDuration, formatTime } from '@/lib/utils/format'
 import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
-import { BDM_MISSION_RANKS, BDM_MISSION_TYPES, VILLAGES, SERVERS, TYPES, type BdmMissionRank, type BdmMissionType } from '@/lib/schemas/animation'
+import { BDM_VILLAGES_COUNTS, BDM_MISSION_TYPES, VILLAGES, SERVERS, TYPES, type BdmMissionType, type BdmVillagesCount } from '@/lib/schemas/animation'
 import type { AnimationParticipant, Animation, ParticipantTimeCorrectionRequest, TimeCorrectionRequest } from '@/types/database'
 
 const BDM_TYPE_LABELS = {
@@ -61,7 +61,7 @@ function FinishedEditForm({
   const [server, setServer] = useState(animation.server)
   const [type, setType] = useState((animation.type as string) === 'petite' ? 'moyenne' : animation.type)
   const [bdmMission, setBdmMission] = useState(animation.bdm_mission)
-  const [bdmRank, setBdmRank] = useState(animation.bdm_mission_rank)
+  const [bdmVillagesCount, setBdmVillagesCount] = useState(animation.bdm_villages_count ?? 2)
   const [bdmType, setBdmType] = useState(animation.bdm_mission_type)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
     animation.scheduled_at ? new Date(animation.scheduled_at) : undefined,
@@ -82,7 +82,7 @@ function FinishedEditForm({
         ...(canEditBdm ? {
           bdm_mission: bdmMission,
           ...(bdmMission ? {
-            bdm_mission_rank: bdmRank,
+            bdm_villages_count: bdmVillagesCount,
             bdm_mission_type: bdmType,
           } : {}),
         } : {}),
@@ -134,7 +134,7 @@ function FinishedEditForm({
             <div>
               <p className="text-xs text-white/40 mb-0.5">Mission BDM</p>
               <p className="text-sm font-semibold text-white/70">
-                Rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
+                {animation.bdm_villages_count} village{animation.bdm_villages_count > 1 ? 's' : ''} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
               </p>
             </div>
           )}
@@ -202,9 +202,11 @@ function FinishedEditForm({
 
           {bdmMission && canEditBdm && (
             <div>
-              <label className={labelCls}>Rang BDM</label>
-              <select value={bdmRank} onChange={(e) => setBdmRank(e.target.value as BdmMissionRank)} className={inputCls}>
-                {BDM_MISSION_RANKS.map((rank) => <option key={rank} value={rank}>{rank}</option>)}
+              <label className={labelCls}>Villages impliqués</label>
+              <select value={bdmVillagesCount} onChange={(e) => setBdmVillagesCount(Number(e.target.value) as BdmVillagesCount)} className={inputCls}>
+                {BDM_VILLAGES_COUNTS.map((count) => (
+                  <option key={count} value={count}>{count} village{count > 1 ? 's' : ''}</option>
+                ))}
               </select>
             </div>
           )}
@@ -980,7 +982,7 @@ export default function AnimationDetail() {
             )}
             {animation.bdm_mission && (
               <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2 py-0.5 text-xs font-bold text-teal-200">
-                BDM rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
+                BDM {animation.bdm_villages_count} village{animation.bdm_villages_count > 1 ? 's' : ''} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
               </span>
             )}
           </div>
@@ -1025,7 +1027,7 @@ export default function AnimationDetail() {
           </div>
           {animation.bdm_mission && (
             <span className="inline-flex items-center rounded-full border border-teal-300/35 bg-teal-300/10 px-2.5 py-1 text-xs font-bold text-teal-200">
-              BDM rang {animation.bdm_mission_rank} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
+              BDM {animation.bdm_villages_count} village{animation.bdm_villages_count > 1 ? 's' : ''} · {BDM_TYPE_LABELS[animation.bdm_mission_type]}
               {animation.bdm_spontaneous ? ' · Spontanée' : ''}
             </span>
           )}

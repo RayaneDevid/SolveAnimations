@@ -19,6 +19,9 @@ const bodySchema = z.object({
   creatorUsername: z.string(),
   requiredParticipants: z.number().int(),
   registrationsLocked: z.boolean().optional().default(false),
+  bdmMission: z.boolean().optional().default(false),
+  bdmVillagesCount: z.number().int().min(1).max(4).optional().default(2),
+  bdmMissionType: z.string().optional(),
 });
 
 export async function registerAnimationUpdated(app: FastifyInstance): Promise<void> {

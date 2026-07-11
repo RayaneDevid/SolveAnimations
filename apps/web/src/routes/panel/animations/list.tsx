@@ -28,28 +28,23 @@ const BDM_TYPE_LABELS = {
   elaboree: 'Élaborée',
   grande_ampleur: 'Grande ampleur',
 } as const
-const BDM_RANK_STYLES = {
-  D: {
+const BDM_VILLAGES_STYLES = {
+  1: {
     card: 'border border-zinc-300/25 bg-zinc-400/[0.05] shadow-[0_0_20px_rgba(212,212,216,0.08)]',
     title: 'text-zinc-100 hover:text-zinc-200',
     badge: 'border-zinc-300/30 bg-zinc-300/10 text-zinc-100',
   },
-  C: {
+  2: {
     card: 'border border-blue-300/35 bg-blue-400/[0.06] shadow-[0_0_22px_rgba(96,165,250,0.10)]',
     title: 'text-blue-50 hover:text-blue-200',
     badge: 'border-blue-300/35 bg-blue-300/10 text-blue-100',
   },
-  B: {
-    card: 'border border-emerald-300/35 bg-emerald-400/[0.06] shadow-[0_0_24px_rgba(52,211,153,0.10)]',
-    title: 'text-emerald-50 hover:text-emerald-200',
-    badge: 'border-emerald-300/35 bg-emerald-300/10 text-emerald-100',
-  },
-  A: {
+  3: {
     card: 'border border-violet-300/40 bg-violet-400/[0.07] shadow-[0_0_24px_rgba(167,139,250,0.12)]',
     title: 'text-violet-50 hover:text-violet-200',
     badge: 'border-violet-300/40 bg-violet-300/10 text-violet-100',
   },
-  S: {
+  4: {
     card: 'border border-red-300/45 bg-red-400/[0.08] shadow-[0_0_26px_rgba(248,113,113,0.14)]',
     title: 'text-red-50 hover:text-red-200',
     badge: 'border-red-300/45 bg-red-300/10 text-red-100',
@@ -85,7 +80,7 @@ function parseFilterValue<T extends readonly string[]>(value: string | null, all
 
 function AnimationCard({ anim }: { anim: Animation }) {
   const isBdmMission = anim.bdm_mission
-  const bdmStyle = isBdmMission ? BDM_RANK_STYLES[anim.bdm_mission_rank] : null
+  const bdmStyle = isBdmMission ? BDM_VILLAGES_STYLES[anim.bdm_villages_count] : null
 
   return (
     <motion.div
@@ -127,7 +122,7 @@ function AnimationCard({ anim }: { anim: Animation }) {
           <div className="flex items-center gap-2 flex-wrap mb-3">
             {isBdmMission && (
               <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold', bdmStyle?.badge)}>
-                BDM rang {anim.bdm_mission_rank} · {BDM_TYPE_LABELS[anim.bdm_mission_type]}
+                BDM {anim.bdm_villages_count} village{anim.bdm_villages_count > 1 ? 's' : ''} · {BDM_TYPE_LABELS[anim.bdm_mission_type]}
               </span>
             )}
             <ServerBadge server={anim.server} />

@@ -474,7 +474,7 @@ export function useUpdateAnimation() {
         ...(body.registrationsLocked !== undefined ? { registrations_locked: body.registrationsLocked } : {}),
         ...(body.bdmMission !== undefined ? { bdm_mission: body.bdmMission } : {}),
         ...(body.bdmSpontaneous !== undefined ? { bdm_spontaneous: body.bdmSpontaneous } : {}),
-        ...(body.bdmMissionRank !== undefined ? { bdm_mission_rank: body.bdmMissionRank } : {}),
+        ...(body.bdmVillagesCount !== undefined ? { bdm_villages_count: body.bdmVillagesCount } : {}),
         ...(body.bdmMissionType !== undefined ? { bdm_mission_type: body.bdmMissionType } : {}),
       }),
     onSuccess: (_, { id }) => {
@@ -497,7 +497,7 @@ export function useCorrectFinishedAnimation() {
       type?: string
       scheduled_at?: string
       bdm_mission?: boolean
-      bdm_mission_rank?: string
+      bdm_villages_count?: number
       bdm_mission_type?: string
     }) => invokeEdge<{ animation: Animation }>('animations-update', body),
     onSuccess: (data, { id }) => {

@@ -7,10 +7,15 @@ import { getServiceClient } from '../_shared/supabaseClient.ts'
 import { syncEmbed } from '../_shared/syncEmbed.ts'
 import { notifyBot } from '../_shared/bot.ts'
 
-const BDM_MISSION_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const
 const BDM_MISSION_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
-type BdmMissionRank = (typeof BDM_MISSION_RANKS)[number]
+type BdmVillagesCount = (typeof BDM_VILLAGES_COUNTS)[number]
 type BdmMissionType = (typeof BDM_MISSION_TYPES)[number]
+
+function resolveBdmVillagesCount(value: unknown, fallback = 2): BdmVillagesCount {
+  const count = typeof value === 'number' ? value : Number(value)
+  return BDM_VILLAGES_COUNTS.includes(count as BdmVillagesCount) ? count as BdmVillagesCount : fallback as BdmVillagesCount
+}
 
 function hasScheduleChanged(currentScheduledAt: string, nextScheduledAt: unknown): nextScheduledAt is string {
   if (typeof nextScheduledAt !== 'string') return false
@@ -83,7 +88,7 @@ Deno.serve(async (req) => {
   // ── Senior/responsable correcting a finished animation ───────────────────
   if (anim.status === 'finished') {
     const timingFields = ['actual_duration_min', 'actual_prep_time_min', 'village', 'server', 'type', 'scheduled_at']
-    const bdmFields = ['bdm_mission', 'bdm_mission_rank', 'bdm_mission_type']
+    const bdmFields = ['bdm_mission', 'bdm_villages_count', 'bdm_mission_type']
     const touchesTimingFields = timingFields.some((key) => key in updates)
     const touchesBdmFields = bdmFields.some((key) => key in updates)
     if (touchesTimingFields) {
@@ -96,10 +101,12 @@ Deno.serve(async (req) => {
     if ('bdm_mission' in updates && typeof updates.bdm_mission !== 'boolean')
       return errorResponse('VALIDATION_ERROR', 'Mission BDM invalide')
     const nextBdmMission = 'bdm_mission' in updates ? updates.bdm_mission === true : anim.bdm_mission === true
-    const nextBdmRank = typeof updates.bdm_mission_rank === 'string' ? updates.bdm_mission_rank : anim.bdm_mission_rank ?? 'B'
+    const nextBdmVillagesCount = 'bdm_villages_count' in updates
+      ? resolveBdmVillagesCount(updates.bdm_villages_count, anim.bdm_villages_count ?? 2)
+      : resolveBdmVillagesCount(anim.bdm_villages_count)
     const nextBdmType = typeof updates.bdm_mission_type === 'string' ? updates.bdm_mission_type : anim.bdm_mission_type ?? 'jetable'
-    if (touchesBdmFields && nextBdmMission && !BDM_MISSION_RANKS.includes(nextBdmRank as BdmMissionRank))
-      return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+    if (touchesBdmFields && nextBdmMission && 'bdm_villages_count' in updates && !BDM_VILLAGES_COUNTS.includes(Number(updates.bdm_villages_count) as BdmVillagesCount))
+      return errorResponse('VALIDATION_ERROR', 'Nombre de villages BDM invalide')
     if (touchesBdmFields && nextBdmMission && !BDM_MISSION_TYPES.includes(nextBdmType as BdmMissionType))
       return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
 
@@ -112,12 +119,13 @@ Deno.serve(async (req) => {
       if (nextBdmMission) {
         patch.bdm_mission = true
         patch.bdm_spontaneous = false
-        patch.bdm_mission_rank = nextBdmRank
+        patch.bdm_villages_count = nextBdmVillagesCount
         patch.bdm_mission_type = nextBdmType
       } else {
         patch.bdm_mission = false
         patch.bdm_spontaneous = false
         patch.bdm_mission_rank = 'B'
+        patch.bdm_villages_count = 2
         patch.bdm_mission_type = 'jetable'
       }
     }
@@ -238,9 +246,9 @@ Deno.serve(async (req) => {
     'title', 'scheduled_at', 'planned_duration_min', 'required_participants',
     'server', 'type', 'pole', 'prep_time_min', 'village', 'description', 'registrations_locked',
     'document_url', 'creator_character_name',
-    'bdm_mission', 'bdm_spontaneous', 'bdm_mission_rank', 'bdm_mission_type',
+    'bdm_mission', 'bdm_spontaneous', 'bdm_villages_count', 'bdm_mission_type',
   ]
-  const bdmFields = ['bdm_mission', 'bdm_spontaneous', 'bdm_mission_rank', 'bdm_mission_type']
+  const bdmFields = ['bdm_mission', 'bdm_spontaneous', 'bdm_villages_count', 'bdm_mission_type']
   const touchesBdmFields = bdmFields.some((key) => key in updates)
   if (touchesBdmFields && !isResponsable)
     return errorResponse('FORBIDDEN', 'Seul un responsable peut modifier les paramètres BDM')
@@ -252,22 +260,24 @@ Deno.serve(async (req) => {
 
   const nextBdmMission = 'bdm_mission' in patch ? patch.bdm_mission === true : anim.bdm_mission === true
   const nextBdmSpontaneous = nextBdmMission && ('bdm_spontaneous' in patch ? patch.bdm_spontaneous === true : anim.bdm_spontaneous === true)
-  const nextBdmRank = typeof patch.bdm_mission_rank === 'string' ? patch.bdm_mission_rank : anim.bdm_mission_rank ?? 'B'
+  const nextBdmVillagesCount = 'bdm_villages_count' in patch
+    ? resolveBdmVillagesCount(patch.bdm_villages_count, anim.bdm_villages_count ?? 2)
+    : resolveBdmVillagesCount(anim.bdm_villages_count)
   const nextBdmType = typeof patch.bdm_mission_type === 'string' ? patch.bdm_mission_type : anim.bdm_mission_type ?? 'jetable'
 
   if ('bdm_mission' in patch && typeof patch.bdm_mission !== 'boolean')
     return errorResponse('VALIDATION_ERROR', 'Mission BDM invalide')
   if ('bdm_spontaneous' in patch && typeof patch.bdm_spontaneous !== 'boolean')
     return errorResponse('VALIDATION_ERROR', 'Statut spontané BDM invalide')
-  if (nextBdmMission && !BDM_MISSION_RANKS.includes(nextBdmRank as BdmMissionRank))
-    return errorResponse('VALIDATION_ERROR', 'Rang de mission BDM invalide')
+  if (nextBdmMission && 'bdm_villages_count' in patch && !BDM_VILLAGES_COUNTS.includes(Number(patch.bdm_villages_count) as BdmVillagesCount))
+    return errorResponse('VALIDATION_ERROR', 'Nombre de villages BDM invalide')
   if (nextBdmMission && !BDM_MISSION_TYPES.includes(nextBdmType as BdmMissionType))
     return errorResponse('VALIDATION_ERROR', 'Type de mission BDM invalide')
 
   if (nextBdmMission) {
     patch.bdm_mission = true
     patch.bdm_spontaneous = nextBdmSpontaneous
-    patch.bdm_mission_rank = nextBdmRank
+    patch.bdm_villages_count = nextBdmVillagesCount
     patch.bdm_mission_type = nextBdmType
     patch.planned_duration_min = 15
     patch.required_participants = 0
@@ -284,6 +294,7 @@ Deno.serve(async (req) => {
     patch.bdm_mission = false
     patch.bdm_spontaneous = false
     patch.bdm_mission_rank = 'B'
+    patch.bdm_villages_count = 2
     patch.bdm_mission_type = 'jetable'
   }
 

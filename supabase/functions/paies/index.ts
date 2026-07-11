@@ -26,32 +26,31 @@ const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
-const BDM_RANK_BASE: Record<string, number> = {
-  D: 400,
-  C: 500,
-  B: 600,
-  A: 700,
-  S: 1_000,
+const BDM_VILLAGES_BASE: Record<number, number> = {
+  1: 500,
+  2: 700,
+  3: 800,
+  4: 1_000,
 }
 const BDM_TYPE_COEFFICIENT: Record<string, number> = {
   jetable: 1,
   elaboree: 1.4,
   grande_ampleur: 1.65,
 }
-const BDM_RANKS = ['D', 'C', 'B', 'A', 'S'] as const
+const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const
 const BDM_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
-type BdmRank = typeof BDM_RANKS[number]
+type BdmVillagesCount = typeof BDM_VILLAGES_COUNTS[number]
 type BdmType = typeof BDM_TYPES[number]
 
-function emptyBdmRankCounts(): Record<BdmRank, number> {
-  return { D: 0, C: 0, B: 0, A: 0, S: 0 }
+function emptyBdmVillagesCounts(): Record<BdmVillagesCount, number> {
+  return { 1: 0, 2: 0, 3: 0, 4: 0 }
 }
 
-function emptyBdmRankTypeCounts(): Record<BdmType, Record<BdmRank, number>> {
+function emptyBdmVillagesTypeCounts(): Record<BdmType, Record<BdmVillagesCount, number>> {
   return {
-    jetable: emptyBdmRankCounts(),
-    elaboree: emptyBdmRankCounts(),
-    grande_ampleur: emptyBdmRankCounts(),
+    jetable: emptyBdmVillagesCounts(),
+    elaboree: emptyBdmVillagesCounts(),
+    grande_ampleur: emptyBdmVillagesCounts(),
   }
 }
 
@@ -118,8 +117,14 @@ function computeHourlyPay(totalMin: number, hourlyRate: number): number {
   return Math.round(totalMin * (hourlyRate / 60))
 }
 
-function computeBdmMissionPay(rank: string | null | undefined, type: string | null | undefined): number {
-  return Math.round((BDM_RANK_BASE[rank ?? 'B'] ?? BDM_RANK_BASE.B) * (BDM_TYPE_COEFFICIENT[type ?? 'jetable'] ?? 1))
+function resolveBdmVillagesCount(value: number | string | null | undefined): BdmVillagesCount {
+  const count = typeof value === 'number' ? value : Number(value)
+  return BDM_VILLAGES_COUNTS.includes(count as BdmVillagesCount) ? count as BdmVillagesCount : 2
+}
+
+function computeBdmMissionPay(villagesCount: number | string | null | undefined, type: string | null | undefined): number {
+  const count = resolveBdmVillagesCount(villagesCount)
+  return Math.round(BDM_VILLAGES_BASE[count] * (BDM_TYPE_COEFFICIENT[type ?? 'jetable'] ?? 1))
 }
 
 function topThreeIds<T extends { id: string; username: string }>(
@@ -225,7 +230,7 @@ Deno.serve(async (req) => {
   // Finished animations this week with type + durations
   const { data: anims } = await db
     .from('animations')
-    .select('id, creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, actual_duration_min, prep_time_min, actual_prep_time_min')
+    .select('id, creator_id, type, bdm_mission, bdm_villages_count, bdm_mission_type, actual_duration_min, prep_time_min, actual_prep_time_min')
     .eq('status', 'finished')
     .gte('started_at', weekStart.toISOString())
     .lt('started_at', weekEnd.toISOString())
@@ -235,7 +240,7 @@ Deno.serve(async (req) => {
   const { data: participationRows } = participationProfileIds.length > 0
     ? await db
         .from('animation_participants')
-        .select('user_id, animation_id, joined_at, participation_ended_at, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .select('user_id, animation_id, joined_at, participation_ended_at, animations!inner(creator_id, type, bdm_mission, bdm_villages_count, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('status', 'validated')
         .eq('animations.status' as never, 'finished')
         .gte('animations.started_at' as never, weekStart.toISOString())
@@ -246,7 +251,7 @@ Deno.serve(async (req) => {
   const { data: bdmReportRows } = participationProfileIds.length > 0
     ? await db
         .from('animation_reports')
-        .select('user_id, pole, animation_id, animations!inner(creator_id, type, bdm_mission, bdm_mission_rank, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
+        .select('user_id, pole, animation_id, animations!inner(creator_id, type, bdm_mission, bdm_villages_count, bdm_mission_type, started_at, ended_at, actual_duration_min, prep_time_min, actual_prep_time_min)')
         .eq('animations.status' as never, 'finished')
         .eq('animations.bdm_mission' as never, true)
         .gte('animations.started_at' as never, weekStart.toISOString())
@@ -273,8 +278,8 @@ Deno.serve(async (req) => {
     moyenne: number
     grande: number
     bdmMissionPay: number
-    bdmRankCounts: Record<BdmRank, number>
-    bdmRankTypeCounts: Record<BdmType, Record<BdmRank, number>>
+    bdmVillagesCounts: Record<BdmVillagesCount, number>
+    bdmVillagesTypeCounts: Record<BdmType, Record<BdmVillagesCount, number>>
   }>()
   const bdmMap = new Map<string, {
     animationsCount: number
@@ -285,8 +290,8 @@ Deno.serve(async (req) => {
     moyenne: number
     grande: number
     bdmMissionPay: number
-    bdmRankCounts: Record<BdmRank, number>
-    bdmRankTypeCounts: Record<BdmType, Record<BdmRank, number>>
+    bdmVillagesCounts: Record<BdmVillagesCount, number>
+    bdmVillagesTypeCounts: Record<BdmType, Record<BdmVillagesCount, number>>
   }>()
 
   const getEntry = (userId: string) =>
@@ -299,8 +304,8 @@ Deno.serve(async (req) => {
       moyenne: 0,
       grande: 0,
       bdmMissionPay: 0,
-      bdmRankCounts: emptyBdmRankCounts(),
-      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
+      bdmVillagesCounts: emptyBdmVillagesCounts(),
+      bdmVillagesTypeCounts: emptyBdmVillagesTypeCounts(),
     }
   const getBdmEntry = (userId: string) =>
     bdmMap.get(userId) ?? {
@@ -312,8 +317,8 @@ Deno.serve(async (req) => {
       moyenne: 0,
       grande: 0,
       bdmMissionPay: 0,
-      bdmRankCounts: emptyBdmRankCounts(),
-      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
+      bdmVillagesCounts: emptyBdmVillagesCounts(),
+      bdmVillagesTypeCounts: emptyBdmVillagesTypeCounts(),
     }
 
   // Created animations
@@ -338,7 +343,7 @@ Deno.serve(async (req) => {
     creator_id: string
     type: string
     bdm_mission: boolean | null
-    bdm_mission_rank?: string | null
+    bdm_villages_count?: number | null
     bdm_mission_type?: string | null
     started_at: string | null
     ended_at: string | null
@@ -380,11 +385,11 @@ Deno.serve(async (req) => {
       else entry.participationsCount++
       entry.animationMin += dur.animMinutes
       entry.prepMin += dur.prepMinutes
-      entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_mission_rank, anim.bdm_mission_type)
-      const rank = BDM_RANKS.includes(anim.bdm_mission_rank as BdmRank) ? anim.bdm_mission_rank as BdmRank : 'B'
+      entry.bdmMissionPay += computeBdmMissionPay(anim.bdm_villages_count, anim.bdm_mission_type)
+      const villagesCount = resolveBdmVillagesCount(anim.bdm_villages_count)
       const type = BDM_TYPES.includes(anim.bdm_mission_type as BdmType) ? anim.bdm_mission_type as BdmType : 'jetable'
-      entry.bdmRankCounts[rank]++
-      entry.bdmRankTypeCounts[type][rank]++
+      entry.bdmVillagesCounts[villagesCount]++
+      entry.bdmVillagesTypeCounts[type][villagesCount]++
       if (anim.type === 'moyenne' || anim.type === 'petite') entry.moyenne++
       else if (anim.type === 'grande') entry.grande++
       bdmMap.set(report.user_id, entry)
@@ -427,8 +432,8 @@ Deno.serve(async (req) => {
       animationMin: 0, prepMin: 0,
       moyenne: 0, grande: 0,
       bdmMissionPay: 0,
-      bdmRankCounts: emptyBdmRankCounts(),
-      bdmRankTypeCounts: emptyBdmRankTypeCounts(),
+      bdmVillagesCounts: emptyBdmVillagesCounts(),
+      bdmVillagesTypeCounts: emptyBdmVillagesTypeCounts(),
     }
     const formationsCount = formationCountMap.get(p.id) ?? 0
     const quotaMax = QUOTA_MAX[p.payRole] ?? null
@@ -470,7 +475,8 @@ Deno.serve(async (req) => {
       seniorBase,
       timePay: quotaFilled ? (isAnimationPay ? animationTimePay.pay : mjTimePay) : 0,
       bdmMissionPay: 0,
-      bdmRankCounts: emptyBdmRankCounts(),
+      bdmVillagesCounts: emptyBdmVillagesCounts(),
+      bdmVillagesTypeCounts: emptyBdmVillagesTypeCounts(),
       podiumBonus: 0,
       hoursPodiumBonus: 0,
       createdPodiumBonus: 0,
@@ -491,8 +497,8 @@ Deno.serve(async (req) => {
         animationMin: 0, prepMin: 0,
         moyenne: 0, grande: 0,
         bdmMissionPay: 0,
-        bdmRankCounts: emptyBdmRankCounts(),
-        bdmRankTypeCounts: emptyBdmRankTypeCounts(),
+        bdmVillagesCounts: emptyBdmVillagesCounts(),
+        bdmVillagesTypeCounts: emptyBdmVillagesTypeCounts(),
       }
       const totalMin = s.animationMin + s.prepMin
       const quotaFilled = s.animationsCount >= BDM_QUOTA_COUNT
@@ -522,8 +528,8 @@ Deno.serve(async (req) => {
         seniorBase: 0,
         timePay: 0,
         bdmMissionPay: quotaFilled ? s.bdmMissionPay : 0,
-        bdmRankCounts: s.bdmRankCounts,
-        bdmRankTypeCounts: s.bdmRankTypeCounts,
+        bdmVillagesCounts: s.bdmVillagesCounts,
+        bdmVillagesTypeCounts: s.bdmVillagesTypeCounts,
         podiumBonus: 0,
         hoursPodiumBonus: 0,
         createdPodiumBonus: 0,

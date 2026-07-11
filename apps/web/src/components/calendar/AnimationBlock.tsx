@@ -43,12 +43,11 @@ const VILLAGE_COLORS: Record<string, string> = {
   tout_le_monde: 'bg-gradient-to-b from-cyan-500/20 to-violet-500/20 border-white/20 text-white/80',
 }
 
-const BDM_RANK_COLORS = {
-  D: 'bg-zinc-500/25 border-zinc-300/60 text-zinc-50 ring-1 ring-zinc-300/25 shadow-[0_0_16px_rgba(212,212,216,0.14)]',
-  C: 'bg-blue-500/25 border-blue-300/65 text-blue-50 ring-1 ring-blue-300/25 shadow-[0_0_16px_rgba(96,165,250,0.16)]',
-  B: 'bg-emerald-500/25 border-emerald-300/70 text-emerald-50 ring-1 ring-emerald-300/30 shadow-[0_0_18px_rgba(52,211,153,0.18)]',
-  A: 'bg-violet-500/25 border-violet-300/75 text-violet-50 ring-1 ring-violet-300/30 shadow-[0_0_18px_rgba(167,139,250,0.20)]',
-  S: 'bg-red-500/25 border-red-300/80 text-red-50 ring-1 ring-red-300/35 shadow-[0_0_20px_rgba(248,113,113,0.22)]',
+const BDM_VILLAGES_COLORS = {
+  1: 'bg-zinc-500/25 border-zinc-300/60 text-zinc-50 ring-1 ring-zinc-300/25 shadow-[0_0_16px_rgba(212,212,216,0.14)]',
+  2: 'bg-blue-500/25 border-blue-300/65 text-blue-50 ring-1 ring-blue-300/25 shadow-[0_0_16px_rgba(96,165,250,0.16)]',
+  3: 'bg-violet-500/25 border-violet-300/75 text-violet-50 ring-1 ring-violet-300/30 shadow-[0_0_18px_rgba(167,139,250,0.20)]',
+  4: 'bg-red-500/25 border-red-300/80 text-red-50 ring-1 ring-red-300/35 shadow-[0_0_20px_rgba(248,113,113,0.22)]',
 } as const
 
 function timeToMinFromMidnight(date: Date): number {
@@ -122,7 +121,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
   const animHeight = totalHeight - debriefHeight
 
   const colorClass = isBdmMission
-    ? BDM_RANK_COLORS[animation.bdm_mission_rank]
+    ? BDM_VILLAGES_COLORS[animation.bdm_villages_count]
     : VILLAGE_COLORS[animation.village] ?? VILLAGE_COLORS.autre
 
   const GAP = 2
@@ -186,7 +185,7 @@ export function AnimationBlock({ animation, lane, totalLanes, pxPerMin = DEFAULT
               BDM
             </span>
             <span className="truncate text-[8px] font-medium leading-3 text-teal-50/70">
-              Rang {animation.bdm_mission_rank}
+              {animation.bdm_villages_count} village{animation.bdm_villages_count > 1 ? 's' : ''}
             </span>
           </div>
         )}

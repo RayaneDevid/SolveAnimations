@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     type: anim.type,
     pole: anim.pole,
     bdmMission: anim.bdm_mission,
-    bdmMissionRank: anim.bdm_mission_rank,
+    bdmVillagesCount: anim.bdm_villages_count,
     bdmMissionType: anim.bdm_mission_type,
     bdmSpontaneous: anim.bdm_spontaneous,
     documentUrl: anim.document_url,

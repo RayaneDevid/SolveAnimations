@@ -1,5 +1,5 @@
 import type { StaffRoleKey } from '@/lib/config/discord'
-import type { AnimationServer, AnimationType, BdmMissionRank, BdmMissionType, Village } from '@/lib/schemas/animation'
+import type { AnimationServer, AnimationType, BdmMissionType, BdmVillagesCount, Village } from '@/lib/schemas/animation'
 
 export type AnimationStatus =
   | 'pending_validation'
@@ -46,7 +46,8 @@ export interface Animation {
   registrations_locked: boolean
   bdm_mission: boolean
   bdm_spontaneous: boolean
-  bdm_mission_rank: BdmMissionRank
+  bdm_mission_rank: string
+  bdm_villages_count: BdmVillagesCount
   bdm_mission_type: BdmMissionType
   pole: 'animation' | 'mj' | 'les_deux'
   creator_id: string
@@ -342,8 +343,8 @@ export interface PaiesEntry {
   seniorBase: number
   timePay: number
   bdmMissionPay: number
-  bdmRankCounts: Record<'D' | 'C' | 'B' | 'A' | 'S', number>
-  bdmRankTypeCounts?: Record<'jetable' | 'elaboree' | 'grande_ampleur', Record<'D' | 'C' | 'B' | 'A' | 'S', number>>
+  bdmVillagesCounts: Record<1 | 2 | 3 | 4, number>
+  bdmVillagesTypeCounts?: Record<'jetable' | 'elaboree' | 'grande_ampleur', Record<1 | 2 | 3 | 4, number>>
   podiumBonus: number
   hoursPodiumBonus: number
   createdPodiumBonus: number

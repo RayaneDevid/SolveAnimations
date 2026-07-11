@@ -23,11 +23,11 @@ const ANIM_PAY_ROLE_ORDER = ['senior', 'animateur']
 const MJ_PAY_ROLE_ORDER   = ['mj_senior', 'mj']
 const BDM_PAY_ROLE_ORDER  = ['bdm']
 const HIDDEN_PAY_ROLES = new Set(['responsable', 'responsable_mj', 'responsable_bdm'])
-const ANIMATION_TIME_CAP = 17_000
+const ANIMATION_TIME_CAP = 5_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
 const MJ_HOURLY_RATE = 800
-const BDM_BEFORE_PODIUM_CAP = 17_000
+const BDM_BEFORE_PODIUM_CAP = 13_000
 const BDM_TOTAL_CAP = 20_000
 const BDM_VILLAGES_BASE = {
   1: 500,
@@ -90,9 +90,9 @@ function csvCell(value: string | number | boolean | null | undefined): string {
 function buildAnimCommentaire(entry: PaiesEntry): string {
   if (!entry.quotaFilled) return `Quota non atteint (${formatAnimationQuota(entry)})`
   const tiers = [
-    { label: `0-4h à 1 000/h`, min: Math.min(entry.totalMin, 4 * 60), rate: 1_000 },
-    { label: `4-14h à 800/h`, min: Math.min(Math.max(entry.totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
-    { label: `14h+ à 1 250/h`, min: Math.max(entry.totalMin - 14 * 60, 0), rate: 1_250 },
+    { label: `0-4h à 600/h`, min: Math.min(entry.totalMin, 4 * 60), rate: 600 },
+    { label: `4-8h à 800/h`, min: Math.min(Math.max(entry.totalMin - 4 * 60, 0), 4 * 60), rate: 800 },
+    { label: `8h+ à 1 000/h`, min: Math.max(entry.totalMin - 8 * 60, 0), rate: 1_000 },
   ].filter((t) => t.min > 0)
   const parts: string[] = []
   if (entry.seniorBase > 0) parts.push(`Base Senior: ${entry.seniorBase}`)
@@ -204,9 +204,9 @@ function downloadCsv(filename: string, csv: string) {
 
 function computeAnimationTierDetails(totalMin: number, base = 0) {
   const tiers = [
-    { label: '0-4h à 1 000/h', min: Math.min(totalMin, 4 * 60), rate: 1_000 },
-    { label: '4-14h à 800/h', min: Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60), rate: 800 },
-    { label: '14h+ à 1 250/h', min: Math.max(totalMin - 14 * 60, 0), rate: 1_250 },
+    { label: '0-4h à 600/h', min: Math.min(totalMin, 4 * 60), rate: 600 },
+    { label: '4-8h à 800/h', min: Math.min(Math.max(totalMin - 4 * 60, 0), 4 * 60), rate: 800 },
+    { label: '8h+ à 1 000/h', min: Math.max(totalMin - 8 * 60, 0), rate: 1_000 },
   ].filter((tier) => tier.min > 0)
 
   const rawPay = Math.round(base + tiers.reduce((sum, tier) => sum + tier.min * (tier.rate / 60), 0))
@@ -375,7 +375,7 @@ function BdmPayDetails({ entry }: { entry: PaiesEntry }) {
     <>
       <PayDetailLine
         label="Quota"
-        value={`${entry.animationsCount}/${entry.quotaMax ?? 3} missions`}
+        value={`${entry.animationsCount}/${entry.quotaMax ?? 4} missions`}
         muted={!entry.quotaFilled}
       />
       <PayDetailLine
@@ -1001,15 +1001,15 @@ export default function Paies() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400" />
-              0-4h × 1 000/h · 4-14h × 800/h · 14h+ × 1 250/h
+              0-4h × 600/h · 4-8h × 800/h · 8h+ × 1 000/h
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
-              Primes : +1 000 crédits par podium top 3
+              Primes : +1 250 crédits par podium top 3
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />
-              Plafond temps : 17 000 hors primes
+              Plafond temps : 5 000 hors primes
             </div>
           </>
         ) : activeTab === 'mj' ? (
@@ -1031,7 +1031,7 @@ export default function Paies() {
           <>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Quota 3 missions BDM · villages impliqués × type
+              Quota 4 missions BDM · villages impliqués × type
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-400" />
@@ -1043,7 +1043,7 @@ export default function Paies() {
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3 text-amber-400" />
-              17 000 hors podium · 20 000 total max
+              13 000 hors podium · 20 000 total max
             </div>
           </>
         )}

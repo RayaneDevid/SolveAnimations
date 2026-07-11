@@ -13,7 +13,7 @@ const MJ_QUOTA: Record<string, number> = {
   mj: 3,
 }
 const BDM_QUOTA: Record<string, number> = {
-  bdm: 3,
+  bdm: 4,
 }
 
 function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | undefined): string | null {

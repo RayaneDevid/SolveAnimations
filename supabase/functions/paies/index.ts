@@ -16,14 +16,15 @@ const BASE_PAY: Record<string, number> = {
 
 const ANIMATION_QUOTA_COUNT = 5
 const ANIMATION_QUOTA_MIN = 4 * 60
-const ANIMATION_TIME_CAP = 17_000
+const ANIMATION_TIME_CAP = 5_000
 const MJ_BEFORE_PODIUM_CAP = 17_000
 const MJ_TOTAL_CAP = 20_000
-const BDM_QUOTA_COUNT = 3
-const BDM_BEFORE_PODIUM_CAP = 17_000
+const BDM_QUOTA_COUNT = 4
+const BDM_BEFORE_PODIUM_CAP = 13_000
 const BDM_TOTAL_CAP = 20_000
 const SENIOR_BASE_PAY = 2_000
 const MJ_HOURLY_RATE = 800
+const ANIMATION_PODIUM_BONUS = 1_250
 const PODIUM_BONUS = 1_000
 const BDM_ROLES = new Set(['bdm', 'responsable_bdm'])
 const BDM_VILLAGES_BASE: Record<number, number> = {
@@ -63,8 +64,8 @@ const QUOTA_MAX: Record<string, number | null> = {
   animateur:      5,
   mj:             3,
   mj_senior:      3,
-  bdm:            3,
-  responsable_bdm: 3,
+  bdm:            4,
+  responsable_bdm: 4,
 }
 
 type PayPole = 'animation' | 'mj' | 'bdm'
@@ -102,13 +103,13 @@ function resolvePayRole(role: string, payPole: PayPole, availableRoles?: string[
 
 function computeAnimationTimePay(totalMin: number, base = 0): { pay: number; capped: boolean } {
   const firstTierMin = Math.min(totalMin, 4 * 60)
-  const secondTierMin = Math.min(Math.max(totalMin - 4 * 60, 0), 10 * 60)
-  const thirdTierMin = Math.max(totalMin - 14 * 60, 0)
+  const secondTierMin = Math.min(Math.max(totalMin - 4 * 60, 0), 4 * 60)
+  const thirdTierMin = Math.max(totalMin - 8 * 60, 0)
   const raw =
     base +
-    firstTierMin * (1_000 / 60) +
+    firstTierMin * (600 / 60) +
     secondTierMin * (800 / 60) +
-    thirdTierMin * (1_250 / 60)
+    thirdTierMin * (1_000 / 60)
   const rounded = Math.round(raw)
   return { pay: Math.min(rounded, ANIMATION_TIME_CAP), capped: rounded > ANIMATION_TIME_CAP }
 }
@@ -561,9 +562,9 @@ Deno.serve(async (req) => {
 
   const result = baseEntries.map((entry) => {
     if (entry.payPole === 'animation') {
-      const hoursPodiumBonus = animHoursPodium.has(entry.id) ? PODIUM_BONUS : 0
-      const createdPodiumBonus = animCreatedPodium.has(entry.id) ? PODIUM_BONUS : 0
-      const participationPodiumBonus = animParticipationPodium.has(entry.id) ? PODIUM_BONUS : 0
+      const hoursPodiumBonus = animHoursPodium.has(entry.id) ? ANIMATION_PODIUM_BONUS : 0
+      const createdPodiumBonus = animCreatedPodium.has(entry.id) ? ANIMATION_PODIUM_BONUS : 0
+      const participationPodiumBonus = animParticipationPodium.has(entry.id) ? ANIMATION_PODIUM_BONUS : 0
       const podiumBonus = hoursPodiumBonus + createdPodiumBonus + participationPodiumBonus
       return { ...entry, hoursPodiumBonus, createdPodiumBonus, participationPodiumBonus, podiumBonus, remuneration: entry.remuneration + podiumBonus }
     }

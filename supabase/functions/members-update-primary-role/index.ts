@@ -10,11 +10,13 @@ const STAFF_ROLES = [
   'gerance',
   'responsable',
   'responsable_mj',
+  'responsable_lore',
   'responsable_bdm',
   'senior',
   'mj_senior',
   'animateur',
   'mj',
+  'lore',
   'bdm',
 ] as const
 

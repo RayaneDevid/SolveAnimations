@@ -41,12 +41,16 @@ function buildParticipantPing(pole: string | undefined): { content: string; allo
     if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
     if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
   }
+  if (pole === 'lore') {
+    if (env.ROLE_LORE) roleIds.push(env.ROLE_LORE);
+  }
   // Default (no pole): ping all staff
   if (!pole) {
     if (env.ROLE_ANIMATEUR) roleIds.push(env.ROLE_ANIMATEUR);
     if (env.ROLE_SENIOR) roleIds.push(env.ROLE_SENIOR);
     if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
     if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+    if (env.ROLE_LORE) roleIds.push(env.ROLE_LORE);
   }
 
   if (roleIds.length === 0) return null;

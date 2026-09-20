@@ -42,10 +42,12 @@ const QUOTA_MAX: Record<string, number | null> = {
   gerance: null,
   responsable: null,
   responsable_mj: null,
+  responsable_lore: null,
   senior: 5,
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  lore: null,
 }
 
 function todayParisString(): string {
@@ -61,15 +63,16 @@ function todayParisString(): string {
   return `${year}-${month}-${day}`
 }
 
-type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj_senior' | 'mj' | 'bdm'
+type RoleFilter = 'all' | 'responsable' | 'senior' | 'animateur' | 'mj_senior' | 'mj' | 'lore' | 'bdm'
 
 const ROLE_FILTERS: { key: RoleFilter; label: string; matches: (role: string) => boolean }[] = [
   { key: 'all',         label: 'Tous',           matches: () => true },
-  { key: 'responsable', label: 'Responsables',   matches: (r) => ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(r) },
+  { key: 'responsable', label: 'Responsables',   matches: (r) => ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore'].includes(r) },
   { key: 'senior',      label: 'Anim. Seniors',  matches: (r) => r === 'senior' },
   { key: 'animateur',   label: 'Animateurs',     matches: (r) => r === 'animateur' },
   { key: 'mj_senior',   label: 'MJ Senior',      matches: (r) => r === 'mj_senior' },
   { key: 'mj',          label: 'MJ',             matches: (r) => r === 'mj' },
+  { key: 'lore',        label: 'Lore',           matches: (r) => r === 'lore' },
   { key: 'bdm',         label: 'BDM',            matches: (r) => ['responsable_bdm', 'bdm'].includes(r) },
 ]
 
@@ -695,7 +698,7 @@ function ProfileHistorySection({ memberId }: { memberId: string }) {
                   <p className="text-sm text-white/80">
                     Recrutement{' '}
                     <span className="text-white/40 font-normal">
-                      {r.session?.pole === 'animation' ? 'Animation' : 'MJ'} · {r.session?.type === 'ecrit' ? 'Écrit' : 'Oral'}
+                      {r.session?.pole === 'animation' ? 'Animation' : r.session?.pole === 'lore' ? 'Lore' : 'MJ'} · {r.session?.type === 'ecrit' ? 'Écrit' : 'Oral'}
                     </span>
                   </p>
                   {recruiterNames && (
@@ -722,7 +725,7 @@ function ProfileHistorySection({ memberId }: { memberId: string }) {
                   <p className="text-sm text-white/80">
                     Formation{' '}
                     <span className="text-white/40 font-normal">
-                      {t.session?.pole === 'animation' ? 'Animation' : 'MJ'}
+                      {t.session?.pole === 'animation' ? 'Animation' : t.session?.pole === 'lore' ? 'Lore' : 'MJ'}
                     </span>
                   </p>
                   {trainerNames && (

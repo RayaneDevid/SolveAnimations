@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5 } from 'lucide-react'
+import { Briefcase, CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, Swords, Dice5, ScrollText } from 'lucide-react'
 import { addDays, format, isSameDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAnimations, useCalendarAvailability } from '@/hooks/queries/useAnimations'
@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { rpDayFromDate } from '@/lib/utils/calendar'
 
 type CalendarMode = 'week' | 'day'
-type PoleFilter = 'all' | 'animation' | 'mj' | 'bdm'
+type PoleFilter = 'all' | 'animation' | 'mj' | 'lore' | 'bdm'
 
 function dateInputValue(date: Date): string {
   return format(date, 'yyyy-MM-dd')
@@ -67,6 +67,7 @@ export default function Calendar() {
   const animations = useMemo(() => {
     if (poleFilter === 'all') return allAnimations
     if (poleFilter === 'bdm') return allAnimations.filter((a) => a.bdm_mission)
+    if (poleFilter === 'lore') return allAnimations.filter((a) => a.pole === 'lore')
     return allAnimations.filter((a) => a.pole === poleFilter || a.pole === 'les_deux')
   }, [allAnimations, poleFilter])
   const todayRpDay = rpDayFromDate(new Date())
@@ -114,6 +115,12 @@ export default function Calendar() {
                 color: 'text-rose-300',
                 value: availability?.byPole.mj,
               },
+              {
+                label: 'Lore',
+                icon: ScrollText,
+                color: 'text-emerald-300',
+                value: availability?.byPole.lore,
+              },
             ].map(({ label, icon: Icon, color, value }) => (
               <div key={label} className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.03] px-2 py-1">
                 <Icon className={`h-3.5 w-3.5 ${color}`} />
@@ -133,6 +140,9 @@ export default function Calendar() {
               </TabsTrigger>
               <TabsTrigger value="mj">
                 <Dice5 className="h-3.5 w-3.5 mr-1" />MJ
+              </TabsTrigger>
+              <TabsTrigger value="lore">
+                <ScrollText className="h-3.5 w-3.5 mr-1" />Lore
               </TabsTrigger>
               <TabsTrigger value="bdm">
                 <Briefcase className="h-3.5 w-3.5 mr-1" />BDM

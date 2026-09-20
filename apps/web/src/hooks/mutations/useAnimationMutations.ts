@@ -420,7 +420,7 @@ export function useSubmitReport() {
       reportId: string
       characterName: string
       comments: string
-      pole?: 'animateur' | 'mj' | 'bdm'
+      pole?: 'animateur' | 'mj' | 'lore' | 'bdm'
     }) =>
       invokeEdge<object>('reports-submit', { report_id: reportId, character_name: characterName, comments, pole }),
     onSuccess: () => {
@@ -672,7 +672,7 @@ export function useRemoveMemberAccess() {
 
 export interface RecrutementInput {
   type: 'ecrit' | 'oral'
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   recruiter_ids: string[]
   recruits: { steam_id: string; name: string }[]
 }
@@ -689,7 +689,7 @@ export function useCreateRecrutement() {
 }
 
 export interface FormationInput {
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   trainer_ids: string[]
   trainees: { steam_id: string; name: string }[]
 }

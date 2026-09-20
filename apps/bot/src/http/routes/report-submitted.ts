@@ -40,7 +40,7 @@ export async function registerReportSubmitted(app: FastifyInstance): Promise<voi
                 `**Animation :** [${payload.animationTitle}](${panelUrl})`,
                 `**Membre :** ${payload.username}`,
                 `**Personnage :** ${payload.characterName}`,
-                `**Pôle :** ${payload.pole === 'mj' ? 'MJ' : 'Animation'}`,
+                `**Pôle :** ${payload.pole === 'mj' ? 'MJ' : payload.pole === 'lore' ? 'Lore' : payload.pole === 'bdm' ? 'BDM' : 'Animation'}`,
                 payload.comments ? `\n**Commentaires :**\n${payload.comments.slice(0, 1500)}` : null,
               ].filter(Boolean).join('\n'),
             )

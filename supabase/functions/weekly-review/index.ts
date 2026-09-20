@@ -10,10 +10,12 @@ const QUOTA_MAX: Record<string, number | null> = {
   gerance: null,
   responsable: null,
   responsable_mj: null,
+  responsable_lore: null,
   senior: 5,
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  lore: null,
   bdm: 4,
   responsable_bdm: null,
 }

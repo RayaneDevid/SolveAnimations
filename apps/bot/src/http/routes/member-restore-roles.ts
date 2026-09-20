@@ -5,7 +5,7 @@ import { addStaffRoles } from '../../discord/actions/addStaffRoles.js';
 
 const bodySchema = z.object({
   discordUserId: z.string(),
-  role: z.enum(['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm', 'senior', 'mj_senior', 'animateur', 'mj', 'bdm']),
+  role: z.enum(['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm', 'senior', 'mj_senior', 'animateur', 'mj', 'lore', 'bdm']),
 });
 
 export async function registerMemberRestoreRoles(app: FastifyInstance): Promise<void> {

@@ -13,11 +13,13 @@ const ROLE_IDS = {
   gerance:         roleId('DISCORD_ROLE_GERANCE'),
   responsable:     roleId('DISCORD_ROLE_RESPONSABLE'),
   responsable_mj:  roleId('DISCORD_ROLE_RESPONSABLE_MJ'),
+  responsable_lore: roleId('DISCORD_ROLE_RESPONSABLE_LORE', '1324443544311562290'),
   responsable_bdm: roleId('DISCORD_ROLE_RESPONSABLE_BDM', '1498316267411738735'),
   senior:          roleId('DISCORD_ROLE_SENIOR'),
   mj_senior:       roleId('DISCORD_ROLE_MJ_SENIOR'),
   animateur:       roleId('DISCORD_ROLE_ANIMATEUR'),
   mj:              roleId('DISCORD_ROLE_MJ'),
+  lore:            roleId('DISCORD_ROLE_LORE', '1324443462061522974'),
   bdm:             roleId('DISCORD_ROLE_BDM', '1498316348735099010'),
 }
 
@@ -26,15 +28,17 @@ const ROLE_HIERARCHY: Record<string, number> = {
   gerance: 5,
   responsable: 4,
   responsable_mj: 4,
+  responsable_lore: 4,
   senior: 3,
   mj_senior: 3,
   mj: 2,
+  lore: 2,
   animateur: 1,
   responsable_bdm: 0.2,
   bdm: 0.1,
 }
 
-type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'bdm'
+type StaffRole = 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_lore' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'animateur' | 'mj' | 'lore' | 'bdm'
 
 export type GuildMemberResult =
   | { ok: true; role: StaffRole; availableRoles: StaffRole[]; discordId: string; username: string; discordUsername: string; avatarUrl: string | null }

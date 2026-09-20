@@ -12,7 +12,7 @@ interface RecruitInput {
 
 interface Body {
   type: 'ecrit' | 'oral'
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   recruiter_ids: string[]
   recruits: RecruitInput[]
 }
@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
 
   if (!['ecrit', 'oral'].includes(type))
     return errorResponse('VALIDATION_ERROR', 'type doit être ecrit ou oral')
-  if (!['mj', 'animation'].includes(pole))
-    return errorResponse('VALIDATION_ERROR', 'pole doit être mj ou animation')
+  if (!['mj', 'animation', 'lore'].includes(pole))
+    return errorResponse('VALIDATION_ERROR', 'pole doit être mj, animation ou lore')
   if (!Array.isArray(recruiter_ids) || recruiter_ids.length === 0)
     return errorResponse('VALIDATION_ERROR', 'Au moins un formateur requis')
   if (!Array.isArray(recruits) || recruits.length === 0)

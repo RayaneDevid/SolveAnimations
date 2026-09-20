@@ -24,15 +24,17 @@ type TimeCorrectionRequest = {
   animation: AnimationRow | null
 }
 
-function reportPole(role: string | null | undefined, animationPole?: string | null): 'mj' | 'animateur' {
+function reportPole(role: string | null | undefined, animationPole?: string | null): 'mj' | 'lore' | 'animateur' {
   if (animationPole === 'mj') return 'mj'
+  if (animationPole === 'lore') return 'lore'
   if (['mj', 'mj_senior', 'responsable_mj'].includes(role ?? '')) return 'mj'
+  if (['lore', 'responsable_lore'].includes(role ?? '')) return 'lore'
   return 'animateur'
 }
 
 // deno-lint-ignore no-explicit-any
 async function ensureReports(db: any, animation: AnimationRow) {
-  const userEntries = new Map<string, 'mj' | 'animateur'>()
+  const userEntries = new Map<string, 'mj' | 'lore' | 'animateur'>()
   userEntries.set(animation.creator_id, reportPole(animation.creator?.role, animation.pole))
 
   const { data: participants } = await db

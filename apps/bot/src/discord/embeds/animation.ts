@@ -40,6 +40,7 @@ export const BDM_TYPE_LABELS: Record<string, string> = {
 export const POLE_LABELS: Record<string, string> = {
   animation: 'Pôle Animation',
   mj: 'Pôle MJ',
+  lore: 'Pôle Lore',
   les_deux: 'Pôle Animation & MJ',
 };
 

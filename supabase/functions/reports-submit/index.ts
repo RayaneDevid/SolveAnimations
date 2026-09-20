@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     : report.pole
 
   if (requestedPole) {
-    if (!['animateur', 'mj', 'bdm'].includes(requestedPole)) {
+    if (!['animateur', 'mj', 'lore', 'bdm'].includes(requestedPole)) {
       return errorResponse('VALIDATION_ERROR', 'Pôle de quota invalide')
     }
     if (!report.animation?.bdm_mission && requestedPole !== report.pole) {

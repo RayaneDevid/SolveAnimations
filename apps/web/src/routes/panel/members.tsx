@@ -18,7 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasOwnedRole, hasPermissionRole, MJ_STAFF_ROLES, type StaffRoleKey } from '@/lib/config/discord'
+import { hasOwnedRole, hasPermissionRole, LORE_STAFF_ROLES, MJ_STAFF_ROLES, type StaffRoleKey } from '@/lib/config/discord'
 import { formatDate } from '@/lib/utils/format'
 import type { MemberEntry } from '@/types/database'
 import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
@@ -26,6 +26,7 @@ import type { FormerMemberEntry } from '@/hooks/queries/useAnimations'
 const MANAGEMENT_ROLE_ORDER = ['direction', 'gerance']
 const ANIM_ROLE_ORDER = ['responsable', 'senior', 'animateur']
 const MJ_ROLE_ORDER = ['responsable_mj', 'mj_senior', 'mj']
+const LORE_ROLE_ORDER = ['responsable_lore', 'lore']
 const BDM_ROLE_ORDER = ['responsable_bdm', 'bdm']
 const BDM_ROLES = new Set(BDM_ROLE_ORDER)
 
@@ -900,6 +901,7 @@ export default function Members() {
   const managementMembers = sortMembers(members.filter((m) => MANAGEMENT_ROLE_ORDER.includes(m.role)), sortMode, MANAGEMENT_ROLE_ORDER)
   const poleAnimMembers = sortMembers(members.filter((m) => ANIM_ROLE_ORDER.includes(m.role)), sortMode, ANIM_ROLE_ORDER)
   const poleMjMembers = sortMembers(members.filter((m) => MJ_ROLE_ORDER.includes(m.role)), sortMode, MJ_ROLE_ORDER)
+  const poleLoreMembers = sortMembers(members.filter((m) => LORE_ROLE_ORDER.includes(m.role)), sortMode, LORE_ROLE_ORDER)
   const bdmMembers = sortBdmMembers(members.filter(hasBdmRole), sortMode)
 
   const stats = {
@@ -907,6 +909,7 @@ export default function Members() {
     management: managementMembers.length,
     poleAnim: poleAnimMembers.length,
     poleMj: poleMjMembers.length,
+    poleLore: poleLoreMembers.length,
     bdm: bdmMembers.length,
     absent: members.filter((m) => m.isAbsent).length,
   }
@@ -922,12 +925,13 @@ export default function Members() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
         {[
           { label: 'Total actifs', value: stats.total, color: 'text-white' },
           { label: 'Direction/Gérance', value: stats.management, color: 'text-purple-400' },
           { label: 'Pôle Animation', value: stats.poleAnim, color: 'text-violet-400' },
           { label: 'Pôle MJ', value: stats.poleMj, color: 'text-red-400' },
+          { label: 'Pôle Lore', value: stats.poleLore, color: 'text-emerald-400' },
           { label: 'BDM', value: stats.bdm, color: 'text-cyan-400' },
           { label: 'Absents', value: stats.absent, color: 'text-orange-400' },
         ].map(({ label, value, color }) => (
@@ -943,12 +947,13 @@ export default function Members() {
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14" />)}
         </div>
       ) : (
-        <Tabs defaultValue={user.pay_pole === 'mj' || hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'mj' : 'animation'}>
+        <Tabs defaultValue={hasOwnedRole(permissionRoles, LORE_STAFF_ROLES) && !hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'lore' : user.pay_pole === 'mj' || hasOwnedRole(permissionRoles, MJ_STAFF_ROLES) ? 'mj' : 'animation'}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <TabsList>
               <TabsTrigger value="management">Direction/Gérance ({managementMembers.length})</TabsTrigger>
               <TabsTrigger value="animation">Pôle Animation ({poleAnimMembers.length})</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ ({poleMjMembers.length})</TabsTrigger>
+              <TabsTrigger value="lore">Pôle Lore ({poleLoreMembers.length})</TabsTrigger>
               <TabsTrigger value="bdm">BDM ({bdmMembers.length})</TabsTrigger>
               <TabsTrigger value="former" className="flex items-center gap-1.5">
                 <History className="h-3.5 w-3.5" />
@@ -1009,6 +1014,20 @@ export default function Members() {
             <GlassCard className="overflow-hidden">
               <MemberTable
                 members={poleMjMembers}
+                onRemove={setRemovingMember}
+                canManagePrimaryRole={canManagePrimaryRole}
+                onChangeRole={setRoleMember}
+                canManagePayPole={canManagePayPole}
+                onChangePayPole={setPayPoleMember}
+                onEditProfile={setEditProfileMember}
+              />
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="lore">
+            <GlassCard className="overflow-hidden">
+              <MemberTable
+                members={poleLoreMembers}
                 onRemove={setRemovingMember}
                 canManagePrimaryRole={canManagePrimaryRole}
                 onChangeRole={setRoleMember}

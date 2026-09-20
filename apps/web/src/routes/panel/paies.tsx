@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
 import { AnimatePresence } from 'framer-motion'
 import { Banknote, RefreshCw, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, CalendarDays, Download, Clock, ChevronDown, EyeOff } from 'lucide-react'
 import { format } from 'date-fns'
@@ -810,6 +810,9 @@ export default function Paies() {
   const showMj   = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_mj'])
   const showBdm  = canSeeAll || hasOwnedRole(permissionRoles, ['responsable_bdm'])
   const canManageWarnings = hasPermissionRole(permissionRoles, 'responsable')
+  // Pôle Lore hors paies : un responsable sans aucun pôle de paie visible
+  // (typiquement Responsable Lore seul) n'a rien à voir ici.
+  const canSeeAnyPayPole = showAnim || showMj || showBdm
 
   const [activeTab, setActiveTab] = useState<PayTab>(() => {
     if (showBdm && !showAnim && !showMj) return 'bdm'
@@ -905,6 +908,8 @@ export default function Paies() {
     ...(showMj ? [{ key: 'mj' as const, entries: poleMj }] : []),
     ...(showBdm ? [{ key: 'bdm' as const, entries: poleBdm }] : []),
   ]
+
+  if (!canSeeAnyPayPole) return <Navigate to="/panel/dashboard" replace />
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">

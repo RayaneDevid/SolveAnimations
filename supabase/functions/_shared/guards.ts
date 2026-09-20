@@ -6,9 +6,11 @@ const ROLE_HIERARCHY: Record<string, number> = {
   gerance: 5,
   responsable: 4,
   responsable_mj: 4,
+  responsable_lore: 4,
   senior: 3,
   mj_senior: 3,
   mj: 2,
+  lore: 2,
   animateur: 1,
   responsable_bdm: 0.2,
   bdm: 0.1,
@@ -30,14 +32,14 @@ export function hasAnyRole(profile: Profile, roles: string[]): boolean {
 }
 
 export function isResponsableRole(roleOrProfile: string | Profile): boolean {
-  const responsableRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm']
+  const responsableRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm']
   if (typeof roleOrProfile === 'string') return responsableRoles.includes(roleOrProfile)
   return hasAnyRole(roleOrProfile, responsableRoles)
 }
 
 export function requireRole(
   profile: Profile,
-  minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'mj' | 'animateur' | 'bdm',
+  minRole: 'direction' | 'gerance' | 'responsable' | 'responsable_mj' | 'responsable_lore' | 'responsable_bdm' | 'senior' | 'mj_senior' | 'mj' | 'lore' | 'animateur' | 'bdm',
 ): Response | null {
   if (!hasEffectiveRole(profile, minRole)) {
     return errorResponse('FORBIDDEN', `Rôle requis : ${minRole}`)

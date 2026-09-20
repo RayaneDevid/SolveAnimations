@@ -73,6 +73,12 @@ const POLE_CONFIG: Record<AnimationPole, { label: string; description: string; c
     color: 'text-red-400',
     active: 'bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]',
   },
+  lore: {
+    label: 'Pôle Lore',
+    description: 'Animation menée par le pôle Lore',
+    color: 'text-emerald-400',
+    active: 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]',
+  },
   les_deux: {
     label: 'Pôle Animation & MJ',
     description: 'Animation co-menée par les deux pôles',

@@ -202,11 +202,13 @@ function PoleAbsencesCard({
   title: string
   absent: SummaryMember[]
   total: number
-  tone: 'cyan' | 'violet'
+  tone: 'cyan' | 'violet' | 'emerald'
 }) {
   const toneClass = tone === 'cyan'
     ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
-    : 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+    : tone === 'emerald'
+      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+      : 'bg-violet-500/10 border-violet-500/20 text-violet-400'
 
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
@@ -277,7 +279,7 @@ export default function Absences() {
               <p className="text-xs text-white/30 mt-0.5">absences dont la date de retour est à venir</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-0 sm:pl-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pl-0 sm:pl-12">
             <PoleAbsencesCard
               title="Pôle Animation"
               absent={summary.absentByPole?.animation ?? []}
@@ -289,6 +291,12 @@ export default function Absences() {
               absent={summary.absentByPole?.mj ?? []}
               total={summary.totalByPole?.mj ?? 0}
               tone="violet"
+            />
+            <PoleAbsencesCard
+              title="Pôle Lore"
+              absent={summary.absentByPole?.lore ?? []}
+              total={summary.totalByPole?.lore ?? 0}
+              tone="emerald"
             />
           </div>
         </GlassCard>

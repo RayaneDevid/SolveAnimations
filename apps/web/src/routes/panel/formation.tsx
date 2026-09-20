@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { cn } from '@/lib/utils/cn'
-import { isMjStaffRole } from '@/lib/config/discord'
+import { isLoreStaffRole, isMjStaffRole } from '@/lib/config/discord'
 import type { FormationSession, SeniorProfile, RecentRecruit } from '@/types/database'
 
 // ─── Multi-select members with search ─────────────────────────────────────────
@@ -202,7 +202,7 @@ function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: seniors = [] } = useSeniors()
   const { mutateAsync, isPending } = useCreateFormation()
 
-  const [pole, setPole] = useState<'mj' | 'animation'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'animation')
+  const [pole, setPole] = useState<'mj' | 'animation' | 'lore'>(() => isLoreStaffRole(user.role) ? 'lore' : user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'animation')
   const [trainerIds, setTrainerIds] = useState<string[]>([])
   const [count, setCount] = useState(1)
   const [trainees, setTrainees] = useState<{ steam_id: string; name: string }[]>([{ steam_id: '', name: '' }])
@@ -241,7 +241,7 @@ function CreateFormationForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="space-y-2">
         <Label>Pôle</Label>
         <div className="flex gap-2">
-          {([['animation', 'Animation'], ['mj', 'MJ']] as const).map(([v, label]) => (
+          {([['animation', 'Animation'], ['mj', 'MJ'], ['lore', 'Lore']] as const).map(([v, label]) => (
             <button
               key={v}
               type="button"
@@ -337,7 +337,7 @@ function FormationCard({ session }: { session: FormationSession }) {
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-white/80">
-              {session.pole === 'animation' ? 'Animation' : 'MJ'}
+              {session.pole === 'animation' ? 'Animation' : session.pole === 'lore' ? 'Lore' : 'MJ'}
               <span className="ml-2 text-white/30 text-xs font-normal">
                 {session.trainees.length} stagiaire{session.trainees.length > 1 ? 's' : ''}
               </span>

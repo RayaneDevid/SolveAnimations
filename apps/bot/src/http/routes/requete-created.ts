@@ -9,7 +9,7 @@ import { env } from '../../config/env.js';
 const bodySchema = z.object({
   requeteId:       z.string().uuid(),
   subject:         z.string(),
-  destination:     z.enum(['ra', 'rmj']),
+  destination:     z.enum(['ra', 'rmj', 'rlore']),
   description:     z.string(),
   creatorUsername: z.string(),
   creatorDiscordId: z.string().nullable().optional(),
@@ -56,7 +56,11 @@ export async function registerRequeteCreated(app: FastifyInstance): Promise<void
         );
 
         // Ping le rôle concerné selon la destination
-        const pingRoleId = destination === 'ra' ? env.ROLE_RESPONSABLE : env.ROLE_RESPONSABLE_MJ;
+        const pingRoleId = destination === 'ra'
+          ? env.ROLE_RESPONSABLE
+          : destination === 'rlore'
+            ? env.ROLE_RESPONSABLE_LORE
+            : env.ROLE_RESPONSABLE_MJ;
         const pingContent = pingRoleId ? `<@&${pingRoleId}>` : undefined;
         const allowedRoles = pingRoleId ? [pingRoleId] : [];
 

@@ -127,6 +127,7 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
     return {
       animation: buildQuotaSummary(0, 0),
       mj: buildQuotaSummary(0, 0),
+      lore: buildQuotaSummary(0, 0),
       bdm: buildQuotaSummary(0, 0),
     }
   }
@@ -238,6 +239,8 @@ async function buildQuotaCompletion(db: any, weekStart: Date, weekEnd: Date) {
   return {
     animation: buildQuotaSummary(animFilled, animTotal),
     mj: buildQuotaSummary(mjFilled, mjTotal),
+    // Le pôle Lore n'a pas de quota hebdomadaire → toujours 0/0.
+    lore: buildQuotaSummary(0, 0),
     bdm: buildQuotaSummary(bdmFilled, bdmTotal),
   }
 }

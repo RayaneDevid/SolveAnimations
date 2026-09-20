@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     .gte('recruitment_sessions.created_at' as never, threeMonthsAgo)
     .order('created_at', { ascending: false })
 
-  if (pole && ['mj', 'animation'].includes(pole)) {
+  if (pole && ['mj', 'animation', 'lore'].includes(pole)) {
     query = query.eq('recruitment_sessions.pole' as never, pole)
   }
 

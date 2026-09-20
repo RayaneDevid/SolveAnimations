@@ -48,6 +48,7 @@ export interface CalendarAvailability {
   byPole: {
     animation: { occupiedCount: number; presentCount: number }
     mj: { occupiedCount: number; presentCount: number }
+    lore: { occupiedCount: number; presentCount: number }
   }
 }
 
@@ -96,7 +97,7 @@ export function useParticipantTimeCorrectionRequests(enabled = true) {
   })
 }
 
-export function useWeeklyStats(userId?: string, weekStart?: Date, pole?: 'animateur' | 'mj' | 'bdm') {
+export function useWeeklyStats(userId?: string, weekStart?: Date, pole?: 'animateur' | 'mj' | 'lore' | 'bdm') {
   const weekStartIso = weekStart?.toISOString()
   return useQuery({
     queryKey: queryKeys.stats.weekly(userId, weekStartIso, pole),
@@ -150,10 +151,12 @@ export interface AbsencesSummary {
   absentByPole?: {
     animation: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
     mj: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
+    lore: { username: string; avatar_url: string | null; role?: string | null; from_date: string; to_date: string }[]
   }
   totalByPole?: {
     animation: number
     mj: number
+    lore: number
   }
 }
 
@@ -367,7 +370,7 @@ export interface WeeklyEvolutionResult {
   profiles: WeeklyEvolutionProfile[]
 }
 
-export function useWeeklyEvolution(userId?: string | null, weeks = 12, pole?: 'anim' | 'mj' | null) {
+export function useWeeklyEvolution(userId?: string | null, weeks = 12, pole?: 'anim' | 'mj' | 'lore' | null) {
   return useQuery({
     queryKey: ['stats', 'weekly-evolution', userId ?? null, weeks, pole ?? null] as const,
     queryFn: () =>
@@ -421,7 +424,7 @@ export function useFormations() {
   })
 }
 
-export function useRecentRecruits(pole?: 'mj' | 'animation') {
+export function useRecentRecruits(pole?: 'mj' | 'animation' | 'lore') {
   return useQuery({
     queryKey: ['recruits-recent', pole ?? null] as const,
     queryFn: () => invokeEdge<import('@/types/database').RecentRecruit[]>('recruits-recent-list', pole ? { pole } : {}),

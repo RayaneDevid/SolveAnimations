@@ -5,7 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { requireResponsable } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
-const AUDIENCES = new Set(['all', 'selected', 'pole_animation', 'pole_mj', 'pole_bdm'])
+const AUDIENCES = new Set(['all', 'selected', 'pole_animation', 'pole_mj', 'pole_lore', 'pole_bdm'])
 
 Deno.serve(async (req) => {
   const cors = handleCors(req)

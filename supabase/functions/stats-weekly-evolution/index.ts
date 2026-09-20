@@ -14,8 +14,12 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
   const { user_id, weeks = 12, pole } = body
 
-  const ANIM_ROLES = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
-  const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
+  const POLE_ROLES: Record<string, string[]> = {
+    anim: ['direction', 'gerance', 'responsable', 'senior', 'animateur'],
+    mj:   ['responsable_mj', 'mj_senior', 'mj'],
+    lore: ['responsable_lore', 'lore'],
+  }
+  const poleRoles = typeof pole === 'string' ? POLE_ROLES[pole] ?? null : null
 
   const db = getServiceClient()
 
@@ -59,9 +63,9 @@ Deno.serve(async (req) => {
   }
 
   // Apply pole filter
-  const allAnims = pole
+  const allAnims = poleRoles
     ? (rawAnims ?? []).filter((a: { creator: { role: string } | null }) =>
-        a.creator && (pole === 'anim' ? ANIM_ROLES : MJ_ROLES).includes(a.creator.role)
+        a.creator && poleRoles.includes(a.creator.role)
       )
     : (rawAnims ?? [])
 
@@ -86,7 +90,7 @@ Deno.serve(async (req) => {
   const participatedAnimationIds = new Set(
     (participations ?? [])
       .filter((p: PartRow) =>
-        !pole || (p.animations?.creator?.role && (pole === 'anim' ? ANIM_ROLES : MJ_ROLES).includes(p.animations.creator.role))
+        !poleRoles || (p.animations?.creator?.role && poleRoles.includes(p.animations.creator.role))
       )
       .map((p: PartRow) => p.animation_id)
   )
@@ -114,8 +118,8 @@ Deno.serve(async (req) => {
     .from('profiles')
     .select('id, username, avatar_url')
     .order('username', { ascending: true })
-  if (pole) {
-    profilesQuery = profilesQuery.in('role', pole === 'anim' ? ANIM_ROLES : MJ_ROLES)
+  if (poleRoles) {
+    profilesQuery = profilesQuery.in('role', poleRoles)
   }
   const { data: profiles } = await profilesQuery
 

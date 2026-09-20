@@ -10,7 +10,7 @@ import { animationSlotBounds } from '../_shared/animationSlot.ts'
 
 const SERVERS  = ['S1','S2','S3','S4','S5','SE1','SE2','SE3'] as const
 const TYPES    = ['moyenne','grande'] as const
-const POLES    = ['animation','mj','les_deux'] as const
+const POLES    = ['animation','mj','lore','les_deux'] as const
 const VILLAGES = ['konoha','suna','oto','kiri','temple_camelias','autre','tout_le_monde'] as const
 const MISSION_KINDS = ['classique','spontanee','mission_bdm','passee'] as const
 const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const

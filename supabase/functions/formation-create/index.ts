@@ -11,7 +11,7 @@ interface TraineeInput {
 }
 
 interface Body {
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   trainer_ids: string[]
   trainees: TraineeInput[]
 }
@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
   const body: Body = await req.json().catch(() => ({}))
   const { pole, trainer_ids, trainees } = body
 
-  if (!['mj', 'animation'].includes(pole))
-    return errorResponse('VALIDATION_ERROR', 'pole doit être mj ou animation')
+  if (!['mj', 'animation', 'lore'].includes(pole))
+    return errorResponse('VALIDATION_ERROR', 'pole doit être mj, animation ou lore')
   if (!Array.isArray(trainer_ids) || trainer_ids.length === 0)
     return errorResponse('VALIDATION_ERROR', 'Au moins un formateur requis')
   if (!Array.isArray(trainees) || trainees.length === 0)

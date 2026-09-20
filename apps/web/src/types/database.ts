@@ -49,7 +49,7 @@ export interface Animation {
   bdm_mission_rank: string
   bdm_villages_count: BdmVillagesCount
   bdm_mission_type: BdmMissionType
-  pole: 'animation' | 'mj' | 'les_deux'
+  pole: 'animation' | 'mj' | 'lore' | 'les_deux'
   creator_id: string
   status: AnimationStatus
   validated_by: string | null
@@ -169,7 +169,7 @@ export interface AnimationReport {
   id: string
   animation_id: string
   user_id: string
-  pole: 'animateur' | 'mj' | 'bdm' | string
+  pole: 'animateur' | 'mj' | 'lore' | 'bdm' | string
   character_name: string | null
   comments: string | null
   submitted_at: string | null
@@ -204,7 +204,7 @@ export interface Broadcast {
   id: string
   title: string | null
   message: string
-  audience: 'all' | 'selected' | 'pole_animation' | 'pole_mj' | 'pole_bdm'
+  audience: 'all' | 'selected' | 'pole_animation' | 'pole_mj' | 'pole_lore' | 'pole_bdm'
   created_by: string | null
   created_at: string
   archived_at: string | null
@@ -217,8 +217,8 @@ export interface WeeklyStats {
   participationsValidated: number
   quota: number
   quotaMax: number | null
-  pole: 'animateur' | 'mj' | 'bdm'
-  availablePoles: Array<'animateur' | 'mj' | 'bdm'>
+  pole: 'animateur' | 'mj' | 'lore' | 'bdm'
+  availablePoles: Array<'animateur' | 'mj' | 'lore' | 'bdm'>
   weekStart: string
   weekEnd: string
 }
@@ -233,6 +233,7 @@ export interface VillageStats {
   quotaCompletion: {
     animation: QuotaCompletion
     mj: QuotaCompletion
+    lore: QuotaCompletion
     bdm: QuotaCompletion
   }
   lastFourWeeks: Array<{
@@ -382,7 +383,7 @@ export type RequeteSubject =
   | 'situation_problematique'
   | 'autres'
 
-export type RequeteDestination = 'ra' | 'rmj'
+export type RequeteDestination = 'ra' | 'rmj' | 'rlore'
 export type RequeteStatus = 'pending' | 'accepted' | 'refused'
 
 export interface Requete {
@@ -439,7 +440,7 @@ export interface ParticipationConflictAnimation {
   slotStart: string
   slotEnd: string
   status: AnimationStatus
-  pole: 'animation' | 'mj' | 'les_deux'
+  pole: 'animation' | 'mj' | 'lore' | 'les_deux'
   bdmMission: boolean
   role: 'creator' | 'participant'
   participantId: string | null
@@ -487,7 +488,7 @@ export interface RecruitEntry {
 export interface RecrutementSession {
   id: string
   type: 'ecrit' | 'oral'
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   created_at: string
   created_by_profile: { username: string; avatar_url: string | null } | null
   recruiters: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
@@ -504,7 +505,7 @@ export interface TraineeEntry {
 
 export interface FormationSession {
   id: string
-  pole: 'mj' | 'animation'
+  pole: 'mj' | 'animation' | 'lore'
   created_at: string
   created_by_profile: { username: string; avatar_url: string | null } | null
   trainers: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
@@ -528,7 +529,7 @@ export interface ProfileHistory {
     session: {
       id: string
       type: 'ecrit' | 'oral'
-      pole: 'mj' | 'animation'
+      pole: 'mj' | 'animation' | 'lore'
       created_at: string
       recruiters: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
     } | null
@@ -540,7 +541,7 @@ export interface ProfileHistory {
     created_at: string
     session: {
       id: string
-      pole: 'mj' | 'animation'
+      pole: 'mj' | 'animation' | 'lore'
       created_at: string
       trainers: Array<{ profile: { id: string; username: string; avatar_url: string | null } | null }>
     } | null

@@ -9,10 +9,12 @@ import { notifyBot } from '../_shared/bot.ts'
 const CREATOR_ROLES = [
   'animateur',
   'mj',
+  'lore',
   'senior',
   'mj_senior',
   'responsable',
   'responsable_mj',
+  'responsable_lore',
   'responsable_bdm',
   'bdm',
   'direction',
@@ -28,7 +30,7 @@ const VALID_SUBJECTS = [
   'autres',
 ]
 
-const VALID_DESTINATIONS = ['ra', 'rmj']
+const VALID_DESTINATIONS = ['ra', 'rmj', 'rlore']
 
 interface Body {
   subject: string

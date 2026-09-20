@@ -54,7 +54,7 @@ export default function App() {
           <Route
             path="team-reports"
             element={
-              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'gerance', 'direction']} redirectTo="/panel/dashboard">
                 <TeamReports />
               </RoleGate>
             }
@@ -63,7 +63,7 @@ export default function App() {
           <Route
             path="validation"
             element={
-              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_bdm', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm', 'gerance', 'direction']} redirectTo="/panel/dashboard">
                 <Validation />
               </RoleGate>
             }
@@ -72,7 +72,7 @@ export default function App() {
           <Route
             path="members"
             element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj', 'responsable_lore']} redirectTo="/panel/dashboard">
                 <Members />
               </RoleGate>
             }
@@ -80,7 +80,7 @@ export default function App() {
           <Route
             path="casiers"
             element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj', 'responsable_lore']} redirectTo="/panel/dashboard">
                 <Casiers />
               </RoleGate>
             }
@@ -96,7 +96,7 @@ export default function App() {
           <Route
             path="logs"
             element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj', 'responsable_lore']} redirectTo="/panel/dashboard">
                 <Logs />
               </RoleGate>
             }
@@ -104,7 +104,7 @@ export default function App() {
           <Route
             path="bilan"
             element={
-              <RoleGate allow={['responsable', 'responsable_mj']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['responsable', 'responsable_mj', 'responsable_lore']} redirectTo="/panel/dashboard">
                 <Bilan />
               </RoleGate>
             }
@@ -116,7 +116,7 @@ export default function App() {
           <Route
             path="recrutement"
             element={
-              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'gerance', 'direction']} redirectTo="/panel/dashboard">
                 <Recrutement />
               </RoleGate>
             }
@@ -124,7 +124,7 @@ export default function App() {
           <Route
             path="formation"
             element={
-              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'gerance', 'direction']} redirectTo="/panel/dashboard">
+              <RoleGate allow={['senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'gerance', 'direction']} redirectTo="/panel/dashboard">
                 <Formation />
               </RoleGate>
             }

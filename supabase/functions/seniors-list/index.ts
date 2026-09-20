@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
   const db = getServiceClient()
 
-  const SENIOR_ROLES = ['direction', 'gerance', 'responsable', 'responsable_mj', 'senior', 'mj_senior']
+  const SENIOR_ROLES = ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore', 'senior', 'mj_senior']
 
   const { data, error } = await db
     .from('profiles')

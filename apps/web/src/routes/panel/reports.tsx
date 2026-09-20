@@ -22,22 +22,25 @@ import { cn } from '@/lib/utils/cn'
 import { hasPermissionRole, type StaffRoleKey } from '@/lib/config/discord'
 import type { AnimationReport } from '@/types/database'
 
-type ReportPole = 'animateur' | 'mj' | 'bdm'
+type ReportPole = 'animateur' | 'mj' | 'lore' | 'bdm'
 
 const REPORT_POLE_LABELS: Record<ReportPole, string> = {
   animateur: 'Animateur',
   mj: 'Maître du Jeu',
+  lore: 'Lore',
   bdm: 'BDM',
 }
 
 const REPORT_POLE_SHORT_LABELS: Record<ReportPole, string> = {
   animateur: 'Anim.',
   mj: 'MJ',
+  lore: 'Lore',
   bdm: 'BDM',
 }
 
 const ANIMATION_ROLES = new Set<StaffRoleKey>(['animateur', 'senior', 'responsable', 'direction', 'gerance'])
 const MJ_ROLES = new Set<StaffRoleKey>(['mj', 'mj_senior', 'responsable_mj'])
+const LORE_ROLES = new Set<StaffRoleKey>(['lore', 'responsable_lore'])
 const BDM_ROLES = new Set<StaffRoleKey>(['bdm', 'responsable_bdm'])
 
 function profileRoles(user: { role: StaffRoleKey; available_roles?: StaffRoleKey[] | null }): StaffRoleKey[] {
@@ -49,12 +52,13 @@ function allowedReportPoles(user: { role: StaffRoleKey; available_roles?: StaffR
   const poles: ReportPole[] = []
   if (roles.some((role) => ANIMATION_ROLES.has(role))) poles.push('animateur')
   if (roles.some((role) => MJ_ROLES.has(role))) poles.push('mj')
+  if (roles.some((role) => LORE_ROLES.has(role))) poles.push('lore')
   if (roles.some((role) => BDM_ROLES.has(role))) poles.push('bdm')
   return poles
 }
 
 function normalizeReportPole(pole: string | null | undefined): ReportPole {
-  return pole === 'mj' || pole === 'bdm' ? pole : 'animateur'
+  return pole === 'mj' || pole === 'lore' || pole === 'bdm' ? pole : 'animateur'
 }
 
 function reportAnimationMinutes(report: AnimationReport): { animationMin: number; prepMin: number; totalMin: number } | null {

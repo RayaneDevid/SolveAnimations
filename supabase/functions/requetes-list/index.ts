@@ -66,6 +66,17 @@ Deno.serve(async (req) => {
 
     if (error) return errorResponse('INTERNAL_ERROR', error.message)
     incoming = data ?? []
+  } else if (hasAnyRole(profile, ['responsable_lore'])) {
+    const { data, error } = await db
+      .from('requetes')
+      .select(SELECT)
+      .eq('destination', 'rlore')
+      .eq('status', 'pending')
+      .order('status', { ascending: true })
+      .order('created_at', { ascending: true })
+
+    if (error) return errorResponse('INTERNAL_ERROR', error.message)
+    incoming = data ?? []
   }
 
   return jsonResponse({ mine: mine ?? [], incoming })

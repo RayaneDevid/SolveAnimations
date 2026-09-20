@@ -57,13 +57,16 @@ Deno.serve(async (req) => {
     const totalStaff = profiles?.length ?? 0
     const isAnimationRole = (role: string | null) => ['direction', 'gerance', 'responsable', 'senior', 'animateur'].includes(role ?? '')
     const isMjRole = (role: string | null) => ['responsable_mj', 'mj_senior', 'mj'].includes(role ?? '')
+    const isLoreRole = (role: string | null) => ['responsable_lore', 'lore'].includes(role ?? '')
     const absentByPole = {
       animation: absentMembers.filter((member) => isAnimationRole(member.role)),
       mj: absentMembers.filter((member) => isMjRole(member.role)),
+      lore: absentMembers.filter((member) => isLoreRole(member.role)),
     }
     const totalByPole = {
       animation: (profiles ?? []).filter((profile) => isAnimationRole(profile.role)).length,
       mj: (profiles ?? []).filter((profile) => isMjRole(profile.role)).length,
+      lore: (profiles ?? []).filter((profile) => isLoreRole(profile.role)).length,
     }
 
     return jsonResponse({

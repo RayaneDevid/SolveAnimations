@@ -19,7 +19,7 @@ import client from '../client.js';
 const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const;
 const TYPES = ['moyenne', 'grande'] as const;
 const VILLAGES = ['konoha', 'suna', 'oto', 'kiri', 'temple_camelias', 'autre', 'tout_le_monde'] as const;
-const POLES = ['animation', 'mj', 'les_deux'] as const;
+const POLES = ['animation', 'mj', 'lore', 'les_deux'] as const;
 
 const VILLAGE_LABELS: Record<string, string> = {
   konoha: 'Konoha',
@@ -100,6 +100,9 @@ function buildParticipantPingContent(pole: string, pingRoles: boolean): { conten
   if (pole === 'mj' || pole === 'les_deux') {
     if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
     if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+  if (pole === 'lore') {
+    if (env.ROLE_LORE) roleIds.push(env.ROLE_LORE);
   }
 
   if (roleIds.length === 0) return null;
@@ -231,7 +234,7 @@ function buildModal3(): ModalBuilder {
           .setCustomId('pole')
           .setLabel('Pôle')
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('animation · mj · les_deux')
+          .setPlaceholder('animation · mj · lore · les_deux')
           .setValue('animation')
           .setRequired(true),
       ),

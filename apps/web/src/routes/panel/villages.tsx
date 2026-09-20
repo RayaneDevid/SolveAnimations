@@ -153,12 +153,15 @@ function QuotaPieCard({ title, data }: { title: string; data: QuotaCompletion })
 }
 
 const MJ_ROLES = new Set(['mj', 'mj_senior', 'responsable_mj'])
+const LORE_ROLES = new Set(['lore', 'responsable_lore'])
 
 export default function Villages() {
   const { user } = useRequiredAuth()
-  const defaultPole = user.pay_pole === 'mj' || MJ_ROLES.has(user.role) ? 'mj' : 'anim'
+  const defaultPole: 'anim' | 'mj' | 'lore' = LORE_ROLES.has(user.role)
+    ? 'lore'
+    : user.pay_pole === 'mj' || MJ_ROLES.has(user.role) ? 'mj' : 'anim'
   const [selectedUser, setSelectedUser] = useState<string>('all')
-  const [selectedPole, setSelectedPole] = useState<'anim' | 'mj'>(defaultPole)
+  const [selectedPole, setSelectedPole] = useState<'anim' | 'mj' | 'lore'>(defaultPole)
   const { bounds, goNext, goPrev, goToday, isCurrentWeek } = useCurrentWeek()
   const { data, isLoading } = useVillageStats(bounds.start)
   const { data: evoData, isLoading: evoLoading } = useWeeklyEvolution(
@@ -380,10 +383,11 @@ export default function Villages() {
             Évolution hebdomadaire
           </h2>
           <div className="flex items-center gap-2 flex-wrap">
-            <Tabs value={selectedPole} onValueChange={(v) => { setSelectedPole(v as 'anim' | 'mj'); setSelectedUser('all') }}>
+            <Tabs value={selectedPole} onValueChange={(v) => { setSelectedPole(v as 'anim' | 'mj' | 'lore'); setSelectedUser('all') }}>
               <TabsList className="h-8">
                 <TabsTrigger value="anim" className="text-xs px-3">Pôle Anim</TabsTrigger>
                 <TabsTrigger value="mj" className="text-xs px-3">Pôle MJ</TabsTrigger>
+                <TabsTrigger value="lore" className="text-xs px-3">Pôle Lore</TabsTrigger>
               </TabsList>
             </Tabs>
             <Select value={selectedUser} onValueChange={setSelectedUser}>

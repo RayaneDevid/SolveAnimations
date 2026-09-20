@@ -59,7 +59,7 @@ export async function registerAnimationDeletionRequested(app: FastifyInstance): 
         }
 
         // Mention responsable roles if configured
-        const mentions = [env.ROLE_RESPONSABLE, env.ROLE_RESPONSABLE_MJ]
+        const mentions = [env.ROLE_RESPONSABLE, env.ROLE_RESPONSABLE_MJ, env.ROLE_RESPONSABLE_LORE]
           .filter((id): id is string => Boolean(id))
           .map((id) => `<@&${id}>`)
           .join(' ');

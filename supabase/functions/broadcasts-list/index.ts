@@ -16,6 +16,9 @@ function isInAudience(profile: { role: string; available_roles?: string[] | null
   if (audience === 'pole_mj') {
     return profile.pay_pole === 'mj' || roles.some((role) => ['responsable_mj', 'mj_senior', 'mj'].includes(role))
   }
+  if (audience === 'pole_lore') {
+    return roles.some((role) => ['responsable_lore', 'lore'].includes(role))
+  }
   if (audience === 'pole_bdm') {
     return roles.some((role) => ['responsable_bdm', 'bdm'].includes(role))
   }

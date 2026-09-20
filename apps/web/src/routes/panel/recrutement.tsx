@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { cn } from '@/lib/utils/cn'
-import { isMjStaffRole } from '@/lib/config/discord'
+import { isLoreStaffRole, isMjStaffRole } from '@/lib/config/discord'
 import type { RecrutementSession, SeniorProfile } from '@/types/database'
 
 // ─── Multi-select seniors ─────────────────────────────────────────────────────
@@ -138,8 +138,9 @@ function RecruitRow({
 
 // ─── Create form ──────────────────────────────────────────────────────────────
 
-const POLE_ROLES: Record<'mj' | 'animation', string[]> = {
+const POLE_ROLES: Record<'mj' | 'animation' | 'lore', string[]> = {
   mj: ['mj_senior', 'responsable_mj', 'gerance', 'direction'],
+  lore: ['responsable_lore', 'gerance', 'direction'],
   animation: ['senior', 'responsable', 'gerance', 'direction'],
 }
 
@@ -149,7 +150,7 @@ function CreateRecrutementForm({ onSuccess }: { onSuccess: () => void }) {
   const { mutateAsync, isPending } = useCreateRecrutement()
 
   const [type, setType] = useState<'ecrit' | 'oral'>('ecrit')
-  const [pole, setPole] = useState<'mj' | 'animation'>(() => user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'animation')
+  const [pole, setPole] = useState<'mj' | 'animation' | 'lore'>(() => isLoreStaffRole(user.role) ? 'lore' : user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'animation')
   const [recruiterIds, setRecruiterIds] = useState<string[]>([])
   const [count, setCount] = useState(1)
   const [recruits, setRecruits] = useState<{ steam_id: string; name: string }[]>([{ steam_id: '', name: '' }])
@@ -211,7 +212,7 @@ function CreateRecrutementForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="space-y-2">
         <Label>Pôle</Label>
         <div className="flex gap-2">
-          {([['animation', 'Animation'], ['mj', 'MJ']] as const).map(([v, label]) => (
+          {([['animation', 'Animation'], ['mj', 'MJ'], ['lore', 'Lore']] as const).map(([v, label]) => (
             <button
               key={v}
               type="button"
@@ -298,7 +299,7 @@ function SessionCard({ session }: { session: RecrutementSession }) {
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-white/80">
-              {session.pole === 'animation' ? 'Animation' : 'MJ'} · {session.type === 'ecrit' ? 'Écrit' : 'Oral'}
+              {session.pole === 'animation' ? 'Animation' : session.pole === 'lore' ? 'Lore' : 'MJ'} · {session.type === 'ecrit' ? 'Écrit' : 'Oral'}
               <span className="ml-2 text-white/30 text-xs font-normal">
                 {session.recruits.length} recrue{session.recruits.length > 1 ? 's' : ''}
               </span>

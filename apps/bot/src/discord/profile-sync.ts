@@ -10,11 +10,13 @@ type StaffRole =
   | 'gerance'
   | 'responsable'
   | 'responsable_mj'
+  | 'responsable_lore'
   | 'responsable_bdm'
   | 'senior'
   | 'mj_senior'
   | 'animateur'
   | 'mj'
+  | 'lore'
   | 'bdm';
 
 type ProfileRow = {
@@ -33,11 +35,13 @@ const ROLE_IDS: Record<StaffRole, string | undefined> = {
   gerance: env.ROLE_GERANCE,
   responsable: env.ROLE_RESPONSABLE,
   responsable_mj: env.ROLE_RESPONSABLE_MJ,
+  responsable_lore: env.ROLE_RESPONSABLE_LORE,
   responsable_bdm: env.ROLE_RESPONSABLE_BDM,
   senior: env.ROLE_SENIOR,
   mj_senior: env.ROLE_MJ_SENIOR,
   animateur: env.ROLE_ANIMATEUR,
   mj: env.ROLE_MJ,
+  lore: env.ROLE_LORE,
   bdm: env.ROLE_BDM,
 };
 
@@ -46,9 +50,11 @@ const ROLE_HIERARCHY: Record<StaffRole, number> = {
   gerance: 5,
   responsable: 4,
   responsable_mj: 4,
+  responsable_lore: 4,
   senior: 3,
   mj_senior: 3,
   mj: 2,
+  lore: 2,
   animateur: 1,
   responsable_bdm: 0.2,
   bdm: 0.1,

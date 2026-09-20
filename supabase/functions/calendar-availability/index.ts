@@ -5,7 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
 const ACTIVE_STATUSES = ['open', 'preparing', 'running']
-type Pole = 'animation' | 'mj'
+type Pole = 'animation' | 'mj' | 'lore'
 type ActiveAnimation = {
   id: string
   creator_id: string | null
@@ -23,6 +23,7 @@ function inferPole(role: string | null, payPole: Pole | null): Pole | null {
   if (payPole) return payPole
   if (['direction', 'gerance', 'responsable', 'senior', 'animateur'].includes(role ?? '')) return 'animation'
   if (['responsable_mj', 'mj_senior', 'mj'].includes(role ?? '')) return 'mj'
+  if (['responsable_lore', 'lore'].includes(role ?? '')) return 'lore'
   return null
 }
 
@@ -103,6 +104,7 @@ Deno.serve(async (req) => {
       byPole: {
         animation: { occupiedCount: 0, presentCount: 0 },
         mj: { occupiedCount: 0, presentCount: 0 },
+        lore: { occupiedCount: 0, presentCount: 0 },
       },
     })
   }
@@ -173,6 +175,10 @@ Deno.serve(async (req) => {
       mj: {
         occupiedCount: Array.from(occupiedIds).filter((id) => profilePoleMap.get(id) === 'mj').length,
         presentCount: Array.from(presentIds).filter((id) => profilePoleMap.get(id) === 'mj').length,
+      },
+      lore: {
+        occupiedCount: Array.from(occupiedIds).filter((id) => profilePoleMap.get(id) === 'lore').length,
+        presentCount: Array.from(presentIds).filter((id) => profilePoleMap.get(id) === 'lore').length,
       },
     },
   })

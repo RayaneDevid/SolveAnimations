@@ -12,10 +12,12 @@ const QUOTA_MAX: Record<string, number | null> = {
   gerance: null,
   responsable: null,
   responsable_mj: null,
+  responsable_lore: null,
   senior: 5,
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  lore: null,
   bdm: 4,
   responsable_bdm: 4,
 }
@@ -28,6 +30,7 @@ function resolvePayRole(role: string, payPole: 'animation' | 'mj' | null | undef
 
 function reportPoleForRole(role: string): ReportPole {
   if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
+  if (role === 'lore' || role === 'responsable_lore') return 'lore'
   if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
   return 'animateur'
 }
@@ -35,6 +38,7 @@ function reportPoleForRole(role: string): ReportPole {
 function quotaRoleForPole(pole: ReportPole, roles: string[]): string {
   if (pole === 'bdm') return roles.includes('responsable_bdm') ? 'responsable_bdm' : 'bdm'
   if (pole === 'mj') return roles.includes('responsable_mj') ? 'responsable_mj' : roles.includes('mj_senior') ? 'mj_senior' : 'mj'
+  if (pole === 'lore') return roles.includes('responsable_lore') ? 'responsable_lore' : 'lore'
   if (roles.includes('direction')) return 'direction'
   if (roles.includes('gerance')) return 'gerance'
   if (roles.includes('responsable')) return 'responsable'
@@ -59,7 +63,7 @@ Deno.serve(async (req) => {
     return errorResponse('VALIDATION_ERROR', 'week_start invalide')
 
   const requestedPole: ReportPole | null =
-    requestedPoleRaw === 'animateur' || requestedPoleRaw === 'mj' || requestedPoleRaw === 'bdm'
+    requestedPoleRaw === 'animateur' || requestedPoleRaw === 'mj' || requestedPoleRaw === 'lore' || requestedPoleRaw === 'bdm'
       ? requestedPoleRaw
       : null
   if (requestedPoleRaw && !requestedPole)

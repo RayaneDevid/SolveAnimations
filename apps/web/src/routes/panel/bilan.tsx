@@ -30,6 +30,7 @@ function formatWeekRange(startDate: string, endDate: string): string {
 }
 
 const MJ_ROLES = ['mj', 'mj_senior', 'responsable_mj']
+const LORE_ROLES = ['lore', 'responsable_lore']
 const BDM_ROLES = ['bdm', 'responsable_bdm']
 const QUOTA_COLORS = {
   filled: '#22c55e',
@@ -43,6 +44,10 @@ function isMjRole(role: string): boolean {
   return MJ_ROLES.includes(role)
 }
 
+function isLoreRole(role: string): boolean {
+  return LORE_ROLES.includes(role)
+}
+
 function isBdmRole(role: string): boolean {
   return BDM_ROLES.includes(role)
 }
@@ -51,6 +56,10 @@ function isEffectivelyMj(m: WeeklyReviewMember): boolean {
   if (m.pay_pole === 'mj') return true
   if (m.pay_pole === 'animation') return false
   return ['mj', 'mj_senior'].includes(m.role)
+}
+
+function isEffectivelyLore(m: WeeklyReviewMember): boolean {
+  return isLoreRole(m.role)
 }
 
 function isEffectivelyBdm(m: WeeklyReviewMember): boolean {
@@ -63,6 +72,10 @@ function isAbsenceEffectivelyMj(absence: WeeklyReviewAbsence): boolean {
   if (user.pay_pole === 'mj') return true
   if (user.pay_pole === 'animation') return false
   return isMjRole(user.role)
+}
+
+function isAbsenceEffectivelyLore(absence: WeeklyReviewAbsence): boolean {
+  return isLoreRole(absence.user?.role ?? '')
 }
 
 function isAbsenceEffectivelyBdm(absence: WeeklyReviewAbsence): boolean {
@@ -459,9 +472,11 @@ export default function Bilan() {
   const { data: villageStats } = useVillageStats(bounds.start)
   const animExportRef = useRef<HTMLDivElement>(null)
   const mjExportRef = useRef<HTMLDivElement>(null)
+  const loreExportRef = useRef<HTMLDivElement>(null)
   const bdmExportRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<'animation' | 'mj' | 'bdm'>(() => {
+  const [activeTab, setActiveTab] = useState<'animation' | 'mj' | 'lore' | 'bdm'>(() => {
     if (isBdmRole(user.role)) return 'bdm'
+    if (isLoreRole(user.role)) return 'lore'
     return user.pay_pole === 'mj' || isMjRole(user.role) ? 'mj' : 'animation'
   })
   const [exporting, setExporting] = useState(false)
@@ -471,7 +486,7 @@ export default function Bilan() {
     : 'bilan'
 
   const handleExportImage = async () => {
-    const ref = activeTab === 'animation' ? animExportRef : activeTab === 'mj' ? mjExportRef : bdmExportRef
+    const ref = activeTab === 'animation' ? animExportRef : activeTab === 'mj' ? mjExportRef : activeTab === 'lore' ? loreExportRef : bdmExportRef
     if (!ref.current || !data) return
 
     setExporting(true)
@@ -542,28 +557,35 @@ export default function Bilan() {
     )
   }
 
-  const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? '') && !isBdmRole(w.user?.role ?? ''))
+  const animWarnings = data.warnings.filter((w) => !isMjRole(w.user?.role ?? '') && !isLoreRole(w.user?.role ?? '') && !isBdmRole(w.user?.role ?? ''))
   const mjWarnings = data.warnings.filter((w) => isMjRole(w.user?.role ?? ''))
+  const loreWarnings = data.warnings.filter((w) => isLoreRole(w.user?.role ?? ''))
   const bdmWarnings = data.warnings.filter((w) => isBdmRole(w.user?.role ?? ''))
-  const animDepartures = data.departures.filter((d) => !isMjRole(d.role) && !isBdmRole(d.role))
+  const animDepartures = data.departures.filter((d) => !isMjRole(d.role) && !isLoreRole(d.role) && !isBdmRole(d.role))
   const mjDepartures = data.departures.filter((d) => isMjRole(d.role))
+  const loreDepartures = data.departures.filter((d) => isLoreRole(d.role))
   const bdmDepartures = data.departures.filter((d) => isBdmRole(d.role))
   const justifiedAbsencesThisWeek = data.justifiedAbsencesThisWeek ?? []
-  const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence) && !isAbsenceEffectivelyBdm(absence))
+  const animJustifiedAbsences = justifiedAbsencesThisWeek.filter((absence) => !isAbsenceEffectivelyMj(absence) && !isAbsenceEffectivelyLore(absence) && !isAbsenceEffectivelyBdm(absence))
   const mjJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyMj)
+  const loreJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyLore)
   const bdmJustifiedAbsences = justifiedAbsencesThisWeek.filter(isAbsenceEffectivelyBdm)
 
-  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
+  const animUnjustifiedThisWeek = data.unjustifiedThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyLore(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyMj)
+  const loreUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyLore)
   const bdmUnjustifiedThisWeek = data.unjustifiedThisWeek.filter(isEffectivelyBdm)
-  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
+  const animUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyLore(m) && !isEffectivelyBdm(m))
   const mjUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyMj)
+  const loreUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyLore)
   const bdmUnjustifiedTwoWeeks = data.unjustifiedTwoWeeks.filter(isEffectivelyBdm)
-  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
+  const animQuotaMissingThisWeek = data.quotaMissingThisWeek.filter((m) => !isEffectivelyMj(m) && !isEffectivelyLore(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyMj)
+  const loreQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyLore)
   const bdmQuotaMissingThisWeek = data.quotaMissingThisWeek.filter(isEffectivelyBdm)
-  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyBdm(m))
+  const animQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter((m) => !isEffectivelyMj(m) && !isEffectivelyLore(m) && !isEffectivelyBdm(m))
   const mjQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyMj)
+  const loreQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyLore)
   const bdmQuotaMissingTwoWeeks = data.quotaMissingTwoWeeks.filter(isEffectivelyBdm)
 
   return (
@@ -651,10 +673,11 @@ export default function Bilan() {
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj' | 'bdm')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'animation' | 'mj' | 'lore' | 'bdm')}>
           <TabsList className="mb-4">
             <TabsTrigger value="animation">Pôle Animation</TabsTrigger>
             <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+            <TabsTrigger value="lore">Pôle Lore</TabsTrigger>
             <TabsTrigger value="bdm">Pôle BDM</TabsTrigger>
           </TabsList>
 
@@ -694,6 +717,26 @@ export default function Bilan() {
                 quotaMissingTwoWeeks={mjQuotaMissingTwoWeeks}
                 hasTwoWeekHistory={data.hasTwoWeekHistory}
                 quotaCompletion={villageStats?.quotaCompletion.mj}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="lore">
+            <div ref={loreExportRef} className="rounded-xl bg-[#0A0B0F] p-4">
+              <div className="mb-4 flex items-baseline justify-between border-b border-white/[0.06] pb-3">
+                <span className="text-sm font-semibold text-white/70">Pôle Lore</span>
+                <span className="text-xs text-white/30">{formatWeekRange(data.week.startDate, data.week.endDate)}</span>
+              </div>
+              <PoleCards
+                warnings={loreWarnings}
+                justifiedAbsences={loreJustifiedAbsences}
+                departures={loreDepartures}
+                unjustifiedThisWeek={loreUnjustifiedThisWeek}
+                unjustifiedTwoWeeks={loreUnjustifiedTwoWeeks}
+                quotaMissingThisWeek={loreQuotaMissingThisWeek}
+                quotaMissingTwoWeeks={loreQuotaMissingTwoWeeks}
+                hasTwoWeekHistory={data.hasTwoWeekHistory}
+                quotaCompletion={villageStats?.quotaCompletion.lore}
               />
             </div>
           </TabsContent>

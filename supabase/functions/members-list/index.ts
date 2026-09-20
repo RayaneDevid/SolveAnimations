@@ -12,8 +12,9 @@ function resolveQuotaRole(role: string, payPole: 'animation' | 'mj' | null | und
   return role
 }
 
-function reportPoleForRole(role: string): 'animateur' | 'mj' | 'bdm' {
+function reportPoleForRole(role: string): 'animateur' | 'mj' | 'lore' | 'bdm' {
   if (role === 'mj' || role === 'mj_senior' || role === 'responsable_mj') return 'mj'
+  if (role === 'lore' || role === 'responsable_lore') return 'lore'
   if (role === 'bdm' || role === 'responsable_bdm') return 'bdm'
   return 'animateur'
 }
@@ -209,10 +210,12 @@ const QUOTA_MAX: Record<string, number | null> = {
   gerance: null,
   responsable: null,
   responsable_mj: null,
-    senior: 5,
+  responsable_lore: null,
+  senior: 5,
   mj_senior: 3,
   animateur: 5,
   mj: 3,
+  lore: null,
   bdm: 4,
   responsable_bdm: 4,
 }

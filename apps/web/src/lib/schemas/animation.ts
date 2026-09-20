@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'SE1', 'SE2', 'SE3'] as const
 export const TYPES = ['moyenne', 'grande'] as const
-export const POLES = ['animation', 'mj', 'les_deux'] as const
+export const POLES = ['animation', 'mj', 'lore', 'les_deux'] as const
 export const MISSION_KINDS = ['classique', 'spontanee', 'mission_bdm', 'passee'] as const
 export const BDM_VILLAGES_COUNTS = [1, 2, 3, 4] as const
 export const BDM_MISSION_TYPES = ['jetable', 'elaboree', 'grande_ampleur'] as const
@@ -107,7 +107,7 @@ export const submitReportSchema = z.object({
   reportId: z.string().uuid(),
   characterName: z.string().trim().min(1, 'Nom du personnage requis').max(64),
   comments: z.string().trim().max(2000).optional(),
-  pole: z.enum(['animateur', 'mj', 'bdm']).optional(),
+  pole: z.enum(['animateur', 'mj', 'lore', 'bdm']).optional(),
 })
 
 export type SubmitReportInput = z.infer<typeof submitReportSchema>

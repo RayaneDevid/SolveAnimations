@@ -20,15 +20,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime, formatTime } from '@/lib/utils/format'
-import { BDM_STAFF_ROLES, MJ_STAFF_ROLES, hasOwnedRole, ROLE_LABELS, type StaffRoleKey } from '@/lib/config/discord'
+import { BDM_STAFF_ROLES, LORE_STAFF_ROLES, MJ_STAFF_ROLES, hasOwnedRole, ROLE_LABELS, type StaffRoleKey } from '@/lib/config/discord'
 import { cn } from '@/lib/utils/cn'
 import type { Broadcast } from '@/types/database'
 
-type DashboardPole = 'animateur' | 'mj' | 'bdm'
+type DashboardPole = 'animateur' | 'mj' | 'lore' | 'bdm'
 
 const POLE_LABELS: Record<DashboardPole, string> = {
   animateur: 'Animation',
   mj: 'MJ',
+  lore: 'Lore',
   bdm: 'BDM',
 }
 
@@ -38,6 +39,7 @@ function getEligiblePoles(roles: StaffRoleKey[]): DashboardPole[] {
   const poles: DashboardPole[] = []
   if (hasOwnedRole(roles, ANIMATION_STAFF_ROLES)) poles.push('animateur')
   if (hasOwnedRole(roles, MJ_STAFF_ROLES)) poles.push('mj')
+  if (hasOwnedRole(roles, LORE_STAFF_ROLES)) poles.push('lore')
   if (hasOwnedRole(roles, BDM_STAFF_ROLES)) poles.push('bdm')
   return poles
 }
@@ -48,6 +50,7 @@ const BROADCAST_AUDIENCE_OPTIONS: Array<{ value: BroadcastAudience; label: strin
   { value: 'all', label: 'Tout le monde', description: 'Visible par tous les utilisateurs.' },
   { value: 'pole_animation', label: 'Pôle Animation', description: 'Visible par le pôle Animation.' },
   { value: 'pole_mj', label: 'Pôle MJ', description: 'Visible par le pôle MJ.' },
+  { value: 'pole_lore', label: 'Pôle Lore', description: 'Visible par le pôle Lore.' },
   { value: 'pole_bdm', label: 'Pôle BDM', description: 'Visible par le pôle BDM.' },
   { value: 'selected', label: 'Utilisateurs sélectionnés', description: 'Visible uniquement par la sélection.' },
 ]
@@ -415,7 +418,7 @@ export default function Dashboard() {
   const scheduledLoading = scheduledParticipantLoading || scheduledCreatedLoading
 
   const profileIncomplete = !user.steam_id || !user.arrival_date
-  const canManageBroadcasts = hasOwnedRole(permissionRoles, ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_bdm'])
+  const canManageBroadcasts = hasOwnedRole(permissionRoles, ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm'])
   const canCreateBdmMission = hasOwnedRole(permissionRoles, ['bdm', 'responsable_bdm'])
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
   const statsPeriodLabel = isCurrentWeek() ? 'cette semaine' : `semaine du ${weekLabel}`
@@ -754,7 +757,7 @@ export default function Dashboard() {
                       {report.animation?.title ?? 'Animation'}
                     </p>
                     <p className="text-xs text-white/40">
-                      En tant que {report.pole === 'bdm' ? 'BDM' : report.pole === 'mj' ? 'MJ' : 'Animateur'} · {report.character_name}
+                      En tant que {report.pole === 'bdm' ? 'BDM' : report.pole === 'mj' ? 'MJ' : report.pole === 'lore' ? 'Lore' : 'Animateur'} · {report.character_name}
                     </p>
                   </div>
                 </Link>

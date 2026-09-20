@@ -50,10 +50,16 @@ const DESTINATIONS: Record<RequeteDestination, { label: string; color: string; b
     bg: 'bg-violet-400/10',
     border: 'border-violet-400/20',
   },
+  rlore: {
+    label: 'Responsables Lore',
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-400/10',
+    border: 'border-emerald-400/20',
+  },
 }
 
-const CREATOR_ROLES = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_bdm', 'bdm', 'direction', 'gerance']
-const DECIDER_ROLES = ['responsable', 'responsable_mj', 'direction', 'gerance']
+const CREATOR_ROLES = ['animateur', 'mj', 'lore', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm', 'bdm', 'direction', 'gerance']
+const DECIDER_ROLES = ['responsable', 'responsable_mj', 'responsable_lore', 'direction', 'gerance']
 
 // ─── Zod schema ───────────────────────────────────────────────────────────────
 
@@ -62,7 +68,7 @@ const createRequeteSchema = z.object({
     'grade_superieur_tkj', 'demande_give', 'setmodel_tenue',
     'reservation_secteur', 'situation_problematique', 'autres',
   ]),
-  destination: z.enum(['ra', 'rmj']),
+  destination: z.enum(['ra', 'rmj', 'rlore']),
   description: z.string().trim().min(10, 'Décrivez votre demande (min 10 caractères)').max(2000),
 })
 
@@ -256,7 +262,7 @@ function RequeteModal({
             </div>
           )}
 
-          {/* RA/RMJ action panel */}
+          {/* RA / RMJ / RLore action panel */}
           {canAct && (
             <div className="border-t border-white/[0.06] pt-4 space-y-3">
               <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Votre décision</p>
@@ -393,7 +399,7 @@ function CreateRequeteDialog({ open, onClose }: { open: boolean; onClose: () => 
           {/* Destination */}
           <div className="space-y-1.5">
             <Label>Destinataires</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(Object.entries(DESTINATIONS) as [RequeteDestination, typeof DESTINATIONS.ra][]).map(([key, d]) => (
                 <button
                   key={key}

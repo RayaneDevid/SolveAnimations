@@ -21,7 +21,7 @@ async function getRequeteResponsableProfile(discordId: string) {
     .eq('discord_id', discordId)
     .single();
   if (!data) return null;
-  const deciderRoles = ['responsable', 'responsable_mj', 'direction', 'gerance'];
+  const deciderRoles = ['responsable', 'responsable_mj', 'responsable_lore', 'direction', 'gerance'];
   if (!deciderRoles.includes(data.role)) return null;
   return data;
 }
@@ -41,7 +41,7 @@ async function getResponsableProfile(discordId: string) {
     .select('id, role, username')
     .eq('discord_id', discordId)
     .single();
-  if (!data || (data.role !== 'responsable' && data.role !== 'responsable_mj')) return null;
+  if (!data || (data.role !== 'responsable' && data.role !== 'responsable_mj' && data.role !== 'responsable_lore')) return null;
   return data;
 }
 
@@ -52,13 +52,13 @@ async function getValidationProfile(discordId: string) {
     .eq('discord_id', discordId)
     .single();
   if (!data) return null;
-  const allowedRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'senior', 'mj_senior'];
+  const allowedRoles = ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore', 'senior', 'mj_senior'];
   if (!allowedRoles.includes(data.role)) return null;
   return data;
 }
 
 function isResponsableValidationRole(role: string): boolean {
-  return ['direction', 'gerance', 'responsable', 'responsable_mj'].includes(role);
+  return ['direction', 'gerance', 'responsable', 'responsable_mj', 'responsable_lore'].includes(role);
 }
 
 async function fetchAnimation(animationId: string) {
@@ -79,6 +79,9 @@ function buildParticipantPingContent(pole: string | undefined): { content: strin
   if (!pole || pole === 'mj' || pole === 'les_deux') {
     if (env.ROLE_MJ) roleIds.push(env.ROLE_MJ);
     if (env.ROLE_MJ_SENIOR) roleIds.push(env.ROLE_MJ_SENIOR);
+  }
+  if (!pole || pole === 'lore') {
+    if (env.ROLE_LORE) roleIds.push(env.ROLE_LORE);
   }
 
   if (roleIds.length === 0) return null;
@@ -186,7 +189,7 @@ export async function handleValidateButton(interaction: ButtonInteraction, anima
       reportUserIds.map((userId) => ({
         animation_id: animationId,
         user_id: userId,
-        pole: anim.pole === 'mj' ? 'mj' : 'animateur',
+        pole: anim.pole === 'mj' ? 'mj' : anim.pole === 'lore' ? 'lore' : 'animateur',
         character_name: '—',
         comments: null,
         submitted_at: null,
@@ -397,6 +400,10 @@ export async function handleRequeteAcceptButton(interaction: ButtonInteraction, 
     await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables MJ.' });
     return;
   }
+  if (requete.destination === 'rlore' && profile.role !== 'responsable_lore' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables Lore.' });
+    return;
+  }
 
   const now = new Date().toISOString();
   const { error } = await supabase
@@ -471,6 +478,10 @@ export async function handleRequeteRefuseModal(interaction: ModalSubmitInteracti
     await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables MJ.' });
     return;
   }
+  if (requete.destination === 'rlore' && profile.role !== 'responsable_lore' && profile.role !== 'direction' && profile.role !== 'gerance') {
+    await interaction.editReply({ content: '❌ Cette requête est destinée aux Responsables Lore.' });
+    return;
+  }
 
   const now = new Date().toISOString();
   const { error } = await supabase
@@ -520,7 +531,7 @@ export async function handleAnimJoinButton(interaction: ButtonInteraction, anima
     return;
   }
 
-  const staffRoles = ['animateur', 'mj', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_bdm', 'bdm', 'direction', 'gerance'];
+  const staffRoles = ['animateur', 'mj', 'lore', 'senior', 'mj_senior', 'responsable', 'responsable_mj', 'responsable_lore', 'responsable_bdm', 'bdm', 'direction', 'gerance'];
   if (!staffRoles.includes(profile.role)) {
     await interaction.editReply({ content: '❌ Tu n\'as pas accès au panel.' });
     return;

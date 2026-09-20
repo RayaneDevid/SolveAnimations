@@ -5,7 +5,7 @@ import { requireAuth } from '../_shared/auth.ts'
 import { hasAnyRole } from '../_shared/guards.ts'
 import { getServiceClient } from '../_shared/supabaseClient.ts'
 
-const DECIDER_ROLES = ['responsable', 'responsable_mj', 'direction', 'gerance']
+const DECIDER_ROLES = ['responsable', 'responsable_mj', 'responsable_lore', 'direction', 'gerance']
 
 interface Body {
   id: string
@@ -51,11 +51,14 @@ Deno.serve(async (req) => {
   const canDecideAll = hasAnyRole(profile, ['direction', 'gerance'])
   const canDecideRa = hasAnyRole(profile, ['responsable'])
   const canDecideRmj = hasAnyRole(profile, ['responsable_mj'])
+  const canDecideRlore = hasAnyRole(profile, ['responsable_lore'])
 
   if (!canDecideAll && requete.destination === 'ra' && !canDecideRa)
     return errorResponse('FORBIDDEN', 'Vous ne pouvez décider que des requêtes RA')
   if (!canDecideAll && requete.destination === 'rmj' && !canDecideRmj)
     return errorResponse('FORBIDDEN', 'Vous ne pouvez décider que des requêtes RMJ')
+  if (!canDecideAll && requete.destination === 'rlore' && !canDecideRlore)
+    return errorResponse('FORBIDDEN', 'Vous ne pouvez décider que des requêtes RLore')
 
   const { data: updated, error: updateError } = await db
     .from('requetes')

@@ -14,7 +14,7 @@ import { GenderIcon } from '@/components/shared/GenderIcon'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDuration } from '@/lib/utils/format'
-import { isBdmStaffRole, isMjStaffRole } from '@/lib/config/discord'
+import { isBdmStaffRole, isLoreStaffRole, isMjStaffRole } from '@/lib/config/discord'
 import type { LeaderboardEntry } from '@/types/database'
 
 const MEDAL_STYLES = [
@@ -24,7 +24,7 @@ const MEDAL_STYLES = [
 ]
 
 const MEDAL_LABELS = ['🥇', '🥈', '🥉']
-type LeaderboardPole = 'anim' | 'mj' | 'bdm'
+type LeaderboardPole = 'anim' | 'mj' | 'lore' | 'bdm'
 type LeaderboardMetric = 'byHours' | 'byAnimations' | 'byParticipations'
 
 const BDM_METRIC_KEYS: Record<LeaderboardMetric, 'bdmByHours' | 'bdmByAnimations' | 'bdmByParticipations'> = {
@@ -161,6 +161,7 @@ function RankingTable({ entries, pole }: { entries: LeaderboardEntry[]; pole: Le
 
 const ANIM_ROLES = ['direction', 'gerance', 'responsable', 'senior', 'animateur']
 const MJ_ROLES   = ['responsable_mj', 'mj_senior', 'mj']
+const LORE_ROLES = ['responsable_lore', 'lore']
 
 export default function Leaderboard() {
   const { user } = useRequiredAuth()
@@ -169,13 +170,14 @@ export default function Leaderboard() {
   const [metric, setMetric] = useState<LeaderboardMetric>('byHours')
   const [pole, setPole] = useState<LeaderboardPole>(() => {
     if (isBdmStaffRole(user.role) && !isMjStaffRole(user.role)) return 'bdm'
+    if (isLoreStaffRole(user.role)) return 'lore'
     return user.pay_pole === 'mj' || isMjStaffRole(user.role) ? 'mj' : 'anim'
   })
   const { data, isLoading } = useLeaderboard(period, bounds.start)
   const weekLabel = `${format(bounds.start, 'dd/MM', { locale: fr })} - ${format(bounds.end, 'dd/MM', { locale: fr })}`
 
   const rawEntries = pole === 'bdm' ? data?.[BDM_METRIC_KEYS[metric]] ?? [] : data?.[metric] ?? []
-  const poleRoles = pole === 'anim' ? ANIM_ROLES : MJ_ROLES
+  const poleRoles = pole === 'anim' ? ANIM_ROLES : pole === 'lore' ? LORE_ROLES : MJ_ROLES
   const entries = (pole === 'bdm' ? rawEntries : rawEntries.filter((e) => poleRoles.includes(e.role)))
     .map((e, i) => ({ ...e, rank: i + 1 }))
 
@@ -212,6 +214,7 @@ export default function Leaderboard() {
             <TabsList>
               <TabsTrigger value="anim">Pôle Animation</TabsTrigger>
               <TabsTrigger value="mj">Pôle MJ</TabsTrigger>
+              <TabsTrigger value="lore">Pôle Lore</TabsTrigger>
               <TabsTrigger value="bdm">Pôle BDM</TabsTrigger>
             </TabsList>
           </Tabs>

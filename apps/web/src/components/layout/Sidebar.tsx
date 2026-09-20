@@ -27,7 +27,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
+import { canSeePaies, hasOwnedRole, hasPermissionRole } from '@/lib/config/discord'
 import type { StaffRoleKey } from '@/lib/config/discord'
 
 interface NavItem {
@@ -46,7 +46,7 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
   {
     id: 'base',
-    label: 'Animateurs / MJ',
+    label: 'Animateurs / MJ / Lore',
     items: [
       { to: '/panel/dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
       { to: '/panel/animations', label: 'Animations',         icon: Sword },
@@ -92,17 +92,19 @@ export function Sidebar() {
 
   const { user, role, permissionRoles } = auth
   const canSeeBdmValidation = hasOwnedRole(permissionRoles, ['responsable_bdm'])
+  const canSeePaiesEntry = canSeePaies(permissionRoles)
 
   const visibleSections = NAV_SECTIONS
     .map((section) => ({
       ...section,
-      items: section.minRole
+      items: (section.minRole
         ? (hasPermissionRole(permissionRoles, section.minRole)
           ? section.items
           : section.id === 'senior' && canSeeBdmValidation
             ? section.items.filter((item) => item.to === '/panel/validation')
             : [])
-        : section.items,
+        : section.items
+      ).filter((item) => item.to !== '/panel/paies' || canSeePaiesEntry),
     }))
     .filter((s) => s.items.length > 0)
 
